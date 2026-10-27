@@ -40,6 +40,146 @@
     {
       "mensaje": "dos de veinte litros para nunoa",
       "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "comuna_mencionada": "Ñuñoa" }
+    },
+    {
+      "mensaje": "Buenas tardes, quiero 2 bidones de 20 para el viernes",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "fecha_texto": "viernes" }
+    },
+    {
+      "mensaje": "necesito un bidon de 12 y dos de 10",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "12L", "cantidad": 1 }, { "tipo": "10L", "cantidad": 2 }] }
+    },
+    {
+      "mensaje": "mándame 3 de 20 a Providencia",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 3 }], "comuna_mencionada": "Providencia" }
+    },
+    {
+      "mensaje": "2 bidones",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "no_especificado", "cantidad": 2 }], "accion": "preguntar_tipo" }
+    },
+    {
+      "mensaje": "quiero pedir bidones",
+      "esperado": { "intencion": "pedido", "items": [], "accion": "preguntar_pedido" }
+    },
+    {
+      "mensaje": "hola, quiero hacer un pedido",
+      "esperado": { "intencion": "pedido", "items": [], "accion": "preguntar_pedido" }
+    },
+    {
+      "mensaje": "bidones de 20 para mañana",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": null }], "accion": "preguntar_cantidad", "fecha_texto": "mañana" }
+    },
+    {
+      "mensaje": "cuanto cuesta el de 12?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "precio" }
+    },
+    {
+      "mensaje": "cuanto sale 3 bidones de 20",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "precio", "items": [{ "tipo": "20L", "cantidad": 3 }] }
+    },
+    {
+      "mensaje": "a qué hora llegan?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "horario" }
+    },
+    {
+      "mensaje": "reparten los domingos?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "horario" }
+    },
+    {
+      "mensaje": "cómo puedo pagar?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "pago" }
+    },
+    {
+      "mensaje": "dame el número de cuenta para transferir",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "pago" }
+    },
+    {
+      "mensaje": "llegan a Las Condes?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "zona", "comuna_mencionada": "Las Condes" }
+    },
+    {
+      "mensaje": "hacen entregas en La Florida?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "zona", "comuna_mencionada": "La Florida" }
+    },
+    {
+      "mensaje": "llegan a Maipú el sábado?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "zona", "comuna_mencionada": "Maipú", "fecha_texto": "sábado" }
+    },
+    {
+      "mensaje": "Vitacura?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "zona", "comuna_mencionada": "Vitacura" }
+    },
+    {
+      "mensaje": "quiero 2 bidones de 20 y cuanto sale?",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }] }
+    },
+    {
+      "mensaje": "ya transferí",
+      "esperado": { "intencion": "pago" }
+    },
+    {
+      "mensaje": "gracias",
+      "esperado": { "intencion": "cierre" }
+    },
+    {
+      "mensaje": "ok gracias!",
+      "esperado": { "intencion": "cierre" }
+    },
+    {
+      "mensaje": "muchas gracias por todo",
+      "esperado": { "intencion": "cierre" }
+    },
+    {
+      "mensaje": "buenos días",
+      "esperado": { "intencion": "saludo" }
+    },
+    {
+      "mensaje": "Hola, buenas tardes",
+      "esperado": { "intencion": "saludo" }
+    },
+    {
+      "mensaje": "el bidón venía roto, mándenme 2 de 20 nuevos",
+      "esperado": { "intencion": "reclamo", "items": [{ "tipo": "20L", "cantidad": 2 }], "accion": "escalar" }
+    },
+    {
+      "mensaje": "quiero factura",
+      "esperado": { "intencion": "factura", "accion": "escalar" }
+    },
+    {
+      "mensaje": "soy proveedor de envases, quiero cotizar",
+      "esperado": { "intencion": "proveedor", "accion": "escalar" }
+    },
+    {
+      "mensaje": "lo mismo de la semana pasada",
+      "esperado": { "intencion": "repetir_pedido", "items": [] }
+    },
+    {
+      "mensaje": "lo de siempre pero 3 de 20",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 3 }] }
+    },
+    {
+      "mensaje": "mañana en la mañana 2 de 20",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "fecha_texto": "mañana" }
+    },
+    {
+      "mensaje": "dos de veinte porfa para el sábado en Macul",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "fecha_texto": "sábado", "comuna_mencionada": "Macul" }
+    },
+    {
+      "mensaje": "necesito ayuda con algo",
+      "esperado": { "intencion": "desconocido" }
+    },
+    {
+      "mensaje": "tengo 3 bidones vacíos para devolver",
+      "esperado": { "intencion": "desconocido" }
+    },
+    {
+      "mensaje": "de 20",
+      "esperado": { "intencion": "desconocido" }
+    },
+    {
+      "mensaje": "😊",
+      "esperado": { "intencion": "desconocido" }
     }
   ]
 }
