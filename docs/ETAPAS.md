@@ -17,6 +17,8 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 ## Etapa 1 — Esqueleto de punta a punta
 
+**Avance:** Paso 0 listo (dependencias instaladas, scripts de esbuild y workerd aprobados, `npx wrangler --version` funciona). Siguiente: crear cuentas en Cloudflare y Meta.
+
 **Objetivo:** escribes desde tu celular al número de prueba y recibes "Recibí: <tu texto>".
 
 **Lo haces tú (cuentas y credenciales, no las hace Claude):**
