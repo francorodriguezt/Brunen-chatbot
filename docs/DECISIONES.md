@@ -49,7 +49,7 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Motivo: son dependencias directas de wrangler (Cloudflare). La aprobación queda fija a la versión exacta: si se actualizan, npm vuelve a pedirla y se revisa de nuevo.
 - Fuente: aviso de `npm install` (npm 11.19.1) y `npm install-scripts ls`.
 
-### D11 · 2026-10-27 · Tomada
+### D11 · 2026-10-27 · Reemplazada por D14
 **Repositorio público en GitHub (github.com/francorodriguezt/Brunen-chatbot), como portafolio de Franco.**
 - Contexto: el dueño autorizó publicar. Los documentos incluyen datos comerciales (precios, comunas, volumen) pero no secretos.
 - Reglas que se mantienen: tokens solo en `.dev.vars` / `wrangler secret`; datos reales de clientes, cuenta bancaria y teléfonos nunca entran al repo (D9). Revisar el diff antes de cada push.
@@ -61,3 +61,9 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 ### D13 · 2026-10-27 · Tomada
 **Scripts locales `verificar-config` y `simular-mensaje` en `scripts/`.**
 - Motivo: probar la configuración y el webhook firmado sin esperar a Meta, y sin que Claude lea `.dev.vars`: los scripts nunca imprimen valores.
+
+### D14 · 2026-10-27 · Tomada (reversible)
+**Repositorio privado en GitHub hasta que el proyecto esté listo; luego se vuelve público como portafolio.**
+- Contexto: Franco prefiere mostrarlo terminado. Reemplaza a D11.
+- Antes de volver a publicarlo: revisar los datos comerciales y el nombre de la operadora en `docs/`, y que no haya secretos en el historial.
+- Efecto en el CI: en repos privados, GitHub Actions descuenta minutos del cupo gratuito de la cuenta; cada corrida de `check` dura alrededor de 1 minuto.
