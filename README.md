@@ -25,6 +25,8 @@ src/
   precios.ts    Cálculo de precios (tramos, especial, mayorista, carga inicial)
   despacho.ts   Fecha de entrega (corte 9:00, sábados, domingos, feriados)
 tests/          Pruebas Vitest + mensajes.json (casos para el intérprete)
+scripts/        verificar-config y simular-mensaje (ayudas para probar en local)
+.github/        CI: corre npm run check en cada push
 docs/           Conocimiento del negocio, decisiones, pendientes, etapas
 .claude/        settings.json: permisos de Claude Code para este proyecto
 ```
@@ -36,6 +38,8 @@ docs/           Conocimiento del negocio, decisiones, pendientes, etapas
 | `npm test` | Solo pruebas |
 | `npm run dev` | Worker local en http://localhost:8787 (lee `.dev.vars`) |
 | `npm run deploy` | Publica en Cloudflare (pide `npx wrangler login` la primera vez) |
+| `npm run verificar-config` | Revisa `.dev.vars` y `wrangler.toml` sin mostrar valores |
+| `npm run simular-mensaje -- "texto"` | Envía al Worker local un mensaje firmado como Meta |
 
 ## Secretos
 Nunca en el código. Local: copia `.dev.vars.example` a `.dev.vars`. Producción: `npx wrangler secret put NOMBRE`.
