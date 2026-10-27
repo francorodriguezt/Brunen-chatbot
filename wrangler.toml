@@ -10,3 +10,8 @@ compatibility_date = "2026-09-01"
 # de tu app en developers.facebook.com (formato vNN.N). No adivinarla.
 GRAPH_API_VERSION = "v00.0"
 BOT_ACTIVO = "SI"
+
+[observability]
+# Workers Logs: los errores del Worker se ven en el panel de Cloudflare sin tener `wrangler tail`
+# abierto. Plan gratis: 200.000 eventos de log por día, 3 días de retención.
+enabled = true
