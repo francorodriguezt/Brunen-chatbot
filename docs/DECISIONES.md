@@ -53,3 +53,11 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 **Repositorio público en GitHub (github.com/francorodriguezt/Brunen-chatbot), como portafolio de Franco.**
 - Contexto: el dueño autorizó publicar. Los documentos incluyen datos comerciales (precios, comunas, volumen) pero no secretos.
 - Reglas que se mantienen: tokens solo en `.dev.vars` / `wrangler secret`; datos reales de clientes, cuenta bancaria y teléfonos nunca entran al repo (D9). Revisar el diff antes de cada push.
+
+### D12 · 2026-10-27 · Tomada
+**CI con GitHub Actions (`.github/workflows/check.yml`) que corre `npm ci` + `npm run check` en cada push a `main` y en cada pull request.**
+- Motivo: detectar una prueba rota antes de desplegar, sin depender de acordarse de correr `npm run check`. Gratis en repos públicos. No usa secretos.
+
+### D13 · 2026-10-27 · Tomada
+**Scripts locales `verificar-config` y `simular-mensaje` en `scripts/`.**
+- Motivo: probar la configuración y el webhook firmado sin esperar a Meta, y sin que Claude lea `.dev.vars`: los scripts nunca imprimen valores.

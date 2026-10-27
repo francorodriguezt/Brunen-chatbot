@@ -17,7 +17,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 ## Etapa 1 — Esqueleto de punta a punta
 
-**Avance:** Paso 0 listo (dependencias instaladas, scripts de esbuild y workerd aprobados, `npx wrangler --version` funciona). Siguiente: crear cuentas en Cloudflare y Meta.
+**Avance:** Paso 0 listo (dependencias instaladas, scripts de esbuild y workerd aprobados, `npx wrangler --version` funciona). Adelantado por Claude: `npm run verificar-config`, `npm run simular-mensaje` y CI en GitHub Actions; el Worker se probó en local (workerd) con valores ficticios: `/salud`, verificación GET, firma inválida → 401, número no permitido → sin respuesta, error de Meta → se registra y el webhook igual responde 200. Siguiente: crear cuentas en Cloudflare y Meta.
 
 **Objetivo:** escribes desde tu celular al número de prueba y recibes "Recibí: <tu texto>".
 
@@ -25,8 +25,10 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 1. Crear cuenta en Cloudflare (gratis) y en Meta for Developers.
 2. En Meta: crear una app de tipo Business, agregar el producto WhatsApp, agregar tu número como destinatario de prueba.
 3. Copiar `.dev.vars.example` como `.dev.vars` y completar valores (no se sube a git).
+4. Correr `npm run verificar-config`: revisa el formato sin mostrar ningún valor.
 
 **Lo hace Claude Code contigo:**
+0. Prueba local: `npm run dev` en una terminal y, en otra, `npm run simular-mensaje -- "hola 2 bidones de 20"`. Con un token real y tu número permitido, la respuesta llega de verdad a tu WhatsApp. Para detener `npm run dev`, Ctrl+C.
 1. `npx wrangler login` y luego `npm run deploy` (te pedirá confirmación).
 2. Cargar los secretos con `npx wrangler secret put NOMBRE` (tú pegas cada valor).
 3. Poner la versión de la Graph API en `wrangler.toml` (la que muestra Meta en API Setup).
