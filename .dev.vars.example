@@ -1,0 +1,17 @@
+# Copia este archivo como .dev.vars (no se sube a git) y completa los valores.
+# En producción cada uno se carga con: npx wrangler secret put NOMBRE
+
+# Texto que inventas tú; lo pegas también en Meta al configurar el webhook.
+WHATSAPP_VERIFY_TOKEN=
+
+# Meta > tu app > App settings > Basic > App secret
+WHATSAPP_APP_SECRET=
+
+# Meta > WhatsApp > API Setup. El token temporal dura 24 h; el permanente es de un System User.
+WHATSAPP_TOKEN=
+
+# Meta > WhatsApp > API Setup > Phone number ID (del número de prueba)
+WHATSAPP_PHONE_NUMBER_ID=
+
+# Tus números verificados de prueba, separados por coma, formato 569XXXXXXXX
+NUMEROS_PERMITIDOS=

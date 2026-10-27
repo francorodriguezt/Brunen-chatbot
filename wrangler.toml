@@ -1,0 +1,12 @@
+# Configuración del Worker de Cloudflare (plan gratuito).
+# Los secretos NO van aquí: se cargan con `npx wrangler secret put NOMBRE`
+# (y en local, en el archivo .dev.vars, que está en .gitignore).
+name = "brunen-chatbot"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Versión de la Graph API de Meta. Copiar la que aparece en el ejemplo de "API Setup"
+# de tu app en developers.facebook.com (formato vNN.N). No adivinarla.
+GRAPH_API_VERSION = "v00.0"
+BOT_ACTIVO = "SI"

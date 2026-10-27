@@ -1,0 +1,45 @@
+{
+  "_descripcion": "Mensajes de ejemplo con el resultado esperado del intérprete (Etapa 3). Datos ficticios. Agregar aquí cada mensaje real que el bot entienda mal (anonimizado).",
+  "casos": [
+    {
+      "mensaje": "Hola, me puede traer 2 bidones de 20 mañana?",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "fecha_texto": "mañana" }
+    },
+    {
+      "mensaje": "3 de 20 y 1 de 12 porfa",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 3 }, { "tipo": "12L", "cantidad": 1 }] }
+    },
+    {
+      "mensaje": "lo de siempre",
+      "esperado": { "intencion": "repetir_pedido", "items": [] }
+    },
+    {
+      "mensaje": "quiero 4 bidones",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "no_especificado", "cantidad": 4 }], "accion": "preguntar_tipo" }
+    },
+    {
+      "mensaje": "cuanto sale el bidon de 20?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "precio" }
+    },
+    {
+      "mensaje": "llegan a Maipú?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "zona", "comuna_mencionada": "Maipú" }
+    },
+    {
+      "mensaje": "el bidón de ayer venía con el sello roto",
+      "esperado": { "intencion": "reclamo", "accion": "escalar" }
+    },
+    {
+      "mensaje": "necesito factura del mes pasado",
+      "esperado": { "intencion": "factura", "accion": "escalar" }
+    },
+    {
+      "mensaje": "hola",
+      "esperado": { "intencion": "saludo" }
+    },
+    {
+      "mensaje": "dos de veinte litros para nunoa",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "comuna_mencionada": "Ñuñoa" }
+    }
+  ]
+}
