@@ -26,7 +26,7 @@ src/
   despacho.ts   Fecha de entrega (corte 9:00, sábados, domingos, feriados)
 tests/          Pruebas Vitest + mensajes.json (casos para el intérprete)
 docs/           Conocimiento del negocio, decisiones, pendientes, etapas
-.claude/        Permisos de Claude Code (se crea desde claude-settings.example.json)
+.claude/        settings.json: permisos de Claude Code para este proyecto
 ```
 
 ## Comandos
