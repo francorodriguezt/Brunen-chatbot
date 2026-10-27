@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import worker, { type Contexto, type Env } from '../src/index';
 import { firmarHmacSha256, verificarFirma } from '../src/firma';
-import { enmascararTelefono, extraerMensajes } from '../src/whatsapp';
+import { enmascararTelefono, enviarTexto, ErrorWhatsApp, extraerMensajes } from '../src/whatsapp';
 
 // Todos los valores son ficticios: ningún token ni teléfono real entra al repo.
 const ENV: Env = {
@@ -140,6 +140,23 @@ describe('recepción de mensajes (POST)', () => {
       entry: [{ changes: [{ field: 'messages', value: { statuses: [{ id: 'wamid.X', status: 'delivered' }] } }] }],
     };
     expect(extraerMensajes(soloEstados)).toEqual([]);
+  });
+});
+
+describe('versión de la Graph API', () => {
+  it('rechaza el valor de relleno v00.0 de wrangler.toml sin llamar a Meta', async () => {
+    const fetchFalso = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchFalso);
+    const config = { token: 't', phoneNumberId: '0', graphApiVersion: 'v00.0' };
+    await expect(enviarTexto(config, '56900000001', 'hola')).rejects.toThrow(ErrorWhatsApp);
+    expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  it('rechaza formatos mal escritos', async () => {
+    for (const version of ['v0.5', '22.0', 'v22', 'V22.0', ' v22.0']) {
+      const config = { token: 't', phoneNumberId: '0', graphApiVersion: version };
+      await expect(enviarTexto(config, '56900000001', 'hola')).rejects.toThrow(ErrorWhatsApp);
+    }
   });
 });
 
