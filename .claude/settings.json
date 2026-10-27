@@ -10,8 +10,10 @@
       "Bash(npx tsc --noEmit)"
     ],
     "ask": [
+      "Bash(npx wrangler deploy)",
       "Bash(npx wrangler deploy *)",
       "Bash(npm run deploy)",
+      "Bash(npm run deploy *)",
       "Bash(npx wrangler secret *)"
     ],
     "deny": [
