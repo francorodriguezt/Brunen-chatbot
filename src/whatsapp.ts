@@ -71,8 +71,11 @@ export class ErrorWhatsApp extends Error {
 }
 
 export async function enviarTexto(config: ConfigWhatsApp, para: string, cuerpo: string): Promise<void> {
-  if (!/^v\d+\.\d+$/.test(config.graphApiVersion)) {
-    throw new ErrorWhatsApp(`GRAPH_API_VERSION inválida: "${config.graphApiVersion}" (formato esperado vNN.N)`);
+  // Exige mayor >= 1: así el valor de relleno "v00.0" de wrangler.toml falla aquí con un mensaje claro.
+  if (!/^v[1-9]\d*\.\d+$/.test(config.graphApiVersion)) {
+    throw new ErrorWhatsApp(
+      `GRAPH_API_VERSION inválida: "${config.graphApiVersion}" (formato esperado vNN.N; copia la de API Setup en Meta)`,
+    );
   }
   const url = `https://graph.facebook.com/${config.graphApiVersion}/${config.phoneNumberId}/messages`;
   const respuesta = await fetch(url, {
