@@ -24,6 +24,9 @@ src/
   whatsapp.ts   Parseo del webhook y envío de mensajes
   precios.ts    Cálculo de precios (tramos, especial, mayorista, carga inicial)
   despacho.ts   Fecha de entrega (corte 9:00, sábados, domingos, feriados)
+  texto.ts      Normalización de texto y números en palabras (para el intérprete)
+  comunas.ts    Comunas atendidas y fuera de zona
+  interprete.ts Intérprete por reglas: bidones, fecha, comuna e intención del mensaje
 tests/          Pruebas Vitest + mensajes.json (casos para el intérprete)
 scripts/        verificar-config y simular-mensaje (ayudas para probar en local)
 .github/        CI: corre npm run check en cada push
