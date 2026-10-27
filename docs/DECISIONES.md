@@ -42,3 +42,14 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 
 ### D9 · 2026-10-27 · Tomada
 **Datos sensibles fuera del repo.** Cuenta bancaria, teléfonos de Constanza y clientes viven en la planilla (CONFIGURACION, CLIENTES), no en `docs/`.
+
+### D10 · 2026-10-27 · Tomada
+**Aprobar los scripts de instalación de esbuild y workerd (`allowScripts` en `package.json`).**
+- Contexto: npm 11 bloquea los `postinstall` de paquetes no aprobados; sin ellos no se descargan los binarios de esbuild y workerd, y `npm run dev` / `npm run deploy` fallan.
+- Motivo: son dependencias directas de wrangler (Cloudflare). La aprobación queda fija a la versión exacta: si se actualizan, npm vuelve a pedirla y se revisa de nuevo.
+- Fuente: aviso de `npm install` (npm 11.19.1) y `npm install-scripts ls`.
+
+### D11 · 2026-10-27 · Tomada
+**Repositorio público en GitHub (github.com/francorodriguezt/Brunen-chatbot), como portafolio de Franco.**
+- Contexto: el dueño autorizó publicar. Los documentos incluyen datos comerciales (precios, comunas, volumen) pero no secretos.
+- Reglas que se mantienen: tokens solo en `.dev.vars` / `wrangler secret`; datos reales de clientes, cuenta bancaria y teléfonos nunca entran al repo (D9). Revisar el diff antes de cada push.
