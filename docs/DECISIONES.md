@@ -62,8 +62,25 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 **Scripts locales `verificar-config` y `simular-mensaje` en `scripts/`.**
 - Motivo: probar la configuración y el webhook firmado sin esperar a Meta, y sin que Claude lea `.dev.vars`: los scripts nunca imprimen valores.
 
-### D14 · 2026-10-27 · Tomada (reversible)
+### D14 · 2026-10-27 · Reemplazada por D15
 **Repositorio privado en GitHub hasta que el proyecto esté listo; luego se vuelve público como portafolio.**
 - Contexto: Franco prefiere mostrarlo terminado. Reemplaza a D11.
 - Antes de volver a publicarlo: revisar los datos comerciales y el nombre de la operadora en `docs/`, y que no haya secretos en el historial.
 - Efecto en el CI: en repos privados, GitHub Actions descuenta minutos del cupo gratuito de la cuenta; cada corrida de `check` dura alrededor de 1 minuto.
+
+### D15 · 2026-10-27 · Tomada
+**Repositorio público desde hoy: Franco lo publicó antes de terminar el proyecto.** Reemplaza a D14.
+- Revisión hecha después de publicar: sin secretos ni archivos sensibles en todo el historial (búsqueda de tokens de Meta, claves de Groq y Telegram, llaves privadas y App Secrets). Los teléfonos de las pruebas son ficticios.
+- Pendiente de decidir (no es un riesgo de seguridad): el nombre completo y el horario de Constanza en `docs/conocimiento_brunen.md` (sección 8) y el correo personal de Franco en los commits. Quitarlos de los archivos no los borra del historial; borrarlos del historial exige reescribirlo y forzar el push.
+- Efecto en el CI: en repos públicos GitHub Actions es gratis, así que ya no aplica el aviso de minutos de D14.
+
+### D16 · 2026-10-27 · Tomada
+**Intérprete por reglas (`src/interprete.ts`): sin red ni LLM, con un contrato JSON compartido con el LLM de respaldo.**
+- Contrato: `Interpretacion` usa las claves de `tests/mensajes.json` (snake_case: `fecha_texto`, `comuna_mencionada`, `tipo_pregunta`), las mismas que se le pedirán a Groq; así las dos salidas pasan por la misma validación.
+- Orden de decisión: reclamo, factura o proveedor se escalan a una persona; luego "lo de siempre", preguntas (precio, zona, horario, pago), pedido, aviso de pago, saludo y cierre. Lo que no calza queda `desconocido` y lo toma el LLM.
+- Solo extrae: no calcula precios ni fechas de entrega (principio 1). La fecha se devuelve como texto ("mañana", "viernes"). "En la mañana" no es el día siguiente.
+- Los mensajes que solo cierran ("gracias", "ok") se reconocen para no responderlos: cada respuesta gasta el cupo de mensajes gratis (D5).
+- "Bidón de 20" es 1; "bidones de 20" no dice cuántos (`cantidad: null`, se pregunta). Si repite un tipo, suma.
+- Las otras 40 comunas de la Región Metropolitana son un dato geográfico público, solo para reconocer pedidos fuera de zona (regla 6). Las 12 atendidas vienen de `conocimiento_brunen.md`.
+- PENDIENTE (dueño): hoy las boletas se derivan igual que las facturas. Ver `docs/PENDIENTES.md`.
+- Para la Etapa 4: los clientes mandan el pedido en varios mensajes seguidos ("2 bidones" y después "de 20"). Hay que juntar los mensajes recientes del mismo número antes de interpretar, para responder una sola vez.
