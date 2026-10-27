@@ -3,7 +3,7 @@
 Bot de WhatsApp para recibir pedidos de bidones de Brunen SpA. Cloudflare Workers + TypeScript, costo objetivo USD 0/mes.
 
 ## Requisitos (Windows)
-- Node.js 20 o superior (`node -v`). Recomendado: versión LTS desde nodejs.org.
+- Node.js 22.12 o superior (`node -v`); wrangler y vitest no funcionan con Node 20. Recomendado: versión LTS desde nodejs.org.
 - Git for Windows (`git --version`). Claude Code lo usa para su terminal Bash.
 - Claude Code (plan Pro o superior): en PowerShell, `irm https://claude.ai/install.ps1 | iex`, luego abre una terminal nueva y verifica con `claude --version`.
 
