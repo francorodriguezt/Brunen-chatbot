@@ -84,3 +84,9 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Las otras 40 comunas de la Región Metropolitana son un dato geográfico público, solo para reconocer pedidos fuera de zona (regla 6). Las 12 atendidas vienen de `conocimiento_brunen.md`.
 - PENDIENTE (dueño): hoy las boletas se derivan igual que las facturas. Ver `docs/PENDIENTES.md`.
 - Para la Etapa 4: los clientes mandan el pedido en varios mensajes seguidos ("2 bidones" y después "de 20"). Hay que juntar los mensajes recientes del mismo número antes de interpretar, para responder una sola vez.
+
+### D17 · 2026-10-27 · Tomada
+**Activar Workers Logs (`[observability] enabled = true` en `wrangler.toml`).**
+- Motivo: ver en el panel de Cloudflare los errores del Worker (token vencido, Meta rechaza un envío) sin tener `wrangler tail` abierto. Los logs ya enmascaran los teléfonos (`enmascararTelefono`).
+- Límites verificados hoy en la documentación de Cloudflare: plan gratis con 200.000 eventos de log por día y 3 días de retención; muestreo del 100 % por defecto. Revisar si el volumen se acerca al tope.
+- Fuente: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
