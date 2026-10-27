@@ -1,0 +1,3 @@
+# Saltos de línea LF en el repo y en la copia de trabajo, sin importar el sistema.
+# Evita los avisos "LF will be replaced by CRLF" y diffs con todas las líneas cambiadas.
+* text=auto eol=lf
