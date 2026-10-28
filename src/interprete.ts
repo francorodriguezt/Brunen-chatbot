@@ -190,6 +190,41 @@ export interface Interpretacion {
   accion?: AccionSugerida;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Validación de ítems que vienen de fuera del intérprete: la respuesta de la IA y la memoria guardada
+// en D1. Los dos usan el mismo contrato, así que se revisan con las mismas reglas.
+// ---------------------------------------------------------------------------------------------
+
+export const TIPOS_BIDON_PEDIDO: ReadonlySet<string> = new Set<TipoBidonPedido>(['10L', '12L', '20L', 'no_especificado']);
+/** Tope de cantidad que acepta el contrato (el intérprete lee hasta 3 dígitos). */
+export const CANTIDAD_MAXIMA = 999;
+const MAX_ITEMS = 5;
+
+/** Un entero de 1 a CANTIDAD_MAXIMA, o null. */
+export function enteroValido(valor: unknown): number | null {
+  return typeof valor === 'number' && Number.isInteger(valor) && valor >= 1 && valor <= CANTIDAD_MAXIMA ? valor : null;
+}
+
+/** null = no cumple el contrato (no es "sin ítems": eso es una lista vacía). Suma los ítems del mismo tipo. */
+export function validarItems(crudo: unknown): ItemInterpretado[] | null {
+  if (crudo === undefined) return [];
+  if (!Array.isArray(crudo) || crudo.length > MAX_ITEMS) return null;
+  const porTipo = new Map<TipoBidonPedido, ItemInterpretado>();
+  for (const elemento of crudo) {
+    if (typeof elemento !== 'object' || elemento === null) return null;
+    const { tipo, cantidad } = elemento as Record<string, unknown>;
+    if (typeof tipo !== 'string' || !TIPOS_BIDON_PEDIDO.has(tipo)) return null;
+    if (cantidad !== null && enteroValido(cantidad) === null) return null;
+    const previo = porTipo.get(tipo as TipoBidonPedido);
+    if (!previo) {
+      porTipo.set(tipo as TipoBidonPedido, { tipo: tipo as TipoBidonPedido, cantidad: cantidad as number | null });
+    } else if (previo.cantidad !== null || cantidad !== null) {
+      previo.cantidad = (previo.cantidad ?? 0) + ((cantidad as number | null) ?? 0);
+    }
+  }
+  return [...porTipo.values()];
+}
+
 const palabras = (...frases: string[]): RegExp => new RegExp(String.raw`\b(?:${frases.join('|')})\b`);
 
 // Principio 3: reclamos, facturas y pagos a proveedores se derivan siempre a una persona.

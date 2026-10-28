@@ -2,16 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { proponerEntrega } from '../src/entrega';
 import { procesarMensaje, type Env } from '../src/index';
 import { describirEntrega } from '../src/resumen';
+import { FERIADOS_2026_2027 } from './ayudas';
 
-// Feriados nacionales de Chile 2026 y 2027, como quedaron cargados en la hoja FERIADOS
-// (calendario público; ver D25). Es solo dato de prueba: el código los lee de la hoja.
-const FERIADOS = new Set([
-  '2026-01-01', '2026-04-03', '2026-04-04', '2026-05-01', '2026-05-21', '2026-06-21', '2026-06-29', '2026-07-16',
-  '2026-08-15', '2026-09-18', '2026-09-19', '2026-10-12', '2026-10-31', '2026-11-01', '2026-12-08', '2026-12-25',
-  '2027-01-01', '2027-03-26', '2027-03-27', '2027-05-01', '2027-05-21', '2027-06-21', '2027-06-28', '2027-07-16',
-  '2027-08-15', '2027-09-17', '2027-09-18', '2027-09-19', '2027-10-11', '2027-10-31', '2027-11-01', '2027-12-08',
-  '2027-12-25',
-]);
+const FERIADOS = FERIADOS_2026_2027;
 const SOLO_2026 = new Set([...FERIADOS].filter((f) => f.startsWith('2026')));
 
 const cargar = (feriados: Set<string>) => vi.fn(async () => feriados);

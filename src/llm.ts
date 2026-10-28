@@ -12,12 +12,13 @@
 
 import type { BaseDatos } from './almacen';
 import {
+  TIPOS_BIDON_PEDIDO,
   accionDePedido,
+  enteroValido,
   interpretar,
+  validarItems,
   type Intencion,
   type Interpretacion,
-  type ItemInterpretado,
-  type TipoBidonPedido,
   type TipoPregunta,
 } from './interprete';
 import { preparar } from './texto';
@@ -33,11 +34,8 @@ export const LLAMADAS_POR_DIA = 500;
 const INTENCIONES: ReadonlySet<string> = new Set<Intencion>([
   'pedido', 'repetir_pedido', 'pregunta', 'reclamo', 'factura', 'proveedor', 'pago', 'envases', 'saludo', 'cierre',
 ]);
-const TIPOS_BIDON: ReadonlySet<string> = new Set<TipoBidonPedido>(['10L', '12L', '20L', 'no_especificado']);
 const TIPOS_PREGUNTA: ReadonlySet<string> = new Set<TipoPregunta>(['precio', 'zona', 'horario', 'pago']);
 const ESCALAN: ReadonlySet<string> = new Set<Intencion>(['reclamo', 'factura', 'proveedor']);
-const MAX_ITEMS = 5;
-const MAX_CANTIDAD = 999;
 
 const INSTRUCCIONES = `Eres un extractor de datos para el WhatsApp de una distribuidora de agua en bidones (Chile).
 Recibes UN mensaje de un cliente. Responde solo con el JSON del esquema. No respondas al cliente, no calcules precios ni fechas.
@@ -60,7 +58,7 @@ const ESQUEMA = {
         additionalProperties: false,
         required: ['tipo', 'cantidad'],
         properties: {
-          tipo: { type: 'string', enum: [...TIPOS_BIDON] },
+          tipo: { type: 'string', enum: [...TIPOS_BIDON_PEDIDO] },
           cantidad: { type: ['integer', 'null'] },
         },
       },
@@ -77,30 +75,6 @@ export class ErrorGroq extends Error {
   ) {
     super(mensaje);
   }
-}
-
-function enteroValido(valor: unknown): number | null {
-  return typeof valor === 'number' && Number.isInteger(valor) && valor >= 1 && valor <= MAX_CANTIDAD ? valor : null;
-}
-
-/** null = la respuesta no cumple el contrato (no es "sin ítems": eso es una lista vacía). */
-function validarItems(crudo: unknown): ItemInterpretado[] | null {
-  if (crudo === undefined) return [];
-  if (!Array.isArray(crudo) || crudo.length > MAX_ITEMS) return null;
-  const porTipo = new Map<TipoBidonPedido, ItemInterpretado>();
-  for (const elemento of crudo) {
-    if (typeof elemento !== 'object' || elemento === null) return null;
-    const { tipo, cantidad } = elemento as Record<string, unknown>;
-    if (typeof tipo !== 'string' || !TIPOS_BIDON.has(tipo)) return null;
-    if (cantidad !== null && enteroValido(cantidad) === null) return null;
-    const previo = porTipo.get(tipo as TipoBidonPedido);
-    if (!previo) {
-      porTipo.set(tipo as TipoBidonPedido, { tipo: tipo as TipoBidonPedido, cantidad: cantidad as number | null });
-    } else if (previo.cantidad !== null || cantidad !== null) {
-      previo.cantidad = (previo.cantidad ?? 0) + ((cantidad as number | null) ?? 0);
-    }
-  }
-  return [...porTipo.values()];
 }
 
 /**
