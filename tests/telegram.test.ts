@@ -87,9 +87,22 @@ describe('formatearAlerta', () => {
     expect(formatearAlerta({ ...PEDIDO, idPedido: undefined }).botones).toEqual([]);
   });
 
-  it('un mensaje larguísimo se recorta y el aviso no pasa el máximo de Telegram', () => {
-    const { texto } = formatearAlerta({ ...PEDIDO, texto: 'x'.repeat(10_000), motivos: Array.from({ length: 200 }, () => 'motivo largo '.repeat(20)) });
-    expect(texto.length).toBeLessThanOrEqual(4096);
+  it('un aviso enorme se recorta por partes: no pasa el máximo de Telegram ni deja una etiqueta HTML cortada', () => {
+    const { texto } = formatearAlerta({
+      ...PEDIDO,
+      nombre: 'N'.repeat(1000),
+      resumen: 'R'.repeat(5000),
+      texto: '<&>'.repeat(5000),
+      motivos: Array.from({ length: 200 }, () => 'motivo largo '.repeat(50)),
+    });
+    // Telegram cuenta los caracteres ya interpretados: sin etiquetas y con las entidades como un solo carácter.
+    const visible = texto.replace(/<[^>]*>/g, '').replace(/&(?:amp|lt|gt);/g, '?');
+    expect(visible.length).toBeLessThanOrEqual(4096);
+    expect(texto).toContain('… y 190 motivo(s) más');
+    // Cada etiqueta que se abre se cierra.
+    const abiertas = texto.match(/<(?:b|i|code|a)[ >]/g)?.length;
+    const cerradas = texto.match(/<\/(?:b|i|code|a)>/g)?.length;
+    expect(abiertas).toBe(cerradas);
   });
 
   it('el ID de cada botón cabe en los 64 bytes que admite Telegram', () => {

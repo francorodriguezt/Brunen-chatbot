@@ -27,8 +27,16 @@ export function configTelegram(env: EntornoTelegram): ConfigTelegram | null {
 }
 
 const TIEMPO_MAXIMO_MS = 8000;
-const LIMITE_TELEGRAM = 4096;
+// Cada parte del aviso tiene su tope, y los topes suman bastante menos que los 4.096 caracteres de Telegram.
+// Se recorta cada parte ANTES de darle formato: recortar el HTML ya armado podría cortar una etiqueta por la
+// mitad y Telegram rechazaría el aviso entero.
 const MAX_TEXTO_CLIENTE = 500;
+const MAX_RESUMEN = 300;
+const MAX_MOTIVO = 300;
+const MAX_MOTIVOS = 10;
+const MAX_NOMBRE = 80;
+
+const recortar = (texto: string, maximo: number): string => (texto.length > maximo ? `${texto.slice(0, maximo)}…` : texto);
 
 const ETIQUETAS: Readonly<Record<TipoAlerta, string>> = {
   pedido: '🟢 Pedido nuevo',
@@ -78,20 +86,18 @@ export function formatearAlerta(alerta: Alerta): AvisoFormateado {
   const contacto = `<a href="https://wa.me/${telefono}">${escaparHtml(telefonoLegible(telefono))}</a>`;
   const lineas = [
     `<b>${ETIQUETAS[alerta.tipo]}</b>${alerta.idPedido ? ` · <code>${escaparHtml(alerta.idPedido)}</code>` : ''}`,
-    `${alerta.nombre ? `${escaparHtml(alerta.nombre)} · ` : ''}${contacto}`,
-    escaparHtml(alerta.resumen),
-    ...alerta.motivos.map((motivo) => `⚠ ${escaparHtml(motivo)}`),
+    `${alerta.nombre ? `${escaparHtml(recortar(alerta.nombre, MAX_NOMBRE))} · ` : ''}${contacto}`,
+    escaparHtml(recortar(alerta.resumen, MAX_RESUMEN)),
+    ...alerta.motivos.slice(0, MAX_MOTIVOS).map((motivo) => `⚠ ${escaparHtml(recortar(motivo, MAX_MOTIVO))}`),
   ];
-  if (alerta.texto) {
-    const corto = alerta.texto.length > MAX_TEXTO_CLIENTE ? `${alerta.texto.slice(0, MAX_TEXTO_CLIENTE)}…` : alerta.texto;
-    lineas.push(`<i>“${escaparHtml(corto)}”</i>`);
-  }
+  if (alerta.motivos.length > MAX_MOTIVOS) lineas.push(`… y ${alerta.motivos.length - MAX_MOTIVOS} motivo(s) más`);
+  if (alerta.texto) lineas.push(`<i>“${escaparHtml(recortar(alerta.texto, MAX_TEXTO_CLIENTE))}”</i>`);
   const texto = lineas.join('\n');
   const botones: Boton[][] =
     alerta.idPedido && CON_BOTONES.has(alerta.tipo)
       ? [[{ text: '✅ Confirmar', callback_data: `${PREFIJO.confirmar}${alerta.idPedido}` }, { text: '✏️ Cambiar', callback_data: `${PREFIJO.cambiar}${alerta.idPedido}` }]]
       : [];
-  return { texto: texto.length > LIMITE_TELEGRAM ? `${texto.slice(0, LIMITE_TELEGRAM - 1)}…` : texto, botones };
+  return { texto, botones };
 }
 
 async function llamarApi(config: ConfigTelegram, metodo: string, cuerpo: Record<string, unknown>): Promise<boolean> {
