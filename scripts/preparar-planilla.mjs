@@ -32,6 +32,7 @@ const HOJAS = {
 // Datos que ya están definidos en el documento de conocimiento (sección 2). Hasta vacío = "o más".
 const PRECIOS = [['20L', 1, 1, 4500], ['20L', 2, 3, 3300], ['20L', 4, '', 2750], ['12L', 1, 1, 2500], ['12L', 2, '', 2400], ['10L', 1, '', 2200]];
 const CONFIGURACION = [
+  ['BOT_ACTIVO', 'SI', 'SI o NO. Con NO el bot deja de responder (regla 11). Se lee cada minuto.'],
   ['ESTADO_SERVICIO', 'normal', 'normal o reducido. Con reducido el bot agrega MENSAJE_EXCEPCION a sus respuestas.'],
   ['MENSAJE_EXCEPCION', '', 'Texto de aviso para clientes cuando hay una falla operativa (PENDIENTE: lo redacta el dueño).'],
 ];

@@ -130,3 +130,22 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Solo responde a `NUMEROS_PERMITIDOS`. Los mensajes que no son de texto siguen recibiendo "Recibí un mensaje de tipo …".
 - La hoja MENSAJES_PROCESADOS suma la columna Intencion (pedido, pregunta, reclamo, desconocido…). No guarda el texto del mensaje.
 - El LLM de respaldo (Groq) todavía no está: lo que el intérprete no entiende queda como "desconocido".
+
+### D23 · 2026-10-28 · Tomada
+**Cuenta de Groq a nombre de Brunen, con retención de datos cero.**
+- La cuenta es de la empresa (correo de Brunen), no personal: si cambia quien mantiene el bot, el dueño conserva el acceso y puede generar otra clave. La clave va solo como secreto de Cloudflare (`GROQ_API_KEY`).
+- Datos (verificado el 2026-10-28): Groq no guarda las entradas ni las salidas por defecto, salvo registros temporales de hasta 30 días para fallas o abuso; se guardan en Estados Unidos. Con Zero Data Retention activado tampoco guarda esos registros, y solo se pierden funciones que el bot no usa (batch y fine-tuning).
+- Zero Data Retention global activado en la cuenta el 2026-10-28 (Batch y Fine-tuning quedan apagados; el bot no los usa).
+- Plan Free, USD 0, sin tarjeta registrada (revisado en la consola el 2026-10-28).
+- Límites del plan gratis, leídos en la consola el 2026-10-28: `openai/gpt-oss-20b` y `openai/gpt-oss-120b`, 30 solicitudes por minuto, 1.000 por día, 8.000 tokens por minuto y 200.000 por día; `whisper-large-v3-turbo`, 20 por minuto, 2.000 por día y 28.800 segundos de audio por día. Los modelos Llama ya no aparecen en la lista de la cuenta. Con ~50 mensajes al día y el LLM solo como respaldo, el consumo queda muy por debajo.
+- Si se pasa del límite, Groq responde 429: el bot debe tratarlo como "no entendido" y escalar, nunca dejar al cliente sin respuesta.
+- Fuentes: https://console.groq.com/docs/rate-limits · https://console.groq.com/docs/your-data
+
+### D24 · 2026-10-28 · Tomada
+**El respaldo con IA solo extrae, solo entra cuando las reglas no entienden y nunca deja al cliente sin respuesta.**
+- Modelo `openai/gpt-oss-20b` con salida estructurada estricta (`json_schema`, `strict: true`, soportada por ese modelo según https://console.groq.com/docs/structured-outputs), temperatura 0 y razonamiento bajo.
+- El modelo entrega intención, tipos y cantidades. Fecha y comuna salen de las reglas, y la acción la decide el código. Todo pasa por la misma validación que las reglas; cantidades fuera de 1–999, tipos inventados o intenciones desconocidas se descartan.
+- Solo viaja el texto del mensaje (máximo 300 caracteres); nunca teléfono ni nombre. Si el texto incluye una dirección, viaja con él: por eso la cuenta tiene retención cero (D23).
+- Tope de 500 llamadas por día en la tabla `uso_llm` (D1, migración `0002`), con una sola sentencia atómica. Cuenta las reservas, no solo los éxitos, y el día es UTC: es deliberado, porque el fallo es seguro y deja la mitad del cupo gratis de Groq.
+- Cualquier fallo (sin clave, 429, tiempo agotado, JSON inválido, tabla ausente) deja el resultado de las reglas. Los logs solo llevan el estado HTTP, nunca el contenido del mensaje.
+- `BOT_ACTIVO` también se lee de la hoja CONFIGURACION cada minuto (`src/configuracion.ts`). Si Google falla se usa lo último leído; una caída de Google nunca apaga el bot.
