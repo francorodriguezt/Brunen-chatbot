@@ -64,7 +64,7 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 - Puede ser antes o después de la entrega. El bot nunca bloquea un pedido por falta de pago.
 
 ## 8. Personas
-- Constanza Aracena: operadora, disponible 8:00–21:00 (teléfono en CONFIGURACION). Confirma pedidos y atiende reclamos, facturas y pagos a proveedores.
+- Constanza: operadora, disponible 8:00–21:00 (teléfono en CONFIGURACION). Confirma pedidos y atiende reclamos, facturas y pagos a proveedores.
 - Dueño: hermano de Franco. Decide número, precios y condiciones.
 
 ## 9. Reglas del bot

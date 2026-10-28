@@ -72,6 +72,7 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 **Repositorio público desde hoy: Franco lo publicó antes de terminar el proyecto.** Reemplaza a D14.
 - Revisión hecha después de publicar: sin secretos ni archivos sensibles en todo el historial (búsqueda de tokens de Meta, claves de Groq y Telegram, llaves privadas y App Secrets). Los teléfonos de las pruebas son ficticios.
 - Pendiente de decidir (no es un riesgo de seguridad): el nombre completo y el horario de Constanza en `docs/conocimiento_brunen.md` (sección 8) y el correo personal de Franco en los commits. Quitarlos de los archivos no los borra del historial; borrarlos del historial exige reescribirlo y forzar el push.
+- 2026-10-28: por pedido de Franco se quitó el apellido de Constanza de `docs/conocimiento_brunen.md`; sigue en el historial de git. Lo que ella responda (pregunta 14 del cuestionario) define si además se reescribe el historial.
 - Efecto en el CI: en repos públicos GitHub Actions es gratis, así que ya no aplica el aviso de minutos de D14.
 
 ### D16 · 2026-10-27 · Tomada
