@@ -56,6 +56,12 @@ const ETIQUETAS: Readonly<Record<TipoAlerta, string>> = {
 /** Los tipos de aviso que traen un pedido registrado para confirmar. */
 const CON_BOTONES: ReadonlySet<TipoAlerta> = new Set<TipoAlerta>(['pedido', 'pedido_revision', 'cliente_nuevo']);
 
+/**
+ * Telegram es solo para lo muy urgente (D32): reclamos y fallas del sistema. Todo lo demás se ve en el panel, con
+ * sonido y notificación mientras está abierto.
+ */
+export const esUrgente = (alerta: Alerta): boolean => alerta.tipo === 'reclamo' || alerta.tipo === 'error';
+
 /** Telegram con parse_mode HTML exige escapar estos tres caracteres en todo texto que no sea una etiqueta. */
 export function escaparHtml(texto: string): string {
   return texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -83,10 +89,12 @@ export interface AvisoFormateado {
 
 export function formatearAlerta(alerta: Alerta): AvisoFormateado {
   const telefono = alerta.telefono.replace(/\D/g, '');
-  const contacto = `<a href="https://wa.me/${telefono}">${escaparHtml(telefonoLegible(telefono))}</a>`;
+  // Un aviso del sistema (una falla) no viene de ningún cliente: no lleva nombre ni enlace.
+  const contacto = telefono ? `<a href="https://wa.me/${telefono}">${escaparHtml(telefonoLegible(telefono))}</a>` : '';
+  const quien = [alerta.nombre ? escaparHtml(recortar(alerta.nombre, MAX_NOMBRE)) : '', contacto].filter(Boolean).join(' · ');
   const lineas = [
     `<b>${ETIQUETAS[alerta.tipo]}</b>${alerta.idPedido ? ` · <code>${escaparHtml(alerta.idPedido)}</code>` : ''}`,
-    `${alerta.nombre ? `${escaparHtml(recortar(alerta.nombre, MAX_NOMBRE))} · ` : ''}${contacto}`,
+    ...(quien ? [quien] : []),
     escaparHtml(recortar(alerta.resumen, MAX_RESUMEN)),
     ...alerta.motivos.slice(0, MAX_MOTIVOS).map((motivo) => `⚠ ${escaparHtml(recortar(motivo, MAX_MOTIVO))}`),
   ];

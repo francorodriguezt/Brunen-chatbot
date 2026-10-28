@@ -71,9 +71,12 @@ describe('migraciones', () => {
   it('crean las tablas que usa el código', () => {
     const tablas = crearBaseSqlite().sql("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
     expect(tablas).toEqual([
+      { name: 'avisos' },
       { name: 'conversaciones' },
+      { name: 'historial_pedidos' },
       { name: 'mensajes_pendientes' },
       { name: 'mensajes_procesados' },
+      { name: 'pedidos' },
       { name: 'ultimos_pedidos' },
       { name: 'uso_llm' },
     ]);

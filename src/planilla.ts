@@ -12,7 +12,15 @@ import { ClienteSheets, type CuentaServicio } from './google';
 
 // Los mensajes repetidos (reintentos de Meta) no se anotan: solo quedan en el log, para no llenar la hoja.
 
-export type Resultado = 'respondido' | 'ignorado_modo_prueba' | 'ignorado_bot_apagado' | 'error';
+export type Resultado =
+  | 'respondido'
+  /** Un mensaje que no necesita respuesta (un "gracias", una reacción). */
+  | 'sin_respuesta'
+  /** Se juntó con otro mensaje seguido del mismo cliente, que fue el que se respondió. */
+  | 'agrupado'
+  | 'ignorado_modo_prueba'
+  | 'ignorado_bot_apagado'
+  | 'error';
 
 export interface RegistroMensaje {
   wamid: string;

@@ -35,6 +35,10 @@ export const preguntarPedido = (): string => '¿Qué necesitas? Dime cuántos bi
 export const repetirSinHistorial = (): string =>
   'No tengo anotado tu último pedido. ¿Cuántos bidones necesitas y de cuántos litros (20, 12 o 10)?';
 
+export const pedirTexto = (): string => 'Por ahora no puedo escuchar audios. ¿Me lo escribes, por favor?';
+
+export const imagenRecibida = (): string => 'Recibimos tu imagen. Una persona del equipo la revisará.';
+
 export const cancelado = (): string => 'Listo, no anoté nada. Cuando quieras, escríbeme.';
 
 /** El mensaje se recibió pero lo debe ver una persona. */

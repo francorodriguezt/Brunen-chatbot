@@ -5,6 +5,7 @@ import {
   enviarAlerta,
   escaparHtml,
   esChatAutorizado,
+  esUrgente,
   extraerAccionBoton,
   formatearAlerta,
   quitarBotones,
@@ -232,5 +233,22 @@ describe('responderBoton y quitarBotones', () => {
     expect(await quitarBotones(CONFIG, accion)).toBe(true);
     expect(String(llamadas.mock.calls[0]?.[0])).toMatch(/\/editMessageReplyMarkup$/);
     expect(cuerpoDe(llamadas)).toEqual({ chat_id: '777', message_id: 42, reply_markup: { inline_keyboard: [] } });
+  });
+});
+
+describe('avisos del sistema y avisos urgentes', () => {
+  it('un aviso del sistema no lleva nombre ni enlace de WhatsApp', () => {
+    const { texto, botones } = formatearAlerta({ tipo: 'error', telefono: '', resumen: 'El token de WhatsApp venció', motivos: [] });
+    expect(texto).toBe('<b>🛠 Error del sistema</b>\nEl token de WhatsApp venció');
+    expect(texto).not.toContain('wa.me');
+    expect(botones).toEqual([]);
+  });
+
+  it('solo los reclamos y las fallas del sistema son urgentes', () => {
+    const urgentes = (['reclamo', 'error'] as const).map((tipo) => esUrgente({ ...PEDIDO, tipo }));
+    expect(urgentes).toEqual([true, true]);
+    for (const tipo of ['pedido', 'pedido_revision', 'cliente_nuevo', 'fuera_de_zona', 'factura', 'proveedor', 'pago', 'envases', 'no_entendido', 'escalamiento'] as const) {
+      expect(esUrgente({ ...PEDIDO, tipo })).toBe(false);
+    }
   });
 });

@@ -39,34 +39,50 @@ function primeraFila(resultado: { results?: unknown[] }): Record<string, unknown
   return resultado.results?.[0] as Record<string, unknown> | undefined;
 }
 
+/** Espera que llegue otro mensaje del mismo cliente. Separada para que un aviso de Meta con varios mensajes espere una sola vez. */
+export const esperarGrupo = dormir;
+
+/**
+ * Paso 1: anota el mensaje y devuelve su número de orden (o null si otro proceso ya se lo llevó junto con los de
+ * su grupo). Puede lanzar errores de D1: quien lo llama decide qué hacer.
+ */
+export async function anotarMensaje(db: BaseDatos, mensaje: MensajeAgrupable, ahoraSegundos: number = Math.floor(Date.now() / 1000)): Promise<number | null> {
+  await db
+    .prepare('INSERT OR IGNORE INTO mensajes_pendientes (wamid, telefono, texto, recibido_en) VALUES (?1, ?2, ?3, ?4)')
+    .bind(mensaje.wamid, mensaje.telefono, mensaje.texto, ahoraSegundos)
+    .run();
+  const propio = primeraFila(await db.prepare('SELECT id FROM mensajes_pendientes WHERE wamid = ?1').bind(mensaje.wamid).run())?.id;
+  return typeof propio === 'number' ? propio : null;
+}
+
+/**
+ * Paso 2, después de esperar: si este mensaje sigue siendo el último de su número, se lleva todo el grupo (en el
+ * orden en que llegó); si llegó uno más nuevo, o ya lo procesó otro, devuelve null.
+ */
+export async function reclamarGrupo(db: BaseDatos, mensaje: MensajeAgrupable, propio: number): Promise<string[] | null> {
+  const ultimo = primeraFila(await db.prepare('SELECT MAX(id) AS ultimo FROM mensajes_pendientes WHERE telefono = ?1').bind(mensaje.telefono).run())?.ultimo;
+  if (ultimo !== propio) return null; // llegó uno más nuevo (o ya se procesó): que lo haga el último
+
+  const filas = (await db
+    .prepare('SELECT texto FROM mensajes_pendientes WHERE telefono = ?1 AND id <= ?2 ORDER BY id')
+    .bind(mensaje.telefono, propio)
+    .run()).results as Array<{ texto: string }> | undefined;
+  await db.prepare('DELETE FROM mensajes_pendientes WHERE telefono = ?1 AND id <= ?2').bind(mensaje.telefono, propio).run();
+  if (!filas) return [mensaje.texto]; // la base no devolvió filas: se atiende este solo
+  return filas.length > 0 ? filas.map((fila) => fila.texto) : null; // sin filas: otro proceso ya las procesó
+}
+
 /**
  * Devuelve los textos del grupo, en orden, si a este mensaje le toca procesarlos; o null si le toca a otro
  * mensaje más nuevo. Si D1 falla devuelve solo el texto de este mensaje: es mejor responder por separado
  * que no responder.
  */
 export async function agruparMensaje(db: BaseDatos, mensaje: MensajeAgrupable, opciones: OpcionesAgrupar = {}): Promise<string[] | null> {
-  const ahora = opciones.ahoraSegundos ?? Math.floor(Date.now() / 1000);
   try {
-    await db
-      .prepare('INSERT OR IGNORE INTO mensajes_pendientes (wamid, telefono, texto, recibido_en) VALUES (?1, ?2, ?3, ?4)')
-      .bind(mensaje.wamid, mensaje.telefono, mensaje.texto, ahora)
-      .run();
-    const propio = primeraFila(await db.prepare('SELECT id FROM mensajes_pendientes WHERE wamid = ?1').bind(mensaje.wamid).run())?.id;
-    // Sin fila propia, otro proceso ya se llevó este mensaje junto con los de su grupo.
-    if (typeof propio !== 'number') return null;
-
+    const propio = await anotarMensaje(db, mensaje, opciones.ahoraSegundos);
+    if (propio === null) return null;
     await (opciones.esperar ?? dormir)(opciones.esperaMs ?? ESPERA_POR_DEFECTO_MS);
-
-    const ultimo = primeraFila(await db.prepare('SELECT MAX(id) AS ultimo FROM mensajes_pendientes WHERE telefono = ?1').bind(mensaje.telefono).run())?.ultimo;
-    if (ultimo !== propio) return null; // llegó uno más nuevo (o ya se procesó): que lo haga el último
-
-    const filas = (await db
-      .prepare('SELECT texto FROM mensajes_pendientes WHERE telefono = ?1 AND id <= ?2 ORDER BY id')
-      .bind(mensaje.telefono, propio)
-      .run()).results as Array<{ texto: string }> | undefined;
-    await db.prepare('DELETE FROM mensajes_pendientes WHERE telefono = ?1 AND id <= ?2').bind(mensaje.telefono, propio).run();
-    if (!filas) return [mensaje.texto]; // la base no devolvió filas: se atiende este solo
-    return filas.length > 0 ? filas.map((fila) => fila.texto) : null; // sin filas: otro proceso ya las procesó
+    return await reclamarGrupo(db, mensaje, propio);
   } catch (error) {
     console.error('No se pudieron agrupar los mensajes; se atiende este solo:', error instanceof Error ? error.message : error);
     return [mensaje.texto];
