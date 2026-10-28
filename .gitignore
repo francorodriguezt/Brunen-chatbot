@@ -23,3 +23,6 @@ datos/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Capturas y registros del navegador de pruebas
+.playwright-mcp/
