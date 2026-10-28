@@ -16,12 +16,11 @@ BOT_ACTIVO = "SI"
 # abierto. Plan gratis: 200.000 eventos de log por día, 3 días de retención.
 enabled = true
 
-# Base D1 para deduplicar mensajes por wamid (src/almacen.ts, migrations/). Sin este bloque el bot
-# no deduplica. Para activarla: `npx wrangler d1 create brunen-chatbot` (crea un recurso en
-# Cloudflare, pide confirmación), pegar aquí el database_id, descomentar y correr
-# `npx wrangler d1 migrations apply brunen-chatbot --remote`.
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "brunen-chatbot"
-# database_id = "PEGAR_AQUI_EL_ID"
-# migrations_dir = "migrations"
+# Base D1 para deduplicar mensajes por wamid (src/almacen.ts, migrations/, D20).
+# Se creó con `npx wrangler d1 create brunen-chatbot`. El database_id no es un secreto.
+# Esquema: `npx wrangler d1 migrations apply brunen-chatbot --remote`.
+[[d1_databases]]
+binding = "DB"
+database_name = "brunen-chatbot"
+database_id = "9d7c66b0-679b-47d3-8d38-a0223b3eab63"
+migrations_dir = "migrations"

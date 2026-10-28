@@ -112,5 +112,6 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Si D1 falla, el mensaje se procesa igual (quizá dos veces): el cliente nunca debe quedar sin respuesta.
 - El mensaje se reclama antes de procesarlo y se libera si el procesamiento falla, para que un reintento pueda responderlo en vez de descartarlo como repetido.
 - Retención de 7 días; las filas viejas se borran en 1 de cada ~50 lotes, al terminar y fuera del camino de la respuesta.
+- 2026-10-28: base `brunen-chatbot` creada y activada (binding `DB`, región ENAM) y migración aplicada. Verificado en producción: el mismo `wamid` enviado dos veces se registra una vez ("Mensaje repetido ignorado") y, si el envío falla, el mensaje se libera.
 - Sin el bloque `[[d1_databases]]` en `wrangler.toml` no se deduplica: así el despliegue actual no cambia hasta crear la base.
 - Fuente: https://developers.cloudflare.com/d1/platform/pricing/
