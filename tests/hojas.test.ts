@@ -123,3 +123,39 @@ describe('aEnteroCLP', () => {
     expect(aEnteroCLP('sin precio')).toBeNull();
   });
 });
+
+describe('lecturas a la vez', () => {
+  it('varias hojas pedidas juntas con el Worker recién arrancado piden un solo token (firmar el JWT gasta CPU)', async () => {
+    const llamadas = stubGoogle({ UNA: [['x']], OTRA: [['x']], TERCERA: [['x']] });
+    const env = await entornoGoogle();
+    await Promise.all(['UNA', 'OTRA', 'TERCERA'].map((hoja) => leerHoja(env, contarFilas(hoja), 1000)));
+    expect(llamadas.filter((u) => u.startsWith('https://oauth2.googleapis.com'))).toHaveLength(1);
+  });
+
+  it('la misma hoja pedida dos veces a la vez se lee una sola vez', async () => {
+    const llamadas = stubGoogle({ DEMO: [['a'], ['b']] });
+    const env = await entornoGoogle();
+    const [uno, dos] = await Promise.all([leerHoja(env, contarFilas(), 1000), leerHoja(env, contarFilas(), 1000)]);
+    expect([uno, dos]).toEqual([2, 2]);
+    expect(lecturasDe(llamadas, 'DEMO')).toBe(1);
+  });
+
+  it('si el token falla, todos los que esperaban lo saben y el siguiente intento vuelve a pedirlo', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const env = await entornoGoogle();
+    let intentos = 0;
+    vi.stubGlobal('fetch', async (url: string) => {
+      if (url.startsWith('https://oauth2.googleapis.com')) {
+        intentos++;
+        return new Response('{"error":"invalid_grant"}', { status: 400 });
+      }
+      return new Response('{"values":[]}', { status: 200 });
+    });
+    const resultados = await Promise.all([leerHoja(env, contarFilas('UNA'), 1000), leerHoja(env, contarFilas('OTRA'), 1000)]);
+    expect(resultados).toEqual([undefined, undefined]);
+    expect(intentos).toBe(1);
+    olvidarHojas();
+    await leerHoja(env, contarFilas('UNA'), 1100);
+    expect(intentos).toBe(2);
+  });
+});

@@ -24,6 +24,8 @@ interface EntradaCache {
   hastaSegundos: number;
 }
 const cache = new Map<string, EntradaCache>();
+/** Lecturas en curso: si dos partes piden la misma hoja a la vez, se lee una sola vez. */
+const enVuelo = new Map<string, Promise<unknown>>();
 
 /** Un fallo o un resultado vacío se vuelven a leer a los 60 s. */
 const DURACION_CORTA_SEGUNDOS = 60;
@@ -31,6 +33,7 @@ const DURACION_CORTA_SEGUNDOS = 60;
 /** Solo para pruebas. */
 export function olvidarHojas(): void {
   cache.clear();
+  enVuelo.clear();
 }
 
 export interface OpcionesLectura<T> {
@@ -57,22 +60,31 @@ export async function leerHoja<T>(
   const guardado = cache.get(clave);
   if (guardado && guardado.hastaSegundos > ahoraSegundos) return guardado.valor as T | undefined;
 
-  let valor = guardado?.valor as T | undefined;
-  let duracion = DURACION_CORTA_SEGUNDOS;
-  try {
-    const cuenta = JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_JSON) as CuentaServicio;
-    const filas = await new ClienteSheets(cuenta, env.GOOGLE_SHEET_ID).leerFilas(opciones.rango, ahoraSegundos);
-    valor = opciones.parsear(filas);
-    if (opciones.esVacio?.(valor)) {
-      console.error(opciones.avisoVacio?.(filas) ?? `La hoja ${opciones.nombre} no aporta datos (${filas.length} filas leídas).`);
-    } else {
-      duracion = opciones.duracionSegundos;
+  const enCurso = enVuelo.get(clave);
+  if (enCurso) return enCurso as Promise<T | undefined>;
+
+  const sheetId = env.GOOGLE_SHEET_ID;
+  const claveJson = env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const lectura = (async (): Promise<T | undefined> => {
+    let valor = guardado?.valor as T | undefined;
+    let duracion = DURACION_CORTA_SEGUNDOS;
+    try {
+      const cuenta = JSON.parse(claveJson) as CuentaServicio;
+      const filas = await new ClienteSheets(cuenta, sheetId).leerFilas(opciones.rango, ahoraSegundos);
+      valor = opciones.parsear(filas);
+      if (opciones.esVacio?.(valor)) {
+        console.error(opciones.avisoVacio?.(filas) ?? `La hoja ${opciones.nombre} no aporta datos (${filas.length} filas leídas).`);
+      } else {
+        duracion = opciones.duracionSegundos;
+      }
+    } catch (error) {
+      console.error(`No se pudo leer ${opciones.nombre}:`, error instanceof Error ? error.message : error);
     }
-  } catch (error) {
-    console.error(`No se pudo leer ${opciones.nombre}:`, error instanceof Error ? error.message : error);
-  }
-  cache.set(clave, { valor, hastaSegundos: ahoraSegundos + duracion });
-  return valor;
+    cache.set(clave, { valor, hastaSegundos: ahoraSegundos + duracion });
+    return valor;
+  })().finally(() => enVuelo.delete(clave));
+  enVuelo.set(clave, lectura);
+  return lectura;
 }
 
 /** "Precio_Especial_20L" -> "precio_especial_20l": sin tildes ni mayúsculas, para no depender de cómo se escriba el encabezado. */
