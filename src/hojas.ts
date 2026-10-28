@@ -69,7 +69,13 @@ export async function leerHoja<T>(
     let valor = guardado?.valor as T | undefined;
     let duracion = DURACION_CORTA_SEGUNDOS;
     try {
-      const cuenta = JSON.parse(claveJson) as CuentaServicio;
+      let cuenta: CuentaServicio;
+      try {
+        cuenta = JSON.parse(claveJson) as CuentaServicio;
+      } catch {
+        // El mensaje de JSON.parse repite un trozo del texto, que aquí es la clave: no se cita en el log.
+        throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON no es un JSON válido');
+      }
       const filas = await new ClienteSheets(cuenta, sheetId).leerFilas(opciones.rango, ahoraSegundos);
       valor = opciones.parsear(filas);
       if (opciones.esVacio?.(valor)) {

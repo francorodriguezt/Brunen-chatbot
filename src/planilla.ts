@@ -7,7 +7,7 @@
  * funciona igual; si Google falla, el error se anota en el log y el mensaje se atiende igual.
  */
 
-import { fechaHoraLocal } from './despacho';
+import { textoFechaHora } from './despacho';
 import { ClienteSheets, type CuentaServicio } from './google';
 
 // Los mensajes repetidos (reintentos de Meta) no se anotan: solo quedan en el log, para no llenar la hoja.
@@ -32,13 +32,6 @@ export interface Planilla {
 export interface EntornoPlanilla {
   GOOGLE_SERVICE_ACCOUNT_JSON?: string;
   GOOGLE_SHEET_ID?: string;
-}
-
-/** "2026-10-28 14:05", en la hora de Santiago. */
-export function textoFechaHora(ahora: Date): string {
-  const local = fechaHoraLocal(ahora);
-  const dosDigitos = (n: number) => String(n).padStart(2, '0');
-  return `${local.fecha} ${dosDigitos(local.hora)}:${dosDigitos(local.minuto)}`;
 }
 
 class PlanillaSheets implements Planilla {

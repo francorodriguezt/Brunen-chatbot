@@ -20,11 +20,10 @@ import type { Alerta, TipoAlerta } from './alertas';
 import type { BusquedaCliente } from './clientes';
 import { detectarComuna, esComunaAtendida } from './comunas';
 import type { EstadoConversacion } from './conversacion';
-import { fechaHoraLocal } from './despacho';
+import { fechaHoraLocal, textoFechaHora } from './despacho';
 import type { PropuestaEntrega } from './entrega';
 import { accionDePedido, type AccionSugerida, type Intencion, type Interpretacion, type ItemInterpretado } from './interprete';
-import { fechaLocalDe, generarIdPedido, type LineaPedido, type PedidoARegistrar } from './pedidos';
-import { textoFechaHora } from './planilla';
+import { generarIdPedido, type LineaPedido, type PedidoARegistrar } from './pedidos';
 import { cotizarPedido, ErrorPrecio, type Cotizacion, type TipoBidon } from './precios';
 import type { TablaPrecios } from './preciosHoja';
 import * as textos from './textos';
@@ -221,7 +220,7 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
     ? cotizacion.lineas.map((l) => ({ tipo: l.tipo, cantidad: l.cantidad, precioUnitario: l.precioUnitario, subtotal: l.subtotal }))
     : agrupar(completos).map((l) => ({ ...l, precioUnitario: null, subtotal: null }));
 
-  const idPedido = generarIdPedido(e.wamid, fechaLocalDe(e.ahora));
+  const idPedido = generarIdPedido(e.wamid, fechaHoraLocal(e.ahora).fecha);
   const pedido: PedidoARegistrar = {
     idPedido,
     fechaHora: textoFechaHora(e.ahora),

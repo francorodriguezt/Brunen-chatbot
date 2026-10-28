@@ -60,6 +60,13 @@ export function fechaHoraLocal(instante: Date, zona: string = ZONA_HORARIA): Fec
   };
 }
 
+/** "2026-10-28 14:05", en la hora de Santiago. */
+export function textoFechaHora(ahora: Date): string {
+  const local = fechaHoraLocal(ahora);
+  const dosDigitos = (n: number) => String(n).padStart(2, '0');
+  return `${local.fecha} ${dosDigitos(local.hora)}:${dosDigitos(local.minuto)}`;
+}
+
 function aUTC(fecha: string): Date {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
   if (!m) throw new Error(`Fecha inválida: ${fecha}`);
