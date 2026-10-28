@@ -5,7 +5,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | # | Etapa | Estado |
 |---|---|---|
 | 0 | Repo base: precios, despacho, firma y webhook de eco con pruebas | ✅ Lista |
-| 1 | Esqueleto de punta a punta con el número de prueba de Meta | ⏳ Siguiente |
+| 1 | Esqueleto de punta a punta con el número de prueba de Meta | ✅ Lista (2026-10-28) |
 | 2 | Planilla de desarrollo + deduplicación por wamid + registro de mensajes | |
 | 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | 🟡 Parser por reglas listo (45 casos); falta el LLM de respaldo |
 | 4 | Flujo de pedido: cotizar, fecha, registrar en PEDIDOS, responder 1 mensaje, ERRORES | |
@@ -17,7 +17,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 ## Etapa 1 — Esqueleto de punta a punta
 
-**Avance:** Paso 0 listo (dependencias instaladas, scripts de esbuild y workerd aprobados, `npx wrangler --version` funciona). Adelantado por Claude: `npm run verificar-config`, `npm run simular-mensaje` y CI en GitHub Actions; el Worker se probó en local (workerd) con valores ficticios: `/salud`, verificación GET, firma inválida → 401, número no permitido → sin respuesta, error de Meta → se registra y el webhook igual responde 200. Siguiente: crear cuentas en Cloudflare y Meta.
+**Avance:** ✅ Lista el 2026-10-28. Worker desplegado en https://brunen-chatbot.brunen-chatbot.workers.dev, con los 5 secretos en Cloudflare y el webhook de Meta apuntando a `/webhook`. Verificado en producción: `/salud` responde `ok`; firma inválida da 401 y token falso da 403; un mensaje de un número permitido recibe "Recibí: <texto>"; uno de un número no permitido no recibe respuesta y el log muestra el teléfono enmascarado. Ojo: el token de WhatsApp de API Setup dura 24 h (ver `docs/PENDIENTES.md`).
 
 **Objetivo:** escribes desde tu celular al número de prueba y recibes "Recibí: <tu texto>".
 
@@ -33,6 +33,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 2. Cargar los secretos con `npx wrangler secret put NOMBRE` (tú pegas cada valor).
 3. Poner la versión de la Graph API en `wrangler.toml` (la que muestra Meta en API Setup).
 4. En Meta > WhatsApp > Configuration: URL `https://brunen-chatbot.<tu-subdominio>.workers.dev/webhook`, el mismo verify token, suscribir el campo `messages`.
+5. Suscribir la app a la cuenta de WhatsApp de prueba con `POST /{WABA_ID}/subscribed_apps` (token de la app). Sin esto Meta manda los mensajes a una app interna y el webhook no recibe nada (D19).
 
 **Prueba de aceptación:**
 - `https://.../salud` responde `ok`.

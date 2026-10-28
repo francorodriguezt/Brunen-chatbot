@@ -95,3 +95,11 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 **Graph API v25.0 en `wrangler.toml`.**
 - Fuente: la pantalla "Paso 1. Pruébalo" (API Setup) de la app Brunen Chatbot en developers.facebook.com, que usa `https://graph.facebook.com/v25.0/...` en su ejemplo. Visto el 2026-10-28.
 - Meta da unos 2 años de vida a cada versión: revisar el aviso de fin de vida y subir de versión antes de que venza.
+
+### D19 · 2026-10-28 · Tomada
+**La app debe estar suscrita a la cuenta de WhatsApp (WABA) para recibir los webhooks.**
+- Síntoma: URL y verify token del webhook bien configurados, pero ningún mensaje llegaba al Worker.
+- Causa: la cuenta de prueba solo estaba suscrita a una app interna de Meta ("WA DevX Webhook Events 1P App"), no a Brunen Chatbot. Se vio con `GET /{WABA_ID}/subscribed_apps`.
+- Arreglo: `POST /{WABA_ID}/subscribed_apps` con el token de la app (HTTP 200, `{"success":true}`). Desde ese momento empezaron a llegar los avisos.
+- Para el número definitivo (Etapa 7): repetir la suscripción en su cuenta de WhatsApp.
+- Primera prueba sin respuesta: Meta aceptó el envío (200) pero el texto libre solo se entrega si el destinatario escribió al número en las últimas 24 h. Se confirmó cuando el mensaje llegó después de escribirle al número de prueba. Con clientes reales no pasa: el cliente siempre escribe primero.

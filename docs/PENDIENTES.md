@@ -23,5 +23,6 @@
 
 ## Técnicos
 - [x] Versión de la Graph API: v25.0 (D18).
+- [ ] Mientras no haya token permanente: el token temporal vence cada 24 h. Generar uno nuevo en API Setup y cargarlo con `npx wrangler secret put WHATSAPP_TOKEN` (y actualizar `.dev.vars` si se prueba en local).
 - [ ] Token permanente (System User) antes de producción; el de API Setup dura 24 h.
 - [ ] Revisar disponibilidad de coexistencia en Chile si el dueño la elige.
