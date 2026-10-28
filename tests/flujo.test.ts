@@ -177,9 +177,15 @@ describe('el precio según el tipo de cliente', () => {
 describe('la fecha de entrega', () => {
   it('un domingo no se despacha: se propone el siguiente día y se explica', async () => {
     const d = await conversacion().decir('quiero 2 de 20 para el domingo');
-    expect(d.respuesta).toContain('Ese día no despachamos; la entrega más cercana es el lunes 2 de noviembre.');
+    expect(d.respuesta).toContain('Los domingos no despachamos; la entrega más cercana es el lunes 2 de noviembre.');
     expect(d.pedido?.fechaEntrega).toBe('2026-11-02');
     expect(d.pedido?.observaciones).toContain('Pidió "domingo" (ese día no se despacha): se propuso otra fecha.');
+  });
+
+  it('un sábado que es feriado se explica como feriado, porque los sábados sí se despacha', async () => {
+    // El sábado 31 de octubre de 2026 es el Día de las Iglesias Evangélicas.
+    const d = await conversacion().decir('quiero 2 de 20 para el sábado');
+    expect(d.respuesta).toContain('Ese día es feriado y no despachamos; la entrega más cercana es el lunes 2 de noviembre.');
   });
 
   it('"hoy" después del corte de las 9:00 no alcanza', async () => {

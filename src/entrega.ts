@@ -33,6 +33,8 @@ export interface PropuestaEntrega extends FechaEntrega {
   pedida?: string;
   /** Presente cuando la fecha propuesta no es la que pidió el cliente. */
   motivoAjuste?: MotivoAjuste;
+  /** Con `sin_despacho`: el día que pidió, ya como fecha, para poder decir si es domingo o feriado. */
+  fechaPedida?: string;
 }
 
 export interface OpcionesEntrega {
@@ -54,6 +56,7 @@ export async function proponerEntrega(
 
   let fecha = masTemprana;
   let motivoAjuste: MotivoAjuste | undefined;
+  let fechaPedida: string | undefined;
   if (opciones.solicitada) {
     const pedida = resolverFechaTexto(opciones.solicitada, hoy);
     if (!pedida) {
@@ -65,6 +68,7 @@ export async function proponerEntrega(
     } else {
       fecha = siguienteDiaDespacho(pedida, feriados);
       motivoAjuste = 'sin_despacho';
+      fechaPedida = pedida;
     }
   }
 
@@ -75,5 +79,6 @@ export async function proponerEntrega(
     feriadosAlDia: [...feriados].some((feriado) => feriado.startsWith(ano)),
     ...(opciones.solicitada && { pedida: opciones.solicitada }),
     ...(motivoAjuste && { motivoAjuste }),
+    ...(fechaPedida && { fechaPedida }),
   };
 }
