@@ -123,3 +123,10 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - La planilla es una vista para Constanza: si Google falla, el mensaje se atiende igual y el error queda en el log. Nunca se anota el texto del mensaje, y el teléfono va enmascarado.
 - Los mensajes repetidos (reintentos de Meta) no se anotan en la planilla: solo quedan en el log.
 - Las hojas y sus columnas salen de `docs/conocimiento_brunen.md` (sección 11) y se crean con `npm run preparar-planilla`, que no pisa datos. RUTA_DEL_DIA tiene columnas provisionales hasta conocer el formato de importación de la app de rutas.
+
+### D22 · 2026-10-28 · Tomada
+**El intérprete se conecta en modo prueba: el bot responde lo que entendió y lo anota en la planilla.**
+- Motivo: probar el intérprete con mensajes reales desde el celular antes de armar el flujo de pedido (Etapa 4). Cada mensaje mal entendido se agrega, anonimizado, a `tests/mensajes.json`.
+- Solo responde a `NUMEROS_PERMITIDOS`. Los mensajes que no son de texto siguen recibiendo "Recibí un mensaje de tipo …".
+- La hoja MENSAJES_PROCESADOS suma la columna Intencion (pedido, pregunta, reclamo, desconocido…). No guarda el texto del mensaje.
+- El LLM de respaldo (Groq) todavía no está: lo que el intérprete no entiende queda como "desconocido".

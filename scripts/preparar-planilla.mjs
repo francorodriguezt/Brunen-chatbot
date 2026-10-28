@@ -26,7 +26,7 @@ const HOJAS = {
   RUTA_DEL_DIA: ['Orden', 'Telefono', 'Nombre', 'Direccion', 'Comuna', 'Productos', 'Notas_Repartidor'],
   DASHBOARD: [],
   ERRORES: ['Fecha_Hora', 'Etapa', 'ID_Mensaje', 'Mensaje'],
-  MENSAJES_PROCESADOS: ['Fecha_Hora', 'Wamid', 'Telefono_Enmascarado', 'Tipo', 'Resultado'],
+  MENSAJES_PROCESADOS: ['Fecha_Hora', 'Wamid', 'Telefono_Enmascarado', 'Tipo', 'Resultado', 'Intencion'],
 };
 
 // Datos que ya están definidos en el documento de conocimiento (sección 2). Hasta vacío = "o más".

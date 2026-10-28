@@ -84,7 +84,7 @@ describe('firma X-Hub-Signature-256', () => {
 });
 
 describe('recepción de mensajes (POST)', () => {
-  it('responde 200 y contesta "Recibí: ..." a un número de prueba', async () => {
+  it('responde 200 y contesta lo que entendió a un número de prueba', async () => {
     const fetchFalso = vi.fn(async () => new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetchFalso);
     const { ctx, terminar } = contexto();
@@ -98,7 +98,7 @@ describe('recepción de mensajes (POST)', () => {
     expect(url).toBe('https://graph.facebook.com/v99.0/000000000000000/messages');
     const enviado = JSON.parse(String(init.body));
     expect(enviado.to).toBe('56900000001');
-    expect(enviado.text.body).toBe('Recibí: 2 bidones de 20');
+    expect(enviado.text.body).toBe('Modo prueba. Entendí: pedido · 2 de 20 L');
   });
 
   it('modo prueba: no le responde a números fuera de la lista', async () => {

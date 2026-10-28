@@ -7,7 +7,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | 0 | Repo base: precios, despacho, firma y webhook de eco con pruebas | ✅ Lista |
 | 1 | Esqueleto de punta a punta con el número de prueba de Meta | ✅ Lista (2026-10-28) |
 | 2 | Planilla de desarrollo + deduplicación por wamid + registro de mensajes | ✅ Lista, falta cargar FERIADOS (2026-10-28) |
-| 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | 🟡 Parser por reglas listo (45 casos); falta el LLM de respaldo |
+| 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | 🟡 Parser por reglas listo (45 casos) y conectado en modo prueba; falta el LLM de respaldo |
 | 4 | Flujo de pedido: cotizar, fecha, registrar en PEDIDOS, responder 1 mensaje, ERRORES | |
 | 5 | Constanza: alerta por Telegram con botones Confirmar / Cambiar, actualiza estado | |
 | 6 | Imágenes (Drive + PAGOS), audio, fuera de zona, reclamos, RUTA_DEL_DIA | |
