@@ -12,7 +12,8 @@
  */
 
 import { leerBotActivo } from './configuracion';
-import { almacenDe,esMensajeNuevo, liberarMensaje, limpiarAlmacen, type BaseDatos } from './almacen';
+import { proponerEntrega, type PropuestaEntrega } from './entrega';
+import { almacenDe, esMensajeNuevo, liberarMensaje, limpiarAlmacen, type BaseDatos } from './almacen';
 import { igualesTiempoConstante, verificarFirma } from './firma';
 import type { Intencion } from './interprete';
 import { interpretarConRespaldo } from './llm';
@@ -67,6 +68,16 @@ export interface ResultadoMensaje {
   intencion?: Intencion;
 }
 
+/** La fecha es una ayuda: si no se puede calcular (por ejemplo, Google caído), el pedido se atiende igual sin ella. */
+async function entregaPropuesta(env: Env): Promise<PropuestaEntrega | undefined> {
+  try {
+    return await proponerEntrega(env);
+  } catch (error) {
+    console.error('No se pudo calcular la entrega:', error instanceof Error ? error.message : error);
+    return undefined;
+  }
+}
+
 export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promise<ResultadoMensaje> {
   const botApagado = (): ResultadoMensaje => {
     console.log(`Bot apagado; mensaje de ${enmascararTelefono(mensaje.de)} ignorado`);
@@ -83,8 +94,9 @@ export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promi
   // El flujo de pedido real llega en la Etapa 4.
   const entendido = mensaje.tipo === 'text' && mensaje.texto ? await interpretarConRespaldo(mensaje.texto, env) : null;
   const interpretacion = entendido?.interpretacion ?? null;
+  const entrega = interpretacion?.intencion === 'pedido' ? await entregaPropuesta(env) : undefined;
   const respuesta = interpretacion
-    ? describirInterpretacion(interpretacion, entendido?.conIa)
+    ? describirInterpretacion(interpretacion, entendido?.conIa, entrega)
     : `Recibí un mensaje de tipo "${mensaje.tipo}".`;
   await enviarTexto(
     {
