@@ -148,4 +148,5 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Solo viaja el texto del mensaje (máximo 300 caracteres); nunca teléfono ni nombre. Si el texto incluye una dirección, viaja con él: por eso la cuenta tiene retención cero (D23).
 - Tope de 500 llamadas por día en la tabla `uso_llm` (D1, migración `0002`), con una sola sentencia atómica. Cuenta las reservas, no solo los éxitos, y el día es UTC: es deliberado, porque el fallo es seguro y deja la mitad del cupo gratis de Groq.
 - Cualquier fallo (sin clave, 429, tiempo agotado, JSON inválido, tabla ausente) deja el resultado de las reglas. Los logs solo llevan el estado HTTP, nunca el contenido del mensaje.
+- Verificado en producción el 2026-10-28: un mensaje que las reglas no entienden ("necesito aguita pal finde") se respondió con la IA y quedó 1 llamada en `uso_llm`.
 - `BOT_ACTIVO` también se lee de la hoja CONFIGURACION cada minuto (`src/configuracion.ts`). Si Google falla se usa lo último leído; una caída de Google nunca apaga el bot.
