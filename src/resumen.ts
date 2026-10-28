@@ -14,6 +14,7 @@ const NOMBRE_INTENCION: Readonly<Record<Intencion, string>> = {
   factura: 'factura',
   proveedor: 'proveedor',
   pago: 'aviso de pago',
+  envases: 'devolución de envases',
   saludo: 'saludo',
   cierre: 'cierre (no se respondería)',
   desconocido: 'no lo entendí',
@@ -33,6 +34,7 @@ export function describirInterpretacion(interpretacion: Interpretacion): string 
     const tipo = item.tipo === 'no_especificado' ? 'sin tamaño' : item.tipo.replace('L', ' L');
     partes.push(`${item.cantidad ?? '?'} de ${tipo}`);
   }
+  if (interpretacion.envases_a_retirar) partes.push(`${interpretacion.envases_a_retirar} envases`);
   if (interpretacion.fecha_texto) partes.push(`para ${interpretacion.fecha_texto}`);
   if (interpretacion.comuna_mencionada) partes.push(`comuna ${interpretacion.comuna_mencionada}`);
   if (interpretacion.accion) partes.push(NOMBRE_ACCION[interpretacion.accion] ?? interpretacion.accion);

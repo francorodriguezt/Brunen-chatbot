@@ -165,6 +165,7 @@ export type Intencion =
   | 'factura'
   | 'proveedor'
   | 'pago'
+  | 'envases'
   | 'saludo'
   | 'cierre'
   | 'desconocido';
@@ -183,6 +184,8 @@ export interface Interpretacion {
   items: ItemInterpretado[];
   fecha_texto?: string;
   comuna_mencionada?: string;
+  /** Solo con intención "envases": cuántos envases vacíos quiere devolver el cliente. */
+  envases_a_retirar?: number;
   tipo_pregunta?: TipoPregunta;
   accion?: AccionSugerida;
 }
@@ -246,11 +249,16 @@ const PREGUNTA_HORARIO = palabras(
   'reparten los sabados', 'reparten los domingos', 'trabajan los sabados', 'trabajan los domingos',
   'llegan los sabados', 'llegan los domingos', 'llegan sabado', 'llegan domingo',
 );
+// "despachan los domingos", "hay reparto el sabado", "los feriados reparten?": verbo de reparto y un día, en cualquier orden.
+const HORARIO_POR_DIA = new RegExp(
+  String.raw`\b(?:reparten|reparte|despachan|despacha|entregan|entrega|trabajan|atienden|abren|hay reparto|hay despacho|hay entrega|hacen reparto|hacen despacho)\b.*\b(?:domingos?|sabados?|feriados?|festivos?|lunes|martes|miercoles|jueves|viernes)\b|\b(?:domingos?|sabados?|feriados?|festivos?|lunes|martes|miercoles|jueves|viernes)\b.*\b(?:reparten|reparte|despachan|despacha|entregan|entrega|trabajan|atienden|abren|hay reparto|hay despacho|hay entrega|hacen reparto|hacen despacho)\b`,
+);
 const PREGUNTA_PAGO = palabras(
   'como se paga', 'como pago', 'como pagar', 'como puedo pagar', 'medio de pago', 'medios de pago',
   'forma de pago', 'formas de pago', 'datos de la cuenta', 'datos para la transferencia',
   'datos de transferencia', 'datos para transferir', 'numero de cuenta', 'cuenta bancaria',
   'aceptan tarjeta', 'aceptan efectivo', 'aceptan transferencia', 'se puede pagar', 'puedo pagar',
+  'cuanto me cobraron', 'cuanto les debo', 'cuanto debo', 'cuanto les pague', 'cuanto pague',
 );
 // "llegan a", "despachan hasta", "reparten en": solo es pregunta de zona si además hay una comuna.
 const VERBO_ZONA = new RegExp(
@@ -287,7 +295,7 @@ function esSoloCierre(t: string): boolean {
 function tipoDePregunta(t: string, hayComuna: boolean): TipoPregunta | undefined {
   if ((hayComuna && VERBO_ZONA.test(t)) || PALABRA_ZONA.test(t)) return 'zona';
   if (PREGUNTA_PRECIO.test(t)) return 'precio';
-  if (PREGUNTA_HORARIO.test(t)) return 'horario';
+  if (PREGUNTA_HORARIO.test(t) || HORARIO_POR_DIA.test(t)) return 'horario';
   if (PREGUNTA_PAGO.test(t)) return 'pago';
   return undefined;
 }
@@ -340,6 +348,12 @@ export function interpretar(texto: string): Interpretacion {
   if (quierePedir) {
     const accion = accionDePedido(items);
     return resultado('pedido', accion ? { accion } : {});
+  }
+
+  // Envases vacíos para devolver (regla 5: se anotan para el repartidor). No es un pedido.
+  if (DEVOLUCION.test(t)) {
+    const envases = items.reduce((suma, item) => suma + (item.cantidad ?? 0), 0);
+    return { ...resultado('envases'), items: [], ...(envases > 0 && { envases_a_retirar: envases }) };
   }
 
   if (MENCION_PAGO.test(t)) return resultado('pago');

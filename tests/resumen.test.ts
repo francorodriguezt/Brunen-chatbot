@@ -13,6 +13,7 @@ describe('describirInterpretacion', () => {
     ['el bidón venía roto', 'Modo prueba. Entendí: reclamo · derivar a una persona'],
     ['gracias', 'Modo prueba. Entendí: cierre (no se respondería)'],
     ['asdf qwer', 'Modo prueba. Entendí: no lo entendí'],
+    ['tengo 3 bidones vacios para devolver', 'Modo prueba. Entendí: devolución de envases · 3 envases'],
   ])('%s', (mensaje, esperado) => {
     expect(describirInterpretacion(interpretar(mensaje))).toBe(esperado);
   });
