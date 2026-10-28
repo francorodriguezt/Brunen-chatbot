@@ -90,3 +90,21 @@ describe('interpretar: robustez', () => {
     expect(resultado.items).toEqual([{ tipo: '20L', cantidad: 4000 }]);
   });
 });
+
+describe('interpretar: repetir pedido solo con frases específicas', () => {
+  it.each([
+    'cuánto me cobraron la semana pasada?',
+    'la semana pasada llegó tarde',
+    'cuánto sale lo mismo de siempre?',
+    'la última vez no vino nadie',
+  ])('%s no es repetir_pedido', (mensaje) => {
+    expect(interpretar(mensaje).intencion).not.toBe('repetir_pedido');
+  });
+
+  it.each(['repite el pedido', 'lo de la semana pasada', 'lo mismo de siempre', 'como siempre'])(
+    '%s sí es repetir_pedido',
+    (mensaje) => {
+      expect(interpretar(mensaje).intencion).toBe('repetir_pedido');
+    },
+  );
+});
