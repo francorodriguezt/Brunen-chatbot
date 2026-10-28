@@ -60,7 +60,7 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 
 ### D13 · 2026-10-27 · Tomada
 **Scripts locales `verificar-config` y `simular-mensaje` en `scripts/`.**
-- Motivo: probar la configuración y el webhook firmado sin esperar a Meta, y sin que Claude lea `.dev.vars`: los scripts nunca imprimen valores.
+- Motivo: probar la configuración y el webhook firmado sin esperar a Meta, y sin exponer `.dev.vars`: los scripts nunca imprimen valores.
 
 ### D14 · 2026-10-27 · Reemplazada por D15
 **Repositorio privado en GitHub hasta que el proyecto esté listo; luego se vuelve público como portafolio.**
