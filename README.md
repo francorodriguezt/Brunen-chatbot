@@ -64,4 +64,4 @@ flowchart LR
 Para correrlo, probarlo y desplegarlo: [docs/DESARROLLO.md](docs/DESARROLLO.md).
 
 ## Autor
-Franco Rodríguez Torres, para Brunen SpA.
+Franco Rodríguez Torres, para Brunen SpA. Licencia [MIT](LICENSE).

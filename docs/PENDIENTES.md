@@ -2,19 +2,20 @@
 
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
-## Decide Franco (con la recomendación de partida)
-- [ ] Qué es "muy urgente" para Telegram (D32). Recomendación: reclamos y fallas del sistema (token de WhatsApp vencido, Google o D1 caídos, hoja PRECIOS dañada, tope de la IA agotado). Todo lo demás, en el panel.
-- [ ] Acceso al panel (D32): Cloudflare Access (código por correo, sin programar; confirmar si pide tarjeta) o inicio de sesión con Google en el propio Worker. Recomendación: probar Access primero.
-- [ ] Datos del panel: D1 como fuente de verdad de pedidos, avisos y clientes, con la planilla como espejo (D32). Recomendación: sí.
-- [ ] Mapa: por comuna y con el punto exacto cuando el cliente comparte su ubicación por WhatsApp o la operadora lo marca; sin geocodificar direcciones con servicios externos (D32). Recomendación: sí.
-- [ ] Comprobantes de pago: guardarlos en D1 por 60 días y verlos en el panel (D30, D32). Recomendación: sí.
-- [ ] Audios: pedir al cliente que escriba (regla 8). Recomendación: sí, al inicio.
-- [ ] Cliente nuevo: se anota y una persona coordina dirección y envases, sin prometer precio ni fecha (hoy). Recomendación: dejarlo así.
-- [ ] Cantidad inusual: más de 20 bidones de un tipo va a revisión y no se le promete precio (`POLITICAS.cantidadInusual`). Recomendación: 20.
-- [ ] ¿El bot pregunta si hay envases vacíos para devolver? Recomendación: no preguntar; anotarlos cuando el cliente avise (ahorra mensajes).
-- [ ] Espera del agrupador de mensajes seguidos: 7 s (D27). Recomendación: 7 s y ajustar con uso real.
-- [ ] Texto del aviso de contingencia (`MENSAJE_EXCEPCION`) y tono de los textos (`docs/CONVERSACIONES.md`). Recomendación: aprobar el borrador y ajustar con lo que diga el dueño.
-- [ ] Licencia del repositorio público (por ejemplo MIT, o ninguna): hoy no tiene y, sin licencia, nadie puede reutilizar el código.
+## Decide Franco
+Franco aceptó las recomendaciones el 2026-10-28; quedan abiertas las dos que dependen de Constanza.
+- [x] Qué es "muy urgente" para Telegram (D32). Recomendación: reclamos y fallas del sistema (token de WhatsApp vencido, Google o D1 caídos, hoja PRECIOS dañada, tope de la IA agotado). Todo lo demás, en el panel.
+- [x] Acceso al panel (D32): Cloudflare Access (código por correo, sin programar; confirmar si pide tarjeta) o inicio de sesión con Google en el propio Worker. Recomendación: probar Access primero.
+- [x] Datos del panel: D1 como fuente de verdad de pedidos, avisos y clientes, con la planilla como espejo (D32). Recomendación: sí.
+- [x] Mapa: por comuna y con el punto exacto cuando el cliente comparte su ubicación por WhatsApp o la operadora lo marca; sin geocodificar direcciones con servicios externos (D32). Recomendación: sí.
+- [x] Comprobantes de pago: guardarlos en D1 por 60 días y verlos en el panel (D30, D32). Recomendación: sí.
+- [x] Audios: pedir al cliente que escriba (regla 8). Recomendación: sí, al inicio.
+- [x] Cliente nuevo: se anota y una persona coordina dirección y envases, sin prometer precio ni fecha (hoy). Recomendación: dejarlo así.
+- [x] Cantidad inusual: más de 20 bidones de un tipo va a revisión y no se le promete precio (`POLITICAS.cantidadInusual`). Recomendación: 20.
+- [x] ¿El bot pregunta si hay envases vacíos para devolver? Recomendación: no preguntar; anotarlos cuando el cliente avise (ahorra mensajes).
+- [x] Espera del agrupador de mensajes seguidos: 7 s (D27). Recomendación: 7 s y ajustar con uso real.
+- [x] Texto del aviso de contingencia (`MENSAJE_EXCEPCION`) y tono de los textos (`docs/CONVERSACIONES.md`). Recomendación: aprobar el borrador y ajustar con lo que diga el dueño.
+- [x] Licencia del repositorio público (por ejemplo MIT, o ninguna): hoy no tiene y, sin licencia, nadie puede reutilizar el código.
 - [ ] Historial de git: ¿se reescribe para quitar el correo personal, el apellido de la operadora y los avisos de coautoría de los commits? Exige reescribir y forzar el push (D15); se decide después de la respuesta de la operadora (pregunta 14 del cuestionario).
 - [ ] Preguntar a Constanza si acepta que su nombre y horario figuren en el repo público (`docs/conocimiento_brunen.md`, sección 8) y si acepta recibir los avisos urgentes por Telegram.
 
