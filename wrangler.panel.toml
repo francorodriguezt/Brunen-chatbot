@@ -1,0 +1,30 @@
+# Worker del panel de administración (D32). El bot de WhatsApp tiene su propia configuración en wrangler.toml.
+# Despliegue: `npm run deploy:panel`. Desarrollo local: `npm run dev:panel`.
+#
+# NO se despliega sin Cloudflare Access: el panel muestra datos personales y falla cerrado (503) mientras
+# ACCESS_TEAM_DOMAIN y ACCESS_AUD estén vacíos. Pasos en docs/ETAPAS.md (sección "Panel de administración").
+name = "brunen-panel"
+main = "src/panel/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Se llenan al activar Access (no son secretos): el dominio del equipo de Zero Trust y el "AUD tag" de la aplicación.
+ACCESS_TEAM_DOMAIN = ""
+ACCESS_AUD = ""
+# Opcional: segunda barrera con los correos autorizados, separados por coma.
+PANEL_CORREOS = ""
+
+[assets]
+directory = "./panel"
+binding = "ASSETS"
+# El Worker corre primero para comprobar el acceso antes de servir cualquier archivo.
+run_worker_first = true
+
+# La misma base D1 del bot. Las migraciones se aplican desde el Worker del bot (wrangler.toml).
+[[d1_databases]]
+binding = "DB"
+database_name = "brunen-chatbot"
+database_id = "9d7c66b0-679b-47d3-8d38-a0223b3eab63"
+
+[observability]
+enabled = true
