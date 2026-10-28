@@ -11,6 +11,12 @@
 - [ ] ¿El bot pregunta si el cliente tiene envases vacíos para devolver?
 - [ ] ¿El bot deriva las boletas a una persona o solo las facturas? (hoy se derivan ambas, como las facturas).
 - [ ] Cantidad máxima razonable por pedido (el intérprete acepta hasta 999; sin tope, un error de tipeo se cotiza igual).
+- [ ] Aprobar los textos del bot (`docs/CONVERSACIONES.md`; los borradores están en `src/textos.ts`): tono, frases y qué se dice en cada caso.
+- [ ] Cantidad inusual: hoy un pedido con más de 20 bidones de un tipo va a revisión y no se le promete precio (`POLITICAS.cantidadInusual`). ¿Cuál es el número razonable?
+- [ ] Cliente nuevo: hoy se anota el pedido y una persona coordina dirección y envases, sin prometer precio ni fecha. ¿Quiere que el bot ofrezca la carga inicial y pida la dirección?
+- [ ] Cliente bloqueado: hoy lo atiende una persona y no se anota su pedido. ¿Es lo correcto?
+- [ ] Dónde guardar los comprobantes de pago (D30): enviarlos por Telegram (recomendado para el piloto), Drive con OAuth, u otra opción.
+- [ ] Audios: ¿se transcriben con Groq (Whisper, gratis) o se le pide al cliente que escriba (regla 8)?
 
 ## Datos por conseguir
 - [ ] Excel de clientes (cargar CLIENTES, marcar mayoristas y especiales). No subirlo al repo.
@@ -33,3 +39,8 @@
 - [x] Base D1 `brunen-chatbot` creada, migrada y activa (D20).
 - [x] Token permanente (usuario del sistema `bot-brunen`, sin vencimiento) cargado en Cloudflare el 2026-10-28.
 - [ ] Revisar disponibilidad de coexistencia en Chile si el dueño la elige.
+- [ ] Al conectar la Etapa 4: aplicar la migración `0003_etapa4.sql` en D1, medir el CPU por mensaje con `wrangler tail` (D31) y ajustar la espera del agrupador (7 s, D27) con mensajes reales.
+- [ ] Crear el bot de Telegram (@BotFather) y cargar `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y el secreto del webhook (Etapa 5, D29). Lo hace Franco: yo no puedo crear cuentas.
+- [ ] Cargar en la hoja CLIENTES los clientes reales (Constanza), con sus teléfonos, comunas y tipos, para probar el flujo con fichas. Sin esos datos todos los clientes son "nuevos".
+- [ ] Confirmar en la D1 remota que una escritura `INSERT ... ON CONFLICT ... WHERE` que no cambia nada devuelve `changes = 0` (D27). Prioridad baja.
+- [ ] La planilla real (Etapa 7): copiar la hoja FERIADOS, CONFIGURACION y PRECIOS, y revisar que la ficha de cada cliente use los nombres de columna de `docs/conocimiento_brunen.md`, sección 11.

@@ -8,9 +8,9 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | 1 | Esqueleto de punta a punta con el número de prueba de Meta | ✅ Lista (2026-10-28) |
 | 2 | Planilla de desarrollo + deduplicación por wamid + registro de mensajes | ✅ Lista (2026-10-28) |
 | 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | ✅ Lista (2026-10-28): reglas (54 casos) y respaldo con IA verificado con una llamada real |
-| 4 | Flujo de pedido: cotizar, fecha, registrar en PEDIDOS, responder 1 mensaje, ERRORES | |
-| 5 | Constanza: alerta por Telegram con botones Confirmar / Cambiar, actualiza estado | |
-| 6 | Imágenes (Drive + PAGOS), audio, fuera de zona, reclamos, RUTA_DEL_DIA | |
+| 4 | Flujo de pedido: cotizar, fecha, registrar en PEDIDOS, responder 1 mensaje, ERRORES | 🟡 Piezas listas y probadas (2026-10-28), sin conectar: falta el visto bueno del dueño |
+| 5 | Constanza: alerta por Telegram con botones Confirmar / Cambiar, actualiza estado | 🟡 Aviso y botones listos; falta crear el bot y conectar |
+| 6 | Imágenes (comprobantes + PAGOS), audio, fuera de zona, reclamos, RUTA_DEL_DIA | 🟡 Lista del día lista (formato provisional); falta decidir dónde guardar los comprobantes |
 | 7 | Producción: número definitivo, verificación de empresa, piloto con 5–10 clientes | |
 
 ---
@@ -86,17 +86,62 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 ---
 
-## Etapa 4 — Flujo de pedido (preparación)
+## Etapa 4 — Flujo de pedido
 
-**Estado (2026-10-28):** no empezada; espera las respuestas del dueño. Esto es lo que ya existe y lo que falta.
+**Estado (2026-10-28):** las piezas están construidas y probadas, **sin conectar** al Worker: el bot en producción sigue en modo prueba. Falta el visto bueno del dueño sobre los textos y las decisiones pendientes, y conectar (más abajo).
 
-**Ya listo y probado:** intérprete con respaldo de IA, cálculo de precios (`precios.ts`), fecha de entrega con feriados (`entrega.ts`), deduplicación, apagado desde la planilla, una sola respuesta por mensaje y registro de mensajes y errores.
+**Qué hay** (todo en `src/`, con sus pruebas en `tests/`):
 
-**Falta construir, sin depender del dueño:**
-1. Leer CLIENTES por teléfono (tipo de cliente, precio especial, envases pendientes) y PRECIOS desde la planilla. El lector de hojas ya existe.
-2. **Estado de la conversación en D1:** cuando el bot pregunta "¿de qué tamaño?", la respuesta siguiente ("20") solo se entiende si el bot recuerda el pedido a medias. Necesita una tabla con vencimiento por teléfono.
-3. Escribir en PEDIDOS (ID_Pedido, estado `Pendiente_Confirmacion`) y registrar fallos en ERRORES.
-4. Redactar los textos de respuesta (el borrador de la sección 12 del documento original no está en el repositorio) y que el dueño los apruebe.
-5. Fuera de zona: registrar con estado `Fuera_de_zona` e informar las comunas atendidas.
+| Pieza | Archivos | Qué hace |
+|---|---|---|
+| Lectura de hojas | `hojas.ts`, `clientes.ts`, `preciosHoja.ts`, `configuracion.ts`, `feriados.ts` | Fichas de clientes por teléfono, tabla de precios validada, feriados y configuración (interruptor y aviso de contingencia), con caché |
+| Fechas | `fechas.ts`, `entrega.ts` | Entiende "el viernes", "15/11", "el 20"; propone la entrega con feriados y explica los ajustes |
+| Memoria | `conversacion.ts`, `contexto.ts` | Pedido a medias y último pedido en D1; entiende "de 20" después de "¿de qué tamaño?" sin gastar IA |
+| Mensajes seguidos | `agrupador.ts` | Junta "2 bidones" y "de 20" para responder una sola vez |
+| Decisión | `motor.ts`, `textos.ts`, `pedidos.ts`, `alertas.ts` | Decide respuesta, fila de PEDIDOS y aviso a la operadora; lo dudoso se manda a revisión |
+| Flujo | `flujo.ts` | Une todo con dependencias inyectables y nunca lanza errores |
 
-**Depende del dueño (ver PENDIENTES):** confirmación por excepción o doble mensaje, carga inicial, precios mayorista y especial para 12 L y 10 L, tramos entre tipos de bidón, empresas con plan mensual, cantidad máxima por pedido, boletas, y qué hacer con clientes bloqueados y con `Credito`.
+Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con el motor). Por qué así: D26 a D28.
+
+**Cómo conectarlo** (cuando el dueño apruebe; cada paso se verifica con `npm run check` y un mensaje de prueba):
+1. Aplicar la migración: `npx wrangler d1 migrations apply brunen-chatbot --remote` (crea `conversaciones`, `ultimos_pedidos` y `mensajes_pendientes`).
+2. En `procesarLote` (`src/index.ts`), por cada número: anotar sus mensajes de texto con `agruparMensaje` (una sola espera por número, no una por mensaje) y llamar a `atenderTexto` con los puertos reales: `buscarCliente`, `cargarTablaPrecios`, `proponerEntrega`, `leerServicio`, `interpretarConRespaldo` y `new MemoriaConversaciones(env.DB)`.
+3. Enviar `decision.respuesta` (si no es null), anotar el pedido con `ClienteSheets.agregarFilas('PEDIDOS', filasDePedido(decision.pedido))`, mandar `decision.alerta` (Etapa 5) y registrar la intención y los errores en las hojas de siempre.
+4. Probar con los 12 casos de CONVERSACIONES.md desde un número de `NUMEROS_PERMITIDOS`, y con 2 o 3 mensajes seguidos para el agrupador.
+5. Medir el CPU de cada tipo de mensaje con `wrangler tail` (límite de 10 ms en el plan gratis, D31) y la cantidad de llamadas a Google.
+6. Recién entonces, ampliar a más números (Etapa 7).
+
+**Depende del dueño** (ver `docs/PENDIENTES.md`): confirmación por excepción o doble mensaje, aprobar los textos, cómo tratar a un cliente nuevo, carga inicial, precios mayorista y especial para 12 L y 10 L, tramos entre tipos de bidón, empresas con plan mensual, cantidad inusual por pedido, boletas, clientes bloqueados y la columna `Credito`.
+
+**Qué falta construir aunque el dueño ya haya respondido:** la ficha de los clientes reales en la hoja CLIENTES (Constanza), y las lecturas de PEDIDOS para "lo de siempre" de clientes antiguos (hoy el bot recuerda solo lo que pidió a través de él).
+
+**Prueba de aceptación:**
+- Un cliente conocido pide "2 bidones de 20 para el viernes" y recibe **un** mensaje con el precio y la fecha, una fila en PEDIDOS y un aviso a la operadora.
+- "4 bidones" y después "de 20", escritos seguidos, dan **una** respuesta y un pedido.
+- Un reclamo, una factura o un mensaje que el bot no entiende llegan a una persona y el cliente igual recibe respuesta.
+- Un error de Google, de D1 o de Telegram no deja al cliente sin respuesta.
+
+---
+
+## Etapa 5 — La operadora recibe y confirma
+
+**Estado (2026-10-28):** construido el aviso (`telegram.ts`, D29); sin conectar ni crear el bot.
+
+**Falta:**
+1. Crear el bot de Telegram con @BotFather y cargar `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y un secreto para el webhook (`npx wrangler secret put ...`).
+2. Ruta `/telegram` en el Worker: verificar el secreto (`secretoValido`), leer el botón (`extraerAccionBoton`), comprobar el chat (`esChatAutorizado`) y responder (`responderBoton`, `quitarBotones`). Registrar el webhook con `setWebhook` y su `secret_token`.
+3. Al confirmar, actualizar PEDIDOS (`Estado`, `Fecha_Entrega_Confirmada`, `Confirmado_Por`) buscando las filas por `ID_Pedido`; para eso falta una función de escritura de celdas en `google.ts`.
+4. Decidir qué hace "Cambiar" (por ejemplo, la operadora responde en Telegram con la nueva fecha y el bot la anota y le avisa al cliente, con el cuidado de que cada mensaje a un cliente cuenta en el cupo gratis).
+5. ¿Constanza acepta recibir los avisos por Telegram? (hoy es una propuesta, D7).
+
+---
+
+## Etapa 6 — Comprobantes, audio y lista del día
+
+**Estado (2026-10-28):** construida la lista del día (`rutaDelDia.ts`, formato provisional); investigado dónde guardar los comprobantes (D30, propuesta).
+
+**Falta:**
+1. Lista del día: leer los pedidos confirmados del día, escribir la hoja RUTA_DEL_DIA y dar el texto copiable (por ejemplo, con un comando en Telegram o una tarea programada). Ajustar el formato al archivo de importación de la app de rutas (confirmar si es OptimoRoute).
+2. Imágenes: el dueño elige dónde guardar los comprobantes (D30). Bajar la imagen apenas llega (la dirección dura 5 minutos), avisar a la operadora y anotar en PAGOS; el bot no verifica pagos solo.
+3. Audio: pedir amablemente que escriba (regla 8). Transcribirlo con Groq (Whisper, gratis hasta 2.000 solicitudes por día según la consola, D23) es una decisión del dueño por privacidad.
+4. Fuera de zona y reclamos ya están en el motor de la Etapa 4.

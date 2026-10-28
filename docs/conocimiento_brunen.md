@@ -1,6 +1,6 @@
 # Conocimiento del proyecto — Chatbot Brunen SpA
 Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
-Última actualización: 2026-10-27
+Última actualización: 2026-10-28
 
 > Datos sensibles (cuenta bancaria, teléfono de Constanza, teléfonos de clientes) NO se guardan en este repo:
 > viven en la hoja CONFIGURACION / CLIENTES de la planilla. Aquí solo se indica dónde están.
@@ -82,14 +82,14 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 12. Mensajes que inicia el negocio fuera de la ventana de 24 h requieren plantillas aprobadas por Meta.
 13. **Un solo mensaje saliente por pedido** (presupuesto de mensajes gratis). Diseño de confirmación por excepción PENDIENTE de aprobación del dueño.
 
-## 10. Arquitectura (actualizada 2026-10-27)
+## 10. Arquitectura (actualizada 2026-10-28)
 - Canal: WhatsApp Cloud API (Meta). Número: nuevo vs. coexistencia con el actual (PENDIENTE, decide el dueño).
 - Motor: código propio en **Cloudflare Workers + TypeScript** (plan gratuito). Reemplaza la idea inicial de n8n.
 - Interpretación: parser por reglas + LLM de respaldo (Groq gratis). Gemini gratis descartado (usa los datos).
-- Datos: Google Sheets. Archivos: Google Drive. Alertas a Constanza: Telegram. Monitoreo: UptimeRobot → `/salud`.
+- Datos: Google Sheets. Memoria del bot (mensajes ya vistos, pedido a medias, último pedido): base D1 de Cloudflare. Alertas a Constanza: Telegram. Comprobantes: dónde guardarlos está por decidir (D30; Drive con la cuenta de servicio no sirve). Monitoreo: UptimeRobot → `/salud`.
 - Flujo: webhook → validar firma → 200 inmediato → deduplicar → revisar `BOT_ACTIVO` → buscar cliente → según tipo:
-  - Texto: parser → (LLM si hace falta) → pedido / pregunta frecuente / escalamiento.
-  - Imagen: Drive + PAGOS + alerta. Audio u otro: pedir texto.
+  - Texto: juntar los mensajes seguidos → parser (→ LLM si hace falta) → pedido / pregunta frecuente / escalamiento. Lo dudoso se anota igual y se manda a revisión; al cliente no se le promete.
+  - Imagen: comprobante → PAGOS + alerta. Audio u otro: pedir texto.
 
 ## 11. Google Sheets (un archivo)
 - PEDIDOS: ID_Pedido, Fecha_Hora, Telefono, Nombre, Producto, Cantidad, Precio_Unitario, Total, Fecha_Entrega_Solicitada, Fecha_Entrega_Confirmada, Estado, Comuna, Direccion, Notas_Repartidor, Envases_A_Retirar, Confirmado_Por, Observaciones

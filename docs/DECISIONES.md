@@ -141,14 +141,6 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Si se pasa del límite, Groq responde 429: el bot debe tratarlo como "no entendido" y escalar, nunca dejar al cliente sin respuesta.
 - Fuentes: https://console.groq.com/docs/rate-limits · https://console.groq.com/docs/your-data
 
-### D25 · 2026-10-28 · Tomada
-**Feriados cargados desde el calendario público y conectados a la fecha de entrega.**
-- Fuente: calendarios públicos que coinciden entre sí (Chilevisión para 2026; Buk y feriados.cl para 2027, que citan las leyes 19.668, 20.983 y 21.357). No hay un documento oficial del Gobierno para 2027 todavía: el 21 de junio de 2027 (solsticio) y el 17 de septiembre de 2027 se confirmarán cuando se publique. Están todos los feriados nacionales, incluido el Sábado Santo (Brunen despacha los sábados). No están los regionales (Arica, Chillán) porque las comunas atendidas son de Santiago.
-- Se cargaron como texto (`2026-01-01`) en la hoja FERIADOS de la planilla de desarrollo, no en el código. Con la planilla real hay que copiarlos (Etapa 7).
-- `proponerEntrega` une la hoja con las reglas de despacho y devuelve `feriadosAlDia`: false si la hoja está vacía o no tiene feriados del año de la entrega. Mientras no exista el flujo de pedido, solo se muestra en modo prueba.
-- Hay que renovar la hoja antes del 31 de diciembre de 2027.
-- Lección del 2026-10-28: la primera carga guardó el tabulador dentro de la celda A (fecha y nombre juntos) y el Worker leyó la hoja como vacía. Se corrigió escribiendo cada columna por separado, y una hoja vacía ahora se relee al minuto (antes se recordaba 6 horas). Para cargar datos en la planilla, no usar tabuladores al teclear: pegar o escribir columna por columna.
-
 ### D24 · 2026-10-28 · Tomada
 **El respaldo con IA solo extrae, solo entra cuando las reglas no entienden y nunca deja al cliente sin respuesta.**
 - Modelo `openai/gpt-oss-20b` con salida estructurada estricta (`json_schema`, `strict: true`, soportada por ese modelo según https://console.groq.com/docs/structured-outputs), temperatura 0 y razonamiento bajo.
@@ -158,3 +150,59 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Cualquier fallo (sin clave, 429, tiempo agotado, JSON inválido, tabla ausente) deja el resultado de las reglas. Los logs solo llevan el estado HTTP, nunca el contenido del mensaje.
 - Verificado en producción el 2026-10-28: un mensaje que las reglas no entienden ("necesito aguita pal finde") se respondió con la IA y quedó 1 llamada en `uso_llm`.
 - `BOT_ACTIVO` también se lee de la hoja CONFIGURACION cada minuto (`src/configuracion.ts`). Si Google falla se usa lo último leído; una caída de Google nunca apaga el bot.
+
+### D25 · 2026-10-28 · Tomada
+**Feriados cargados desde el calendario público y conectados a la fecha de entrega.**
+- Fuente: calendarios públicos que coinciden entre sí (Chilevisión para 2026; Buk y feriados.cl para 2027, que citan las leyes 19.668, 20.983 y 21.357). No hay un documento oficial del Gobierno para 2027 todavía: el 21 de junio de 2027 (solsticio) y el 17 de septiembre de 2027 se confirmarán cuando se publique. Están todos los feriados nacionales, incluido el Sábado Santo (Brunen despacha los sábados). No están los regionales (Arica, Chillán) porque las comunas atendidas son de Santiago.
+- Se cargaron como texto (`2026-01-01`) en la hoja FERIADOS de la planilla de desarrollo, no en el código. Con la planilla real hay que copiarlos (Etapa 7).
+- `proponerEntrega` une la hoja con las reglas de despacho y devuelve `feriadosAlDia`: false si la hoja está vacía o no tiene feriados del año de la entrega. Mientras no exista el flujo de pedido, solo se muestra en modo prueba.
+- Hay que renovar la hoja antes del 31 de diciembre de 2027.
+- Lección del 2026-10-28: la primera carga guardó el tabulador dentro de la celda A (fecha y nombre juntos) y el Worker leyó la hoja como vacía. Se corrigió escribiendo cada columna por separado, y una hoja vacía ahora se relee al minuto (antes se recordaba 6 horas). Para cargar datos en la planilla, no usar tabuladores al teclear: pegar o escribir columna por columna.
+
+### D26 · 2026-10-28 · Tomada
+**El flujo de pedido se construye como piezas puras con dependencias inyectables, y todavía no se conecta al Worker.**
+- Motivo: la Etapa 4 depende de decisiones del dueño (confirmación por excepción, cliente nuevo, precios especiales, cantidades...). Cada decisión pendiente quedó como una política explícita (`POLITICAS` en `src/motor.ts`) o como un caso que se manda a revisión: cambiarla es cambiar una línea y su prueba. Mientras no se conecte, nada de esto cambia lo que ve un cliente.
+- `motor.ts` decide (respuesta, pedido a anotar, aviso a la operadora, memoria) sin hacer entrada ni salida. `flujo.ts` lo une con "puertos" (fichas, precios, entrega, memoria, intérprete) y nunca lanza errores: si algo inesperado falla, el cliente recibe una respuesta y la operadora un aviso de error.
+- Regla de fondo: **lo dudoso no se le promete al cliente.** Si el precio depende de algo pendiente, la hoja PRECIOS está dañada, la ficha tiene datos raros, la cantidad es inusual o la fecha no es segura, el pedido se anota igual, la operadora recibe los motivos y al cliente se le dice que lo confirman. Cliente nuevo, cliente bloqueado, hoja de clientes ilegible y todo lo que el bot no entiende se escalan a una persona.
+- Hoja PEDIDOS: una fila por producto con el mismo ID; Total es el subtotal de la línea (el del pedido se suma por ID); notas, envases y observaciones van solo en la primera fila. La fecha que propone el bot va en `Fecha_Entrega_Solicitada`; `Fecha_Entrega_Confirmada` y `Confirmado_Por` los llena la operadora.
+- ID de pedido `P261028-3K7Q9`: fecha del pedido y 5 caracteres sacados del wamid, así un reintento de Meta da el mismo ID.
+- Supuestos nuevos, a confirmar con el dueño: más de 20 bidones de un tipo va a revisión; el horario de atención de la operadora es 8:00–21:00 (documento de conocimiento, sección 8) y se avisa fuera de él solo cuando una persona debe contestar.
+- Los textos son borradores (`src/textos.ts`). `docs/CONVERSACIONES.md` muestra 12 conversaciones generadas con el motor para que el dueño las revise.
+
+### D27 · 2026-10-28 · Tomada
+**Memoria de la conversación y agrupador de mensajes seguidos, en D1.**
+- Migración `0003_etapa4.sql` (sin aplicar en producción hasta conectar el flujo): `conversaciones` (pedido a medias, vence a las 12 horas), `ultimos_pedidos` ("lo de siempre", se borra a los 180 días sin pedir) y `mensajes_pendientes` (agrupador).
+- Respuestas cortas en contexto: "de 20" después de "¿de qué tamaño?" se entiende sin llamar a la IA. Es estricto a propósito: "para mañana a las 10" no es un bidón de 10 litros. Lo que no calza sigue el camino normal.
+- Agrupador (cumple lo anotado en D16): cada mensaje espera 7 segundos en D1; si llega otro del mismo número, el último procesa todos juntos y se responde una sola vez. El texto queda en D1 solo esos segundos y se borra al procesarlo (lo huérfano, a la hora). Si D1 falla, el mensaje se atiende solo. Esperar no gasta CPU y `waitUntil` admite hasta 30 s. La espera de 7 s es provisional: se ajusta con mensajes reales.
+- La memoria es una ayuda: si D1 falla se anota en el log y el bot vuelve a preguntar. No guarda direcciones ni nombres.
+- Las pruebas corren el SQL de verdad sobre SQLite (`node:sqlite`, por eso Node 22.13 o superior) con las migraciones reales, no sobre un doble que solo anota qué se le pidió. También verifican el tope diario de la IA (D24). Falta confirmar en la D1 remota que un `INSERT ... ON CONFLICT ... WHERE` que no cambia nada devuelve `changes = 0`: está probado en SQLite y en D1 local, y si fallara solo se perdería el tope propio (Groq igual responde 429).
+
+### D28 · 2026-10-28 · Tomada
+**Lectura de hojas común, por nombre de columna, con caché y con respaldo marcado.**
+- `src/hojas.ts` concentra la lectura de la planilla (feriados, configuración, clientes, precios): caché de 1 minuto (feriados, 6 horas), el fallo y el resultado vacío también se recuerdan 1 minuto (para notar rápido que se corrigió la hoja y no insistir con Google caído), y una sola lectura a la vez por hoja. El token de Google también se pide una sola vez a la vez: en un arranque en frío, varias lecturas juntas firmaban varios JWT y gastaban CPU (D31).
+- CLIENTES y PRECIOS se leen por el nombre de la columna, no por su posición. Lo que no se entiende de una fila queda en `avisos` y manda el pedido a revisión.
+- Si PRECIOS tiene errores (huecos, tramos que se pisan, precio ilegible), se usa la tabla del documento de conocimiento marcada "respaldo", y con ella nunca se le promete un precio al cliente: podría no ser el vigente.
+- Los teléfonos se normalizan: `+56 9 8765 4321`, `987654321` y `56987654321` son el mismo.
+- Fechas pedidas (`fechas.ts`): "viernes" es siempre el próximo; "15 de noviembre", "15/11" (día primero, como en Chile) y "el 20" se resuelven con la fecha de hoy. Si no se entiende, se propone lo más pronto y se avisa; si cae en domingo o feriado, se pasa al siguiente día de despacho y se explica cuál de los dos es.
+
+### D29 · 2026-10-28 · Tomada
+**Avisos por Telegram y lista del día: construidos, sin conectar (Etapas 5 y 6).**
+- Aviso (`telegram.ts`): etiqueta, ID, nombre, enlace `wa.me` al teléfono, resumen, motivos y lo que escribió el cliente; botones Confirmar y Cambiar en los pedidos. Todo texto del cliente va escapado y cada parte tiene su tope (recortar el HTML ya armado podía cortar una etiqueta y Telegram rechazaría el aviso). No lleva la dirección.
+- Botones: `callback_data` `c:<ID>` o `x:<ID>`. Solo se obedecen los tocados en el chat de la operadora y con el secreto del webhook (cabecera `X-Telegram-Bot-Api-Secret-Token`; el secreto admite 1–256 caracteres: letras, números, `_` y `-`).
+- Límites usados: 4.096 caracteres por mensaje (documentación oficial de `sendMessage`) y 64 bytes de `callback_data` (documentación de bibliotecas; confirmar en la oficial al conectar). Fuentes: https://core.telegram.org/bots/api · https://core.telegram.org/bots/api/methods/sendmessage.md
+- Falta: crear el bot (@BotFather), cargar `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y el secreto, la ruta `/telegram` en el Worker, actualizar PEDIDOS al confirmar y decidir qué hace "Cambiar".
+- Lista del día (`rutaDelDia.ts`): arma las paradas de los pedidos confirmados de un día, ordenadas por comuna y dirección, como filas de RUTA_DEL_DIA y como texto copiable. El formato es PROVISIONAL hasta conocer el archivo de importación de la app de rutas.
+
+### D30 · 2026-10-28 · Propuesta (decide el dueño)
+**Dónde guardar los comprobantes de pago (imágenes) sin gastar.**
+- Hallazgo: el plan original (subir a Drive con la cuenta de servicio) no sirve en una cuenta de Gmail normal. Las cuentas de servicio de Google no tienen cuota de almacenamiento ni pueden ser dueñas de archivos: suben a una unidad compartida (requiere Workspace de pago) o usan OAuth en nombre de una persona. Fuente (foro oficial de Google): https://discuss.google.dev/t/storagequotaexceeded-the-users-drive-storage-quota-has-been-exceeded-for-service-account/104375
+- Meta: la dirección de descarga de una imagen dura 5 minutos y el ID del medio en un webhook vence a los 7 días: hay que bajarla apenas llega. Fuente: https://developers.facebook.com/documentation/business-messaging/whatsapp/business-phone-numbers/media
+- Opciones: **A.** enviar la imagen por Telegram (`sendPhoto`) junto al aviso: USD 0, sin cuenta nueva, la operadora la ve donde recibe todo; en PAGOS queda el ID del mensaje; son datos financieros en un tercero (el mismo que ya recibe los avisos). **B.** Drive con OAuth (token de actualización de la cuenta de Google de Brunen): los archivos quedan en el Drive de Brunen (15 GB gratis); más pasos de configuración. **C.** Cloudflare R2: 10 GB gratis, pero fuentes recientes dicen que pide un método de pago para activarlo (verificar en el panel); descartada mientras el costo sea estrictamente USD 0. **D.** Guardar la imagen en D1: cabe, pero hace falta un visor.
+- Recomendación: A para el piloto; B si el dueño quiere los archivos en Drive.
+
+### D31 · 2026-10-28 · Tomada
+**Presupuesto de CPU: medirlo al conectar el flujo.**
+- Límite verificado: plan gratis, 10 ms de CPU por solicitud; al pasarse Cloudflare responde error 1102 ("exceededCpu"). Esperar la red no cuenta; la documentación no aclara si el trabajo dentro de `waitUntil` cuenta. Fuente: https://developers.cloudflare.com/workers/platform/limits/
+- Medido en producción (versión `09b3bd37`, `wrangler tail`): 15–20 ms en los primeros mensajes tras un despliegue (firma del JWT de Google y arranque) y 1–4 ms después, todos con resultado "ok". Hay tolerancia, pero no se debe confiar en ella.
+- Medidas ya tomadas: token en memoria y pedido una sola vez, caché de las hojas, y el flujo lee solo lo que cada intención necesita (un "gracias" no lee nada).
+- Al conectar: medir cada tipo de mensaje con `wrangler tail`. Si se pasa, opciones sin costo: menos trabajo por mensaje o mover lecturas a una tarea programada. Pasar al plan de pago queda descartado mientras el objetivo sea USD 0.
