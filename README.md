@@ -14,8 +14,9 @@ Brunen vende por WhatsApp el 100 % de sus pedidos: una persona recibe cada mensa
 |---|---|---|
 | 0 | Precios, despacho, firma del webhook y pruebas | Lista |
 | 1 | Worker desplegado y conectado a la API de WhatsApp de Meta (modo prueba) | Lista |
+| 2 | Deduplicación por mensaje en la base D1 y registro de mensajes y errores en Google Sheets | Lista, falta cargar los feriados |
 | 3 | Intérprete de mensajes por reglas | Parcial: funciona y está probado, aún sin conectar al bot |
-| 2, 4 a 7 | Planilla y deduplicación, flujo de pedido, alertas a la operadora, comprobantes, producción y piloto | Pendientes |
+| 4 a 7 | Flujo de pedido, alertas a la operadora, comprobantes, producción y piloto | Pendientes |
 
 Hoy el bot responde "Recibí: …" a los números de prueba. Detalle y criterios de cada etapa en [docs/ETAPAS.md](docs/ETAPAS.md).
 
@@ -36,10 +37,10 @@ flowchart LR
 - **Reglas primero, LLM de respaldo:** la mayoría de los pedidos son repetitivos, y las reglas son gratis y se pueden probar. El LLM solo recibiría el texto del mensaje, nunca nombres ni direcciones.
 - **Presupuesto de mensajes:** WhatsApp regala 1.000 mensajes de servicio al mes por número. El diseño apunta a 1 mensaje por pedido y no responde a un simple "gracias".
 - **Datos personales:** los teléfonos se enmascaran en los logs, los secretos viven solo en `.dev.vars` o en `wrangler secret`, y los datos reales de clientes no entran al repositorio.
-- Las 19 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
+- Las 21 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
 
 ## Calidad
-- Casi 200 pruebas automáticas con Vitest, entre ellas los casos de precios del negocio y mensajes de ejemplo para el intérprete.
+- Más de 250 pruebas automáticas con Vitest, entre ellas los casos de precios del negocio y mensajes de ejemplo para el intérprete.
 - TypeScript en modo estricto y CI en GitHub Actions (`npm run check` en cada push).
 - Scripts para validar la configuración y simular un mensaje firmado como Meta, sin depender de Meta.
 

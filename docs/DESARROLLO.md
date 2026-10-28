@@ -35,4 +35,5 @@ Con un token real y tu número permitido, la respuesta llega de verdad a tu What
 2. Secretos en producción: `npx wrangler secret bulk .dev.vars`, o uno a uno con `npx wrangler secret put NOMBRE`. Nunca van en el código.
 3. En Meta: URL del webhook `https://<worker>.workers.dev/webhook`, el mismo verify token, y suscribir el campo `messages`.
 4. Suscribir la app a la cuenta de WhatsApp (`POST /{WABA_ID}/subscribed_apps`); sin esto el webhook no recibe nada (ver D19 en `docs/DECISIONES.md`).
-5. Ver los registros: `npx wrangler tail`.
+5. Registro en Google Sheets y deduplicación (opcionales, ya activos en producción): `npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON < CLAVE.json`, `GOOGLE_SHEET_ID` con su `secret put`, y la base D1 con `npx wrangler d1 migrations apply brunen-chatbot --remote`. La planilla se prepara con `npm run preparar-planilla`.
+6. Ver los registros: `npx wrangler tail`.
