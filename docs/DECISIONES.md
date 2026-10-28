@@ -110,6 +110,7 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Motivo: Meta puede reintentar dos veces casi a la vez. D1 hace la revisión atómica (`INSERT OR IGNORE` sobre una clave primaria); Sheets es lento y no atómico, así que dos reintentos simultáneos pasarían los dos.
 - Límites del plan gratis, verificados el 2026-10-27: 5 millones de filas leídas y 100.000 escritas por día, 5 GB. El bot usa una escritura por mensaje.
 - Si D1 falla, el mensaje se procesa igual (quizá dos veces): el cliente nunca debe quedar sin respuesta.
-- Retención de 7 días; las filas viejas se borran en 1 de cada ~50 mensajes.
+- El mensaje se reclama antes de procesarlo y se libera si el procesamiento falla, para que un reintento pueda responderlo en vez de descartarlo como repetido.
+- Retención de 7 días; las filas viejas se borran en 1 de cada ~50 lotes, al terminar y fuera del camino de la respuesta.
 - Sin el bloque `[[d1_databases]]` en `wrangler.toml` no se deduplica: así el despliegue actual no cambia hasta crear la base.
 - Fuente: https://developers.cloudflare.com/d1/platform/pricing/

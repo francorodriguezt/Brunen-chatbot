@@ -11,8 +11,8 @@
  * (deduplicación, interpretación, cotización, registro en Sheets, alerta a Constanza).
  */
 
-import { almacenDe, esMensajeNuevo, type BaseDatos } from './almacen';
-import { verificarFirma } from './firma';
+import { almacenDe, esMensajeNuevo, liberarMensaje, limpiarAlmacen, type BaseDatos } from './almacen';
+import { igualesTiempoConstante, verificarFirma } from './firma';
 import {
   enmascararTelefono,
   enviarTexto,
@@ -78,13 +78,17 @@ export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promi
 async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void> {
   const almacen = almacenDe(env);
   for (const mensaje of mensajes) {
+    let reclamado = false;
     try {
       if (almacen && !(await esMensajeNuevo(almacen, mensaje.id))) {
         console.log(`Mensaje repetido ignorado (${mensaje.id})`);
         continue;
       }
+      reclamado = almacen !== null;
       await procesarMensaje(mensaje, env);
     } catch (error) {
+      // Si falló, se suelta el mensaje para que un reintento de Meta sí lo procese.
+      if (almacen && reclamado) await liberarMensaje(almacen, mensaje.id);
       if (esErrorDeToken(error)) {
         console.error(
           'TOKEN DE WHATSAPP VENCIDO O INVÁLIDO: genera uno nuevo en API Setup y cárgalo con "npx wrangler secret put WHATSAPP_TOKEN".',
@@ -94,6 +98,7 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
       console.error(`Error procesando ${mensaje.id}:`, error instanceof Error ? error.message : error);
     }
   }
+  if (almacen) await limpiarAlmacen(almacen);
 }
 
 /** Solo deja registro de los envíos que fallaron; enviado, entregado y leído no necesitan acción. */
@@ -110,18 +115,22 @@ function verificarSuscripcion(url: URL, env: Env): Response {
   const modo = url.searchParams.get('hub.mode');
   const token = url.searchParams.get('hub.verify_token');
   const desafio = url.searchParams.get('hub.challenge');
-  if (modo === 'subscribe' && token && token === env.WHATSAPP_VERIFY_TOKEN && desafio) {
+  if (modo === 'subscribe' && token && igualesTiempoConstante(token, env.WHATSAPP_VERIFY_TOKEN ?? '') && desafio) {
     return new Response(desafio, { status: 200 });
   }
   return new Response('Forbidden', { status: 403 });
 }
 
+/** Los webhooks de Meta pesan pocos KB; un tope generoso corta el tráfico basura. */
+const MAX_CUERPO_BYTES = 256 * 1024;
+
 export default {
   async fetch(request: Request, env: Env, ctx: Contexto): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === '/salud' && request.method === 'GET') {
-      return new Response('ok', { status: 200 });
+    // HEAD también: los monitores gratuitos (UptimeRobot) suelen consultar con HEAD.
+    if (url.pathname === '/salud' && (request.method === 'GET' || request.method === 'HEAD')) {
+      return new Response(request.method === 'HEAD' ? null : 'ok', { status: 200 });
     }
 
     if (url.pathname !== '/webhook') {
@@ -133,7 +142,17 @@ export default {
     }
 
     if (request.method === 'POST') {
+      // Descartar lo evidentemente inválido antes de gastar CPU leyendo el cuerpo y calculando el HMAC.
+      if (!request.headers.get('x-hub-signature-256')) {
+        return new Response('Invalid signature', { status: 401 });
+      }
+      if (Number(request.headers.get('content-length') ?? 0) > MAX_CUERPO_BYTES) {
+        return new Response('Payload too large', { status: 413 });
+      }
       const cuerpo = await request.text();
+      if (cuerpo.length > MAX_CUERPO_BYTES) {
+        return new Response('Payload too large', { status: 413 });
+      }
       const firmaValida = await verificarFirma(cuerpo, request.headers.get('x-hub-signature-256'), env.WHATSAPP_APP_SECRET);
       if (!firmaValida) {
         return new Response('Invalid signature', { status: 401 });
@@ -145,7 +164,12 @@ export default {
         return new Response('Bad request', { status: 400 });
       }
       // Responder rápido: Meta reintenta si no recibe 200 a tiempo, y eso genera duplicados.
-      registrarEstados(extraerEstados(payload));
+      try {
+        registrarEstados(extraerEstados(payload));
+      } catch (error) {
+        // Un aviso de estado raro nunca debe romper el 200 a Meta.
+        console.error('No se pudieron registrar los estados:', error instanceof Error ? error.message : error);
+      }
       ctx.waitUntil(procesarLote(extraerMensajes(payload), env));
       return new Response('OK', { status: 200 });
     }

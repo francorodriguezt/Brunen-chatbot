@@ -1,6 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import worker, { type Contexto, type Env } from '../src/index';
-import { AlmacenD1, AlmacenEnMemoria, almacenDe, esMensajeNuevo, type BaseDatos } from '../src/almacen';
+import {
+  AlmacenD1,
+  AlmacenEnMemoria,
+  almacenDe,
+  esMensajeNuevo,
+  liberarMensaje,
+  limpiarAlmacen,
+  type AlmacenMensajes,
+  type BaseDatos,
+} from '../src/almacen';
 import { firmarHmacSha256 } from '../src/firma';
 
 // Todos los valores son ficticios.
@@ -13,7 +22,7 @@ const ENV: Env = {
   NUMEROS_PERMITIDOS: '56900000001',
 };
 
-/** D1 de mentira: guarda las filas en un Map y entiende solo las dos consultas del almacén. */
+/** D1 de mentira: guarda las filas en un Map y entiende solo las consultas del almacén. */
 class D1Falsa implements BaseDatos {
   readonly filas = new Map<string, number>();
 
@@ -27,7 +36,11 @@ class D1Falsa implements BaseDatos {
             this.filas.set(id, instante);
             return { meta: { changes: 1 } };
           }
-          if (sql.startsWith('DELETE')) {
+          if (sql.includes('WHERE wamid = ?1')) {
+            const [id] = valores as [string];
+            return { meta: { changes: this.filas.delete(id) ? 1 : 0 } };
+          }
+          if (sql.includes('WHERE recibido_en < ?1')) {
             const [limite] = valores as [number];
             let borradas = 0;
             for (const [id, instante] of this.filas) {
@@ -47,29 +60,37 @@ class D1Falsa implements BaseDatos {
 
 describe('AlmacenD1', () => {
   it('registra un mensaje nuevo y reconoce el repetido', async () => {
-    const almacen = new AlmacenD1(new D1Falsa(), () => 1);
+    const almacen = new AlmacenD1(new D1Falsa());
     expect(await almacen.registrarSiEsNuevo('wamid.A', 1000)).toBe(true);
     expect(await almacen.registrarSiEsNuevo('wamid.A', 1001)).toBe(false);
     expect(await almacen.registrarSiEsNuevo('wamid.B', 1002)).toBe(true);
   });
 
-  it('borra los registros de más de 7 días cuando toca limpiar', async () => {
+  it('liberar deja que el mismo mensaje se procese de nuevo', async () => {
+    const almacen = new AlmacenD1(new D1Falsa());
+    await almacen.registrarSiEsNuevo('wamid.A', 1000);
+    await almacen.liberar('wamid.A');
+    expect(await almacen.registrarSiEsNuevo('wamid.A', 1001)).toBe(true);
+  });
+
+  it('limpiar borra los registros de más de 7 días cuando toca', async () => {
     const db = new D1Falsa();
     const dias = 24 * 3600;
-    await new AlmacenD1(db, () => 1).registrarSiEsNuevo('wamid.VIEJO', 1000);
-    await new AlmacenD1(db, () => 0).registrarSiEsNuevo('wamid.NUEVO', 1000 + 8 * dias);
+    await new AlmacenD1(db).registrarSiEsNuevo('wamid.VIEJO', 1000);
+    await new AlmacenD1(db).registrarSiEsNuevo('wamid.NUEVO', 1000 + 8 * dias);
+    await new AlmacenD1(db, () => 0).limpiar(1000 + 8 * dias);
     expect([...db.filas.keys()]).toEqual(['wamid.NUEVO']);
   });
 
-  it('no limpia en cada mensaje', async () => {
+  it('limpiar no corre en cada lote', async () => {
     const db = new D1Falsa();
-    await new AlmacenD1(db, () => 1).registrarSiEsNuevo('wamid.VIEJO', 1000);
-    await new AlmacenD1(db, () => 1).registrarSiEsNuevo('wamid.NUEVO', 1000 + 30 * 24 * 3600);
-    expect(db.filas.size).toBe(2);
+    await new AlmacenD1(db).registrarSiEsNuevo('wamid.VIEJO', 1000);
+    await new AlmacenD1(db, () => 1).limpiar(1000 + 30 * 24 * 3600);
+    expect(db.filas.size).toBe(1);
   });
 });
 
-describe('almacenDe y esMensajeNuevo', () => {
+describe('ayudantes del almacén', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('sin base D1 no hay almacén (no se deduplica)', () => {
@@ -81,23 +102,34 @@ describe('almacenDe y esMensajeNuevo', () => {
     const almacen = new AlmacenEnMemoria();
     expect(await almacen.registrarSiEsNuevo('wamid.A')).toBe(true);
     expect(await almacen.registrarSiEsNuevo('wamid.A')).toBe(false);
+    await almacen.liberar('wamid.A');
+    expect(await almacen.registrarSiEsNuevo('wamid.A')).toBe(true);
   });
 
   it('si la base falla, el mensaje se procesa igual y el error se registra', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const roto = { registrarSiEsNuevo: async () => { throw new Error('D1 caída'); } };
+    const caida = async () => {
+      throw new Error('D1 caída');
+    };
+    const roto: AlmacenMensajes = { registrarSiEsNuevo: caida, liberar: caida, limpiar: caida };
     expect(await esMensajeNuevo(roto, 'wamid.A')).toBe(true);
-    expect(error).toHaveBeenCalledOnce();
+    await liberarMensaje(roto, 'wamid.A');
+    await limpiarAlmacen(roto);
+    expect(error).toHaveBeenCalledTimes(3);
   });
 });
 
 describe('el webhook con deduplicación', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   async function enviar(env: Env, id: string) {
+    const mensaje = { id, from: '56900000001', timestamp: '1793000000', type: 'text', text: { body: 'hola' } };
     const payload = {
       object: 'whatsapp_business_account',
-      entry: [{ id: 'WABA', changes: [{ field: 'messages', value: { messages: [{ id, from: '56900000001', timestamp: '1793000000', type: 'text', text: { body: 'hola' } }] } }] }],
+      entry: [{ id: 'WABA', changes: [{ field: 'messages', value: { messages: [mensaje] } }] }],
     };
     const cuerpo = JSON.stringify(payload);
     const firma = await firmarHmacSha256(cuerpo, env.WHATSAPP_APP_SECRET);
@@ -128,6 +160,21 @@ describe('el webhook con deduplicación', () => {
     const env: Env = { ...ENV, DB: new D1Falsa() };
     await enviar(env, 'wamid.UNO');
     await enviar(env, 'wamid.DOS');
+    expect(meta).toHaveBeenCalledTimes(2);
+  });
+
+  it('con D1, si el envío falla el mensaje se libera y un reintento sí se procesa', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const meta = vi
+      .fn<() => Promise<Response>>()
+      .mockResolvedValueOnce(new Response('{}', { status: 500 }))
+      .mockResolvedValue(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', meta);
+    const env: Env = { ...ENV, DB: new D1Falsa() };
+    await enviar(env, 'wamid.FALLA');
+    await enviar(env, 'wamid.FALLA');
+    expect(meta).toHaveBeenCalledTimes(2);
+    await enviar(env, 'wamid.FALLA');
     expect(meta).toHaveBeenCalledTimes(2);
   });
 

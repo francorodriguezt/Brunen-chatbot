@@ -72,6 +72,15 @@ export class ErrorWhatsApp extends Error {
   }
 }
 
+/** Máximo de caracteres de un mensaje de texto de WhatsApp. */
+export const LIMITE_TEXTO = 4096;
+/** Si Meta no responde en este tiempo, el envío falla en vez de dejar colgado el procesamiento. */
+const TIEMPO_MAXIMO_ENVIO_MS = 8000;
+
+function recortar(texto: string): string {
+  return texto.length > LIMITE_TEXTO ? texto.slice(0, LIMITE_TEXTO - 1) + '…' : texto;
+}
+
 export async function enviarTexto(config: ConfigWhatsApp, para: string, cuerpo: string): Promise<void> {
   // Exige mayor >= 1: así el valor de relleno "v00.0" de wrangler.toml falla aquí con un mensaje claro.
   if (!/^v[1-9]\d*\.\d+$/.test(config.graphApiVersion)) {
@@ -82,6 +91,7 @@ export async function enviarTexto(config: ConfigWhatsApp, para: string, cuerpo: 
   const url = `https://graph.facebook.com/${config.graphApiVersion}/${config.phoneNumberId}/messages`;
   const respuesta = await fetch(url, {
     method: 'POST',
+    signal: AbortSignal.timeout(TIEMPO_MAXIMO_ENVIO_MS),
     headers: {
       Authorization: `Bearer ${config.token}`,
       'Content-Type': 'application/json',
@@ -91,7 +101,7 @@ export async function enviarTexto(config: ConfigWhatsApp, para: string, cuerpo: 
       recipient_type: 'individual',
       to: para,
       type: 'text',
-      text: { preview_url: false, body: cuerpo },
+      text: { preview_url: false, body: recortar(cuerpo) },
     }),
   });
   if (!respuesta.ok) {

@@ -207,9 +207,11 @@ const FACTURA = palabras(
   'nota de debito', 'guia de despacho', 'rut',
 );
 const PROVEEDOR = palabras('proveedor', 'proveedores', 'cobranza', 'me deben', 'cuando me pagan', 'pago pendiente');
+// Frases específicas: "semana pasada" o "repetir" sueltas también aparecen en preguntas y reclamos.
 const REPETIR = palabras(
   'lo de siempre', 'de siempre', 'como siempre', 'lo mismo', 'lo habitual', 'lo de costumbre',
-  'mismo pedido', 'repetir', 'repite', 'vez pasada', 'semana pasada', 'ultima vez',
+  'mismo pedido', 'repetir el pedido', 'repite el pedido', 'repetir pedido',
+  'lo de la semana pasada', 'lo de la vez pasada', 'lo de la ultima vez',
 );
 const VERBO_PEDIDO = palabras(
   'quiero', 'quisiera', 'queria', 'necesito', 'necesitamos', 'necesitaria', 'solicito', 'pido',
@@ -322,7 +324,8 @@ export function interpretar(texto: string): Interpretacion {
   const escalada = RECLAMO.test(t) ? 'reclamo' : FACTURA.test(t) ? 'factura' : PROVEEDOR.test(t) ? 'proveedor' : undefined;
   if (escalada) return resultado(escalada, { accion: 'escalar' });
 
-  if (REPETIR.test(t) && items.length === 0) return resultado('repetir_pedido');
+  // Una pregunta ("¿cuánto sale lo mismo de siempre?") nunca debe crear un pedido.
+  if (REPETIR.test(t) && items.length === 0 && !tipoDePregunta(t, comuna !== null)) return resultado('repetir_pedido');
 
   const verbo = VERBO_PEDIDO.test(t);
   let tipoPregunta = tipoDePregunta(t, comuna !== null);
