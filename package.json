@@ -16,7 +16,7 @@
     "preparar-planilla": "node scripts/preparar-planilla.mjs"
   },
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.13"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

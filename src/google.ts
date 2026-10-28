@@ -58,10 +58,12 @@ interface TokenGuardado {
   venceSegundos: number;
 }
 const tokens = new Map<string, TokenGuardado>();
+const tokensEnVuelo = new Map<string, Promise<string>>();
 
 /** Solo para pruebas. */
 export function olvidarTokens(): void {
   tokens.clear();
+  tokensEnVuelo.clear();
 }
 
 export class ClienteSheets {
@@ -70,9 +72,22 @@ export class ClienteSheets {
     private readonly planillaId: string,
   ) {}
 
-  private async token(ahoraSegundos: number): Promise<string> {
-    const guardado = tokens.get(this.cuenta.client_email);
-    if (guardado && guardado.venceSegundos - MARGEN_RENOVACION_S > ahoraSegundos) return guardado.valor;
+  /**
+   * Un solo pedido de token a la vez: si varias lecturas llegan juntas con el Worker recién arrancado, no firman
+   * cada una su propio JWT (la firma gasta CPU y el plan gratis da 10 ms por mensaje).
+   */
+  private token(ahoraSegundos: number): Promise<string> {
+    const correo = this.cuenta.client_email;
+    const guardado = tokens.get(correo);
+    if (guardado && guardado.venceSegundos - MARGEN_RENOVACION_S > ahoraSegundos) return Promise.resolve(guardado.valor);
+    const enVuelo = tokensEnVuelo.get(correo);
+    if (enVuelo) return enVuelo;
+    const nuevo = this.pedirToken(ahoraSegundos).finally(() => tokensEnVuelo.delete(correo));
+    tokensEnVuelo.set(correo, nuevo);
+    return nuevo;
+  }
+
+  private async pedirToken(ahoraSegundos: number): Promise<string> {
     const respuesta = await fetch(URL_TOKEN, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },

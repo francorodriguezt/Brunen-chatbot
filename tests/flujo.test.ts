@@ -566,3 +566,17 @@ describe('qué lee el flujo para cada mensaje (cada lectura gasta tiempo y cupo 
     expect(interpretarConIa).toHaveBeenCalledTimes(1); // "20" se entendió con el contexto, sin llamar a la IA
   });
 });
+
+describe('el aviso de horario según quién tiene que contestar', () => {
+  it('los envases anotados y lo fuera de zona no esperan a la operadora: sin aviso de horario', async () => {
+    const envases = await conversacion({ ahora: MIERCOLES_22 }).decir('tengo 3 bidones vacios para devolver');
+    expect(envases.respuesta).not.toContain('horario de atención');
+    const fuera = await conversacion({ ahora: MIERCOLES_22, cliente: conocido({ comuna: 'Maipú' }) }).decir('quiero 2 de 20');
+    expect(fuera.respuesta).not.toContain('horario de atención');
+  });
+
+  it('un cliente nuevo o un reclamo, que sí esperan a una persona, lo llevan', async () => {
+    const nuevo = await conversacion({ ahora: MIERCOLES_22, cliente: { estado: 'nuevo' } }).decir('quiero 2 de 20');
+    expect(nuevo.respuesta).toContain('horario de atención');
+  });
+});

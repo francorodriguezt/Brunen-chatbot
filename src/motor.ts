@@ -77,6 +77,9 @@ export interface Decision {
   ultimoPedido?: ItemInterpretado[];
 }
 
+/** Avisos informativos: el cliente ya tiene su respuesta y la operadora no tiene que contestarle. */
+const SIN_ESPERA_HUMANA: ReadonlySet<TipoAlerta> = new Set<TipoAlerta>(['pedido', 'envases', 'fuera_de_zona']);
+
 const MANTENER: AccionMemoria = { accion: 'mantener' };
 const BORRAR: AccionMemoria = { accion: 'borrar' };
 
@@ -300,8 +303,11 @@ function decidirBase(e: EntradaMotor): Decision {
 function adornar(decision: Decision, e: EntradaMotor): Decision {
   if (decision.respuesta === null) return decision;
   let respuesta = decision.respuesta;
-  // Lo que ya está resuelto (un pedido normal) no necesita a la operadora ahora: solo lo demás lleva el aviso de horario.
-  if (decision.alerta && decision.alerta.tipo !== 'pedido' && fueraDelHorarioDeAtencion(e.ahora)) respuesta += `\n\n${textos.fueraDeHorario()}`;
+  // Lo que ya está resuelto (un pedido normal, envases anotados, fuera de zona) no espera nada de la operadora:
+  // solo lo demás lleva el aviso de horario.
+  if (decision.alerta && !SIN_ESPERA_HUMANA.has(decision.alerta.tipo) && fueraDelHorarioDeAtencion(e.ahora)) {
+    respuesta += `\n\n${textos.fueraDeHorario()}`;
+  }
   const excepcion = e.servicio.mensajeExcepcion.trim();
   if (e.servicio.reducido && excepcion !== '') respuesta += `\n\n${excepcion}`;
   return { ...decision, respuesta };
