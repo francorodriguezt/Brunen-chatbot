@@ -13,6 +13,7 @@
 
 import { almacenDe, esMensajeNuevo, liberarMensaje, limpiarAlmacen, type BaseDatos } from './almacen';
 import { igualesTiempoConstante, verificarFirma } from './firma';
+import { planillaDe, type RegistroMensaje, type Resultado } from './planilla';
 import {
   enmascararTelefono,
   enviarTexto,
@@ -35,6 +36,9 @@ export interface Env {
   BOT_ACTIVO?: string;
   /** Base D1 para deduplicar mensajes por wamid. Sin ella no se deduplica. */
   DB?: BaseDatos;
+  /** Clave JSON de la cuenta de servicio de Google (secreto). Sin ella no se registra en la planilla. */
+  GOOGLE_SERVICE_ACCOUNT_JSON?: string;
+  GOOGLE_SHEET_ID?: string;
 }
 
 /** Subconjunto de ExecutionContext que usamos; facilita las pruebas. */
@@ -51,14 +55,14 @@ export function numerosPermitidos(env: Env): Set<string> {
   );
 }
 
-export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promise<void> {
+export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promise<Resultado> {
   if ((env.BOT_ACTIVO ?? 'SI').toUpperCase() === 'NO') {
     console.log(`Bot apagado; mensaje de ${enmascararTelefono(mensaje.de)} ignorado`);
-    return;
+    return 'ignorado_bot_apagado';
   }
   if (!numerosPermitidos(env).has(mensaje.de)) {
     console.log(`Modo prueba: ${enmascararTelefono(mensaje.de)} no está en NUMEROS_PERMITIDOS`);
-    return;
+    return 'ignorado_modo_prueba';
   }
   const respuesta =
     mensaje.tipo === 'text' && mensaje.texto
@@ -73,11 +77,14 @@ export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promi
     mensaje.de,
     respuesta,
   );
+  return 'respondido';
 }
 
 async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void> {
   const almacen = almacenDe(env);
+  const registros: RegistroMensaje[] = [];
   for (const mensaje of mensajes) {
+    const base = { wamid: mensaje.id, telefonoEnmascarado: enmascararTelefono(mensaje.de), tipo: mensaje.tipo };
     let reclamado = false;
     try {
       if (almacen && !(await esMensajeNuevo(almacen, mensaje.id))) {
@@ -85,7 +92,7 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
         continue;
       }
       reclamado = almacen !== null;
-      await procesarMensaje(mensaje, env);
+      registros.push({ ...base, resultado: await procesarMensaje(mensaje, env) });
     } catch (error) {
       // Si falló, se suelta el mensaje para que un reintento de Meta sí lo procese.
       if (almacen && reclamado) await liberarMensaje(almacen, mensaje.id);
@@ -95,10 +102,24 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
         );
       }
       // Etapa posterior: escribir en la hoja ERRORES y avisar a Constanza.
-      console.error(`Error procesando ${mensaje.id}:`, error instanceof Error ? error.message : error);
+      const detalle = error instanceof Error ? error.message : String(error);
+      console.error(`Error procesando ${mensaje.id}:`, detalle);
+      registros.push({ ...base, resultado: 'error', error: detalle });
     }
   }
+  await guardarEnPlanilla(env, registros);
   if (almacen) await limpiarAlmacen(almacen);
+}
+
+/** La planilla es una vista para Constanza: si Google falla, solo se anota en el log. */
+async function guardarEnPlanilla(env: Env, registros: readonly RegistroMensaje[]): Promise<void> {
+  const planilla = planillaDe(env);
+  if (!planilla || registros.length === 0) return;
+  try {
+    await planilla.guardar(registros);
+  } catch (error) {
+    console.error('No se pudo registrar en la planilla:', error instanceof Error ? error.message : error);
+  }
 }
 
 /** Solo deja registro de los envíos que fallaron; enviado, entregado y leído no necesitan acción. */
