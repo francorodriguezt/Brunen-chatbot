@@ -12,7 +12,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "verificar-config": "node scripts/verificar-config.mjs",
-    "simular-mensaje": "node scripts/simular-mensaje.mjs"
+    "simular-mensaje": "node scripts/simular-mensaje.mjs",
+    "preparar-planilla": "node scripts/preparar-planilla.mjs"
   },
   "engines": {
     "node": ">=22.12"
