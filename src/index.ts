@@ -11,8 +11,17 @@
  * (deduplicación, interpretación, cotización, registro en Sheets, alerta a Constanza).
  */
 
+import { almacenDe, esMensajeNuevo, type BaseDatos } from './almacen';
 import { verificarFirma } from './firma';
-import { enmascararTelefono, enviarTexto, extraerMensajes, type MensajeEntrante } from './whatsapp';
+import {
+  enmascararTelefono,
+  enviarTexto,
+  esErrorDeToken,
+  extraerEstados,
+  extraerMensajes,
+  type EstadoMensaje,
+  type MensajeEntrante,
+} from './whatsapp';
 
 export interface Env {
   WHATSAPP_VERIFY_TOKEN: string;
@@ -24,6 +33,8 @@ export interface Env {
   NUMEROS_PERMITIDOS?: string;
   /** "NO" apaga el bot (regla 11). */
   BOT_ACTIVO?: string;
+  /** Base D1 para deduplicar mensajes por wamid. Sin ella no se deduplica. */
+  DB?: BaseDatos;
 }
 
 /** Subconjunto de ExecutionContext que usamos; facilita las pruebas. */
@@ -65,13 +76,33 @@ export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promi
 }
 
 async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void> {
+  const almacen = almacenDe(env);
   for (const mensaje of mensajes) {
     try {
+      if (almacen && !(await esMensajeNuevo(almacen, mensaje.id))) {
+        console.log(`Mensaje repetido ignorado (${mensaje.id})`);
+        continue;
+      }
       await procesarMensaje(mensaje, env);
     } catch (error) {
+      if (esErrorDeToken(error)) {
+        console.error(
+          'TOKEN DE WHATSAPP VENCIDO O INVÁLIDO: genera uno nuevo en API Setup y cárgalo con "npx wrangler secret put WHATSAPP_TOKEN".',
+        );
+      }
       // Etapa posterior: escribir en la hoja ERRORES y avisar a Constanza.
       console.error(`Error procesando ${mensaje.id}:`, error instanceof Error ? error.message : error);
     }
+  }
+}
+
+/** Solo deja registro de los envíos que fallaron; enviado, entregado y leído no necesitan acción. */
+export function registrarEstados(estados: EstadoMensaje[]): void {
+  for (const estado of estados) {
+    if (estado.estado !== 'failed') continue;
+    console.error(
+      `Entrega fallida a ${enmascararTelefono(estado.para)}: código ${estado.codigoError ?? '?'} ${estado.tituloError ?? ''}`.trim(),
+    );
   }
 }
 
@@ -114,6 +145,7 @@ export default {
         return new Response('Bad request', { status: 400 });
       }
       // Responder rápido: Meta reintenta si no recibe 200 a tiempo, y eso genera duplicados.
+      registrarEstados(extraerEstados(payload));
       ctx.waitUntil(procesarLote(extraerMensajes(payload), env));
       return new Response('OK', { status: 200 });
     }

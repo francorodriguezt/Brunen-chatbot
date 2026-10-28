@@ -65,6 +65,8 @@ export class ErrorWhatsApp extends Error {
   constructor(
     mensaje: string,
     readonly status?: number,
+    /** Código de error que devuelve Meta en el cuerpo (190 = token vencido o inválido). */
+    readonly codigoMeta?: number,
   ) {
     super(mensaje);
   }
@@ -95,11 +97,66 @@ export async function enviarTexto(config: ConfigWhatsApp, para: string, cuerpo: 
   if (!respuesta.ok) {
     // No se registra el token ni el cuerpo completo: solo el estado y el detalle de Meta.
     const detalle = await respuesta.text().catch(() => '');
-    throw new ErrorWhatsApp(`Meta respondió ${respuesta.status}: ${detalle.slice(0, 300)}`, respuesta.status);
+    throw new ErrorWhatsApp(`Meta respondió ${respuesta.status}: ${detalle.slice(0, 300)}`, respuesta.status, codigoDeError(detalle));
   }
 }
 
 /** Para logs: nunca registrar teléfonos completos. "56912345678" -> "*******5678". */
 export function enmascararTelefono(telefono: string): string {
   return telefono.length <= 4 ? '****' : '*'.repeat(telefono.length - 4) + telefono.slice(-4);
+}
+
+function codigoDeError(detalle: string): number | undefined {
+  try {
+    const codigo = (JSON.parse(detalle) as { error?: { code?: unknown } }).error?.code;
+    return typeof codigo === 'number' ? codigo : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** El token de acceso venció o no es válido (los temporales duran 24 h). */
+export function esErrorDeToken(error: unknown): boolean {
+  return error instanceof ErrorWhatsApp && (error.status === 401 || error.codigoMeta === 190);
+}
+
+export interface EstadoMensaje {
+  id: string; // wamid del mensaje que envió el bot
+  para: string; // teléfono del cliente
+  estado: string; // sent | delivered | read | failed
+  codigoError?: number;
+  tituloError?: string;
+}
+
+interface PayloadEstados {
+  object?: string;
+  entry?: Array<{
+    changes?: Array<{
+      value?: {
+        statuses?: Array<{
+          id?: string;
+          status?: string;
+          recipient_id?: string;
+          errors?: Array<{ code?: number; title?: string }>;
+        }>;
+      };
+    }>;
+  }>;
+}
+
+/** Avisos de entrega de Meta sobre los mensajes que envió el bot (enviado, entregado, leído o fallido). */
+export function extraerEstados(payload: unknown): EstadoMensaje[] {
+  const datos = payload as PayloadEstados;
+  if (!datos || datos.object !== 'whatsapp_business_account' || !Array.isArray(datos.entry)) return [];
+  const estados: EstadoMensaje[] = [];
+  for (const entrada of datos.entry) {
+    for (const cambio of entrada.changes ?? []) {
+      for (const s of cambio.value?.statuses ?? []) {
+        if (!s.id || !s.status || !s.recipient_id) continue;
+        const error = s.errors?.[0];
+        estados.push({ id: s.id, para: s.recipient_id, estado: s.status, codigoError: error?.code, tituloError: error?.title });
+      }
+    }
+  }
+  return estados;
 }
