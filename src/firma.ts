@@ -21,7 +21,7 @@ export async function firmarHmacSha256(cuerpo: string, secreto: string): Promise
 }
 
 /** Comparación en tiempo constante para no filtrar información por tiempos de respuesta. */
-function igualesTiempoConstante(a: string, b: string): boolean {
+export function igualesTiempoConstante(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diferencia = 0;
   for (let i = 0; i < a.length; i++) {

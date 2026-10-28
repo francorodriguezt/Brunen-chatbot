@@ -14,12 +14,16 @@ export interface BaseDatos {
 }
 
 export interface AlmacenMensajes {
-  /** true si el mensaje es nuevo (y queda registrado); false si ya se había procesado. */
+  /** true si el mensaje es nuevo (y queda reclamado); false si ya se había procesado. */
   registrarSiEsNuevo(id: string, ahoraSegundos: number): Promise<boolean>;
+  /** Suelta el mensaje reclamado cuando su procesamiento falló, para que un reintento pueda procesarlo. */
+  liberar(id: string): Promise<void>;
+  /** Borra los registros viejos. Se llama al terminar el lote, fuera del camino de la respuesta. */
+  limpiar?(ahoraSegundos: number): Promise<void>;
 }
 
 const RETENCION_SEGUNDOS = 7 * 24 * 3600; // Meta reintenta durante horas o pocos días, no más
-const PROBABILIDAD_LIMPIEZA = 0.02; // limpia las filas viejas en 1 de cada ~50 mensajes
+const PROBABILIDAD_LIMPIEZA = 0.02; // limpia en 1 de cada ~50 lotes
 
 export class AlmacenD1 implements AlmacenMensajes {
   constructor(
@@ -32,13 +36,19 @@ export class AlmacenD1 implements AlmacenMensajes {
       .prepare('INSERT OR IGNORE INTO mensajes_procesados (wamid, recibido_en) VALUES (?1, ?2)')
       .bind(id, ahoraSegundos)
       .run();
-    if (this.azar() < PROBABILIDAD_LIMPIEZA) {
-      await this.db
-        .prepare('DELETE FROM mensajes_procesados WHERE recibido_en < ?1')
-        .bind(ahoraSegundos - RETENCION_SEGUNDOS)
-        .run();
-    }
     return (resultado.meta?.changes ?? 0) > 0;
+  }
+
+  async liberar(id: string): Promise<void> {
+    await this.db.prepare('DELETE FROM mensajes_procesados WHERE wamid = ?1').bind(id).run();
+  }
+
+  async limpiar(ahoraSegundos: number): Promise<void> {
+    if (this.azar() >= PROBABILIDAD_LIMPIEZA) return;
+    await this.db
+      .prepare('DELETE FROM mensajes_procesados WHERE recibido_en < ?1')
+      .bind(ahoraSegundos - RETENCION_SEGUNDOS)
+      .run();
   }
 }
 
@@ -50,6 +60,10 @@ export class AlmacenEnMemoria implements AlmacenMensajes {
     if (this.vistos.has(id)) return false;
     this.vistos.add(id);
     return true;
+  }
+
+  async liberar(id: string): Promise<void> {
+    this.vistos.delete(id);
   }
 }
 
@@ -71,5 +85,25 @@ export async function esMensajeNuevo(
   } catch (error) {
     console.error('No se pudo revisar si el mensaje ya se procesó:', error instanceof Error ? error.message : error);
     return true;
+  }
+}
+
+/** Libera el mensaje y la limpieza son mejoras: si fallan, solo se registran. */
+export async function liberarMensaje(almacen: AlmacenMensajes, id: string): Promise<void> {
+  try {
+    await almacen.liberar(id);
+  } catch (error) {
+    console.error('No se pudo liberar el mensaje:', error instanceof Error ? error.message : error);
+  }
+}
+
+export async function limpiarAlmacen(
+  almacen: AlmacenMensajes,
+  ahoraSegundos: number = Math.floor(Date.now() / 1000),
+): Promise<void> {
+  try {
+    await almacen.limpiar?.(ahoraSegundos);
+  } catch (error) {
+    console.error('No se pudo limpiar el almacén:', error instanceof Error ? error.message : error);
   }
 }
