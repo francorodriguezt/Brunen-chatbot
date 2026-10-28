@@ -36,8 +36,12 @@ export function normalizar(texto: string): string {
 /** Pasa a cifras los números escritos con letras. Recibe texto ya normalizado. */
 export function numerosACifras(textoNormalizado: string): string {
   return textoNormalizado
-    .replace(/\bun par de\b/g, '2')
-    .replace(PATRON_PALABRAS, (palabra) => String(PALABRAS_NUMERO[palabra] ?? palabra));
+    // "un par de 12" -> "2 de 12"; "un par de bidones" -> "2 bidones". Se marca primero para que "un"
+    // no se convierta en "1" antes de tiempo.
+    .replace(/\bun par de\b/g, 'xpardex')
+    .replace(PATRON_PALABRAS, (palabra) => String(PALABRAS_NUMERO[palabra] ?? palabra))
+    .replace(/xpardex (?=\d)/g, '2 de ')
+    .replace(/xpardex/g, '2');
 }
 
 /** Normaliza y pasa los números a cifras: la forma sobre la que trabajan las reglas. */
