@@ -32,11 +32,24 @@ const NOMBRE_ACCION: Readonly<Record<string, string>> = {
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
-/** "entrega propuesta lunes 2 de noviembre". Si los feriados no están al día lo dice, porque la fecha puede fallar. */
+/** "lunes 2 de noviembre" para una fecha YYYY-MM-DD. */
+export function fechaEnPalabras(fecha: string): string {
+  const [, mes = 1, dia = 1] = fecha.split('-').map(Number);
+  return `${DIAS[diaSemana(fecha)]} ${dia} de ${MESES[mes - 1]}`;
+}
+
+/**
+ * "entrega propuesta lunes 2 de noviembre". Entre paréntesis dice por qué no es el día pedido y si los
+ * feriados no están al día, porque en ese caso la fecha puede fallar.
+ */
 export function describirEntrega(entrega: PropuestaEntrega): string {
-  const [, mes = 1, dia = 1] = entrega.fecha.split('-').map(Number);
-  const fecha = `${DIAS[diaSemana(entrega.fecha)]} ${dia} de ${MESES[mes - 1]}`;
-  return `entrega propuesta ${entrega.mismoDia ? 'hoy ' : ''}${fecha}${entrega.feriadosAlDia ? '' : ' (feriados sin cargar)'}`;
+  const avisos: string[] = [];
+  if (entrega.motivoAjuste === 'sin_despacho') avisos.push(`pidió ${entrega.pedida}: ese día no hay despacho`);
+  if (entrega.motivoAjuste === 'muy_pronto') avisos.push(`pidió ${entrega.pedida}: no alcanza`);
+  if (entrega.motivoAjuste === 'no_entendida') avisos.push(`no entendí la fecha "${entrega.pedida}"`);
+  if (!entrega.feriadosAlDia) avisos.push('feriados sin cargar');
+  const texto = `entrega propuesta ${entrega.mismoDia ? 'hoy ' : ''}${fechaEnPalabras(entrega.fecha)}`;
+  return avisos.length > 0 ? `${texto} (${avisos.join('; ')})` : texto;
 }
 
 export function describirInterpretacion(interpretacion: Interpretacion, conIa = false, entrega?: PropuestaEntrega): string {

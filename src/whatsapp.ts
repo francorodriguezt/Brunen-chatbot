@@ -170,3 +170,17 @@ export function extraerEstados(payload: unknown): EstadoMensaje[] {
   }
   return estados;
 }
+
+/**
+ * Deja un teléfono en el formato de WhatsApp (solo dígitos, con código de país), para comparar el que
+ * llega en un mensaje con el que alguien escribió en una hoja: "+56 9 8765 4321", "9 8765 4321" y
+ * "56987654321" dan lo mismo. Devuelve null si no parece un teléfono.
+ */
+export function normalizarTelefono(texto: string): string | null {
+  let digitos = texto.replace(/\D/g, '');
+  if (digitos.startsWith('00')) digitos = digitos.slice(2);
+  if (digitos.length === 9) return `56${digitos}`; // sin código de país: se asume Chile
+  if (digitos.length === 11 && digitos.startsWith('56')) return digitos;
+  if (digitos.length >= 10 && digitos.length <= 15 && !digitos.startsWith('56')) return digitos; // otro país, tal cual
+  return null;
+}

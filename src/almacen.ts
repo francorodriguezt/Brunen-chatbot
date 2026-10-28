@@ -6,10 +6,13 @@
  * Esquema: migrations/0001_mensajes_procesados.sql.
  */
 
-/** Lo mínimo de D1 que usamos; se define aquí para no depender de tipos externos. */
+/**
+ * Lo mínimo de D1 que usamos; se define aquí para no depender de tipos externos.
+ * En D1, `run()` devuelve `meta.changes` (filas cambiadas por una escritura) y, en un SELECT, las filas en `results`.
+ */
 export interface BaseDatos {
   prepare(sql: string): {
-    bind(...valores: unknown[]): { run(): Promise<{ meta?: { changes?: number } }> };
+    bind(...valores: unknown[]): { run(): Promise<{ meta?: { changes?: number }; results?: unknown[] }> };
   };
 }
 
