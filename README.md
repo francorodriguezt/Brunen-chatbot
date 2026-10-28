@@ -1,48 +1,54 @@
-# brunen-chatbot
+# Brunen Chatbot
 
-Bot de WhatsApp para recibir pedidos de bidones de Brunen SpA. Cloudflare Workers + TypeScript, costo objetivo USD 0/mes.
+[![CI](https://github.com/francorodriguezt/Brunen-chatbot/actions/workflows/check.yml/badge.svg)](https://github.com/francorodriguezt/Brunen-chatbot/actions/workflows/check.yml)
 
-## Requisitos (Windows)
-- Node.js 22.12 o superior (`node -v`); wrangler y vitest no funcionan con Node 20. Recomendado: versión LTS desde nodejs.org.
-- Git for Windows (`git --version`). Claude Code lo usa para su terminal Bash.
-- Claude Code (plan Pro o superior): en PowerShell, `irm https://claude.ai/install.ps1 | iex`, luego abre una terminal nueva y verifica con `claude --version`.
+Bot de WhatsApp que recibe pedidos de bidones de agua de Brunen SpA, calcula el precio y la fecha de entrega, y deriva a una persona lo que no debe manejar. Cloudflare Workers + TypeScript, con costo objetivo de USD 0 al mes.
 
-## Empezar
-```powershell
-cd brunen-chatbot
-npm install
-npm run check      # typecheck + pruebas: deben pasar todas
-claude             # abre Claude Code en esta carpeta
+*English: a WhatsApp ordering assistant for a small Chilean water-delivery business, built on Cloudflare Workers and TypeScript. Deployed in test mode; no paid infrastructure.*
+
+## El problema
+Brunen vende por WhatsApp el 100 % de sus pedidos: una persona recibe cada mensaje, lo agenda, lo anota a mano y arma la ruta del día, con 15 a 20 clientes diarios. El bot busca quitarle esa carga repetitiva sin quitarle el control: el bot registra y propone, y una persona confirma.
+
+## Estado
+| Etapa | Qué incluye | Estado |
+|---|---|---|
+| 0 | Precios, despacho, firma del webhook y pruebas | Lista |
+| 1 | Worker desplegado y conectado a la API de WhatsApp de Meta (modo prueba) | Lista |
+| 3 | Intérprete de mensajes por reglas | Parcial: funciona y está probado, aún sin conectar al bot |
+| 2, 4 a 7 | Planilla y deduplicación, flujo de pedido, alertas a la operadora, comprobantes, producción y piloto | Pendientes |
+
+Hoy el bot responde "Recibí: …" a los números de prueba. Detalle y criterios de cada etapa en [docs/ETAPAS.md](docs/ETAPAS.md).
+
+## Cómo funciona
 ```
-El primer mensaje sugerido para Claude Code está al final de `docs/ETAPAS.md`.
+Cliente (WhatsApp) -> API de Meta -> Cloudflare Worker (/webhook)
+                                        1. valida la firma HMAC
+                                        2. responde 200 de inmediato
+                                        3. procesa en segundo plano:
+                                           intérprete -> precios y fechas -> respuesta
+```
+
+## Decisiones que vale la pena mirar
+- **Webhook seguro:** valida `X-Hub-Signature-256` (HMAC-SHA256 con comparación en tiempo constante), responde 200 de inmediato y procesa con `ctx.waitUntil`, porque Meta reintenta si tarda.
+- **El LLM extrae, el código calcula:** precios, tramos, corte horario y feriados son funciones deterministas con pruebas, en zona horaria `America/Santiago`.
+- **Reglas primero, LLM de respaldo:** la mayoría de los pedidos son repetitivos, y las reglas son gratis y se pueden probar. El LLM solo recibiría el texto del mensaje, nunca nombres ni direcciones.
+- **Presupuesto de mensajes:** WhatsApp regala 1.000 mensajes de servicio al mes por número. El diseño apunta a 1 mensaje por pedido y no responde a un simple "gracias".
+- **Datos personales:** los teléfonos se enmascaran en los logs, los secretos viven solo en `.dev.vars` o en `wrangler secret`, y los datos reales de clientes no entran al repositorio.
+- Las 19 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
+
+## Calidad
+- Casi 200 pruebas automáticas con Vitest, entre ellas los casos de precios del negocio y mensajes de ejemplo para el intérprete.
+- TypeScript en modo estricto y CI en GitHub Actions (`npm run check` en cada push).
+- Scripts para validar la configuración y simular un mensaje firmado como Meta, sin depender de Meta.
 
 ## Estructura
 ```
-src/
-  index.ts      Worker: webhook de Meta (GET verificación, POST mensajes), /salud
-  firma.ts      Verificación X-Hub-Signature-256
-  whatsapp.ts   Parseo del webhook y envío de mensajes
-  precios.ts    Cálculo de precios (tramos, especial, mayorista, carga inicial)
-  despacho.ts   Fecha de entrega (corte 9:00, sábados, domingos, feriados)
-  texto.ts      Normalización de texto y números en palabras (para el intérprete)
-  comunas.ts    Comunas atendidas y fuera de zona
-  interprete.ts Intérprete por reglas: bidones, fecha, comuna e intención del mensaje
-tests/          Pruebas Vitest + mensajes.json (casos para el intérprete)
-scripts/        verificar-config y simular-mensaje (ayudas para probar en local)
-.github/        CI: corre npm run check en cada push
-docs/           Conocimiento del negocio, decisiones, pendientes, etapas
-.claude/        settings.json: permisos de Claude Code para este proyecto
+src/       Worker, firma, WhatsApp, precios, despacho, comunas e intérprete
+tests/     Pruebas y mensajes de ejemplo (mensajes.json)
+scripts/   verificar-config y simular-mensaje
+docs/      Conocimiento del negocio, decisiones, etapas, pendientes y guía de desarrollo
 ```
+Para correrlo, probarlo y desplegarlo: [docs/DESARROLLO.md](docs/DESARROLLO.md).
 
-## Comandos
-| Comando | Qué hace |
-|---|---|
-| `npm run check` | Typecheck + pruebas |
-| `npm test` | Solo pruebas |
-| `npm run dev` | Worker local en http://localhost:8787 (lee `.dev.vars`) |
-| `npm run deploy` | Publica en Cloudflare (pide `npx wrangler login` la primera vez) |
-| `npm run verificar-config` | Revisa `.dev.vars` y `wrangler.toml` sin mostrar valores |
-| `npm run simular-mensaje -- "texto"` | Envía al Worker local un mensaje firmado como Meta |
-
-## Secretos
-Nunca en el código. Local: copia `.dev.vars.example` a `.dev.vars`. Producción: `npx wrangler secret put NOMBRE`.
+## Cómo se construyó
+Hecho por Franco Rodríguez Torres para Brunen SpA, con Claude Code como asistente. Las reglas con las que trabaja están en [CLAUDE.md](CLAUDE.md) y los permisos en `.claude/settings.json`.
