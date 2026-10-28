@@ -28,6 +28,7 @@ Con un token real y tu número permitido, la respuesta llega de verdad a tu What
 | `npm run deploy` | Publica en Cloudflare |
 | `npm run verificar-config` | Revisa `.dev.vars` y `wrangler.toml` sin mostrar valores |
 | `npm run simular-mensaje -- "texto"` | Envía al Worker un mensaje firmado como Meta (`--url` para apuntar a producción) |
+| `npm run preparar-planilla -- CLAVE.json ID_PLANILLA` | Crea las hojas y columnas de la planilla de Google (no pisa datos) |
 
 ## Desplegar
 1. `npx wrangler login` (una vez) y `npm run deploy`. La cuenta de Cloudflare debe tener el correo verificado y un subdominio `workers.dev`.
