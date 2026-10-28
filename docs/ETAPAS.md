@@ -6,7 +6,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 |---|---|---|
 | 0 | Repo base: precios, despacho, firma y webhook de eco con pruebas | ✅ Lista |
 | 1 | Esqueleto de punta a punta con el número de prueba de Meta | ✅ Lista (2026-10-28) |
-| 2 | Planilla de desarrollo + deduplicación por wamid + registro de mensajes | ✅ Lista, falta cargar FERIADOS (2026-10-28) |
+| 2 | Planilla de desarrollo + deduplicación por wamid + registro de mensajes | ✅ Lista (2026-10-28) |
 | 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | ✅ Lista (2026-10-28): reglas (54 casos) y respaldo con IA verificado con una llamada real |
 | 4 | Flujo de pedido: cotizar, fecha, registrar en PEDIDOS, responder 1 mensaje, ERRORES | |
 | 5 | Constanza: alerta por Telegram con botones Confirmar / Cambiar, actualiza estado | |
@@ -57,15 +57,15 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 **Verificado en producción:** el mismo `wamid` enviado dos veces dejó 1 fila en D1, 1 fila en la planilla y una sola respuesta.
 
 **Pendiente:**
-- [ ] Cargar en la hoja FERIADOS la lista oficial de feriados de Chile (no se inventó). Mientras esté vacía, el bot no sabe qué días son feriados y lo deja anotado en el log.
-- [ ] Conectar la lectura de feriados al cálculo de la fecha de entrega y avisar a una persona si la hoja está vacía (Etapa 4).
+- [x] Hoja FERIADOS cargada el 2026-10-28 con los feriados nacionales de 2026 y 2027 (D25).
+- [x] Feriados conectados al cálculo de la fecha de entrega (`proponerEntrega`, `src/entrega.ts`): en modo prueba, un pedido responde "entrega propuesta …". En la Etapa 4, el flujo debe avisar a una persona cuando `feriadosAlDia` sea false.
 - [ ] Copiar la planilla de desarrollo a la planilla real cuando se pase a producción (Etapa 7), con `npm run preparar-planilla` y los secretos de esa planilla.
 
 **Prueba de aceptación:**
 - ✅ El mismo `wamid` enviado dos veces recibe una sola respuesta y deja una sola fila.
 - ✅ El mensaje aparece en MENSAJES_PROCESADOS.
 - ✅ Un fallo al enviar a Meta aparece en ERRORES (probado con Meta simulado).
-- ⏳ Los feriados se leen de la hoja FERIADOS, no del código: la lectura está hecha y probada; falta cargar los datos.
+- ✅ Los feriados se leen de la hoja FERIADOS, no del código: cargados y probados con la hoja simulada; falta verificarlo en producción con un pedido real tras el próximo despliegue.
 
 ---
 
@@ -83,3 +83,20 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 2. Crear la clave en Groq y cargarla con `npx wrangler secret put GROQ_API_KEY`.
 3. Desplegar y enviar un mensaje que las reglas no entiendan (por ejemplo "necesito aguita pal finde"): la respuesta debe decir "(con IA)".
 4. En la hoja CONFIGURACION, agregar la fila `BOT_ACTIVO` con `SI` (columnas Variable, Valor, Descripción).
+
+---
+
+## Etapa 4 — Flujo de pedido (preparación)
+
+**Estado (2026-10-28):** no empezada; espera las respuestas del dueño. Esto es lo que ya existe y lo que falta.
+
+**Ya listo y probado:** intérprete con respaldo de IA, cálculo de precios (`precios.ts`), fecha de entrega con feriados (`entrega.ts`), deduplicación, apagado desde la planilla, una sola respuesta por mensaje y registro de mensajes y errores.
+
+**Falta construir, sin depender del dueño:**
+1. Leer CLIENTES por teléfono (tipo de cliente, precio especial, envases pendientes) y PRECIOS desde la planilla. El lector de hojas ya existe.
+2. **Estado de la conversación en D1:** cuando el bot pregunta "¿de qué tamaño?", la respuesta siguiente ("20") solo se entiende si el bot recuerda el pedido a medias. Necesita una tabla con vencimiento por teléfono.
+3. Escribir en PEDIDOS (ID_Pedido, estado `Pendiente_Confirmacion`) y registrar fallos en ERRORES.
+4. Redactar los textos de respuesta (el borrador de la sección 12 del documento original no está en el repositorio) y que el dueño los apruebe.
+5. Fuera de zona: registrar con estado `Fuera_de_zona` e informar las comunas atendidas.
+
+**Depende del dueño (ver PENDIENTES):** confirmación por excepción o doble mensaje, carga inicial, precios mayorista y especial para 12 L y 10 L, tramos entre tipos de bidón, empresas con plan mensual, cantidad máxima por pedido, boletas, y qué hacer con clientes bloqueados y con `Credito`.

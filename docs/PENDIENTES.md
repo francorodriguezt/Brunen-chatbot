@@ -26,7 +26,8 @@
 - [x] Fila `BOT_ACTIVO` = `SI` agregada en la hoja CONFIGURACION de la planilla de desarrollo.
 - [ ] Traspasar a la cuenta de Brunen (correo de la empresa) lo que hoy está a nombre de Franco: Cloudflare, Google Cloud/planilla y la app de Meta. Mientras tanto, invitar a contactobrunen@gmail.com como administrador de Cloudflare. Se hace completo en la Etapa 7.
 - [x] Cuenta de Groq a nombre de Brunen, plan gratis sin tarjeta y retención de datos cero activada (D23).
-- [ ] Cargar la lista oficial de feriados de Chile en la hoja FERIADOS de la planilla (Fecha YYYY-MM-DD y Nombre).
+- [x] Feriados nacionales 2026 y 2027 cargados en la hoja FERIADOS (D25).
+- [ ] Renovar la hoja FERIADOS con los feriados de 2028 antes del 31 de diciembre de 2027 (el bot lo avisa con "feriados sin cargar") y confirmar el 21 de junio de 2027 cuando el Gobierno publique el calendario oficial.
 - [ ] La clave JSON de Google quedó en la carpeta Descargas del computador: guardarla en un lugar seguro fuera del proyecto o borrarla (ya está en Cloudflare y se puede generar otra).
 - [x] Versión de la Graph API: v25.0 (D18).
 - [x] Base D1 `brunen-chatbot` creada, migrada y activa (D20).

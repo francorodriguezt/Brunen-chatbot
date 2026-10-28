@@ -98,7 +98,8 @@ describe('recepción de mensajes (POST)', () => {
     expect(url).toBe('https://graph.facebook.com/v99.0/000000000000000/messages');
     const enviado = JSON.parse(String(init.body));
     expect(enviado.to).toBe('56900000001');
-    expect(enviado.text.body).toBe('Modo prueba. Entendí: pedido · 2 de 20 L');
+    // Un pedido suma la fecha de entrega propuesta (la fecha exacta depende del día en que corra la prueba).
+    expect(enviado.text.body).toMatch(/^Modo prueba\. Entendí: pedido · 2 de 20 L · entrega propuesta /);
   });
 
   it('modo prueba: no le responde a números fuera de la lista', async () => {

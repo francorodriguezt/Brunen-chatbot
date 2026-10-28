@@ -141,6 +141,13 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Si se pasa del límite, Groq responde 429: el bot debe tratarlo como "no entendido" y escalar, nunca dejar al cliente sin respuesta.
 - Fuentes: https://console.groq.com/docs/rate-limits · https://console.groq.com/docs/your-data
 
+### D25 · 2026-10-28 · Tomada
+**Feriados cargados desde el calendario público y conectados a la fecha de entrega.**
+- Fuente: calendarios públicos que coinciden entre sí (Chilevisión para 2026; Buk y feriados.cl para 2027, que citan las leyes 19.668, 20.983 y 21.357). No hay un documento oficial del Gobierno para 2027 todavía: el 21 de junio de 2027 (solsticio) y el 17 de septiembre de 2027 se confirmarán cuando se publique. Están todos los feriados nacionales, incluido el Sábado Santo (Brunen despacha los sábados). No están los regionales (Arica, Chillán) porque las comunas atendidas son de Santiago.
+- Se cargaron como texto (`2026-01-01`) en la hoja FERIADOS de la planilla de desarrollo, no en el código. Con la planilla real hay que copiarlos (Etapa 7).
+- `proponerEntrega` une la hoja con las reglas de despacho y devuelve `feriadosAlDia`: false si la hoja está vacía o no tiene feriados del año de la entrega. Mientras no exista el flujo de pedido, solo se muestra en modo prueba.
+- Hay que renovar la hoja antes del 31 de diciembre de 2027.
+
 ### D24 · 2026-10-28 · Tomada
 **El respaldo con IA solo extrae, solo entra cuando las reglas no entienden y nunca deja al cliente sin respuesta.**
 - Modelo `openai/gpt-oss-20b` con salida estructurada estricta (`json_schema`, `strict: true`, soportada por ese modelo según https://console.groq.com/docs/structured-outputs), temperatura 0 y razonamiento bajo.
