@@ -50,5 +50,5 @@ docs/      Conocimiento del negocio, decisiones, etapas, pendientes y guía de d
 ```
 Para correrlo, probarlo y desplegarlo: [docs/DESARROLLO.md](docs/DESARROLLO.md).
 
-## Cómo se construyó
-Hecho por Franco Rodríguez Torres para Brunen SpA, con Claude Code como asistente. Las reglas con las que trabaja están en [CLAUDE.md](CLAUDE.md) y los permisos en `.claude/settings.json`.
+## Autor
+Franco Rodríguez Torres, para Brunen SpA.

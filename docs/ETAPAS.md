@@ -21,13 +21,13 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 **Objetivo:** escribes desde tu celular al número de prueba y recibes "Recibí: <tu texto>".
 
-**Lo haces tú (cuentas y credenciales, no las hace Claude):**
+**Cuentas y credenciales (las crea el responsable del proyecto):**
 1. Crear cuenta en Cloudflare (gratis) y en Meta for Developers.
 2. En Meta: crear una app de tipo Business, agregar el producto WhatsApp, agregar tu número como destinatario de prueba.
 3. Copiar `.dev.vars.example` como `.dev.vars` y completar valores (no se sube a git).
 4. Correr `npm run verificar-config`: revisa el formato sin mostrar ningún valor.
 
-**Lo hace Claude Code contigo:**
+**Configuración y pruebas:**
 0. Prueba local: `npm run dev` en una terminal y, en otra, `npm run simular-mensaje -- "hola 2 bidones de 20"`. Con un token real y tu número permitido, la respuesta llega de verdad a tu WhatsApp. Para detener `npm run dev`, Ctrl+C.
 1. `npx wrangler login` y luego `npm run deploy` (te pedirá confirmación).
 2. Cargar los secretos con `npx wrangler secret put NOMBRE` (tú pegas cada valor).

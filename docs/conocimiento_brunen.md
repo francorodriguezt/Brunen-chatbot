@@ -102,7 +102,7 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 - Estados de pedido: Pendiente_Confirmacion → Confirmado → En_Ruta → Entregado. Alternos: Reprogramado, Cancelado, Fuera_de_zona. Pago aparte: Sin_Pago, Pago_Recibido, Pago_Verificado, Pagara_Contra_Entrega.
 
 ## 12. Textos del bot
-Ver borradores en la sección 12 del documento del Proyecto en claude.ai. Regla: una sola respuesta por mensaje del cliente, cercana y breve.
+Ver borradores en la sección 12 del documento del proyecto. Regla: una sola respuesta por mensaje del cliente, cercana y breve.
 
 ## 13. Prioridades (dolores del dueño)
 1. Dejar de cargar a mano los clientes en la base del día siguiente.
