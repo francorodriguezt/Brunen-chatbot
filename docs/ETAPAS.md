@@ -9,9 +9,10 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | 2 | Planilla de desarrollo + deduplicación por wamid + registro de mensajes | ✅ Lista (2026-10-28) |
 | 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | ✅ Lista (2026-10-28): reglas (54 casos) y respaldo con IA verificado con una llamada real |
 | 4 | Flujo de pedido: cotizar, fecha, registrar en PEDIDOS, responder 1 mensaje, ERRORES | 🟡 Piezas listas y probadas (2026-10-28), sin conectar: falta el visto bueno del dueño |
-| 5 | Constanza: alerta por Telegram con botones Confirmar / Cambiar, actualiza estado | 🟡 Aviso y botones listos; falta crear el bot y conectar |
-| 6 | Imágenes (comprobantes + PAGOS), audio, fuera de zona, reclamos, RUTA_DEL_DIA | 🟡 Lista del día lista (formato provisional); falta decidir dónde guardar los comprobantes |
+| 5 | Constanza: bandeja de pedidos y avisos con Confirmar / Cambiar; Telegram solo para lo muy urgente | 🟡 Aviso de Telegram listo; la bandeja pasa al panel (D32) |
+| 6 | Imágenes (comprobantes + PAGOS), audio, fuera de zona, reclamos, RUTA_DEL_DIA | 🟡 Lista del día lista (formato provisional); comprobantes: guardarlos en D1 y verlos en el panel (D30, D32) |
 | 7 | Producción: número definitivo, verificación de empresa, piloto con 5–10 clientes | |
+| P | Panel de administración: pedidos, avisos, clientes, mapa, estadísticas | ⏳ Dirección decidida (D32); empieza al conectar el flujo |
 
 ---
 
@@ -106,7 +107,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 **Cómo conectarlo** (cuando el dueño apruebe; cada paso se verifica con `npm run check` y un mensaje de prueba):
 1. Aplicar la migración: `npx wrangler d1 migrations apply brunen-chatbot --remote` (crea `conversaciones`, `ultimos_pedidos` y `mensajes_pendientes`).
 2. En `procesarLote` (`src/index.ts`), por cada número: anotar sus mensajes de texto con `agruparMensaje` (una sola espera por número, no una por mensaje) y llamar a `atenderTexto` con los puertos reales: `buscarCliente`, `cargarTablaPrecios`, `proponerEntrega`, `leerServicio`, `interpretarConRespaldo` y `new MemoriaConversaciones(env.DB)`.
-3. Enviar `decision.respuesta` (si no es null), anotar el pedido con `ClienteSheets.agregarFilas('PEDIDOS', filasDePedido(decision.pedido))`, mandar `decision.alerta` (Etapa 5) y registrar la intención y los errores en las hojas de siempre.
+3. Enviar `decision.respuesta` (si no es null), escribir el pedido y el aviso en D1 (tablas nuevas, D32) y, como espejo, el pedido en la planilla con `ClienteSheets.agregarFilas('PEDIDOS', filasDePedido(decision.pedido))`, y registrar la intención y los errores en las hojas de siempre. Los avisos urgentes salen por Telegram; el resto se ve en el panel.
 4. Probar con los 12 casos de CONVERSACIONES.md desde un número de `NUMEROS_PERMITIDOS`, y con 2 o 3 mensajes seguidos para el agrupador.
 5. Medir el CPU de cada tipo de mensaje con `wrangler tail` (límite de 10 ms en el plan gratis, D31) y la cantidad de llamadas a Google.
 6. Recién entonces, ampliar a más números (Etapa 7).
@@ -125,14 +126,33 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 
 ## Etapa 5 — La operadora recibe y confirma
 
-**Estado (2026-10-28):** construido el aviso (`telegram.ts`, D29); sin conectar ni crear el bot.
+**Estado (2026-10-28):** `telegram.ts` está listo (aviso con botones, lectura de botones, secreto del webhook; D29), pero con D32 la bandeja y los botones Confirmar / Cambiar pasan al **panel**. Telegram queda solo para lo muy urgente (propuesta: reclamos y fallas del sistema).
 
 **Falta:**
-1. Crear el bot de Telegram con @BotFather y cargar `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y un secreto para el webhook (`npx wrangler secret put ...`).
-2. Ruta `/telegram` en el Worker: verificar el secreto (`secretoValido`), leer el botón (`extraerAccionBoton`), comprobar el chat (`esChatAutorizado`) y responder (`responderBoton`, `quitarBotones`). Registrar el webhook con `setWebhook` y su `secret_token`.
-3. Al confirmar, actualizar PEDIDOS (`Estado`, `Fecha_Entrega_Confirmada`, `Confirmado_Por`) buscando las filas por `ID_Pedido`; para eso falta una función de escritura de celdas en `google.ts`.
-4. Decidir qué hace "Cambiar" (por ejemplo, la operadora responde en Telegram con la nueva fecha y el bot la anota y le avisa al cliente, con el cuidado de que cada mensaje a un cliente cuenta en el cupo gratis).
-5. ¿Constanza acepta recibir los avisos por Telegram? (hoy es una propuesta, D7).
+1. Migración con las tablas `pedidos` y `alertas` en D1, y que el flujo escriba ahí lo que decide el motor (`decision.pedido`, `decision.alerta`), con la planilla como espejo.
+2. La bandeja del panel (fase P1, abajo): confirmar, cambiar o rechazar un pedido y cerrar avisos, guardando quién lo hizo.
+3. Telegram: crear el bot con @BotFather, cargar `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID`, y enviar solo los avisos urgentes (hay que agregar ese filtro). Si más adelante se quiere confirmar desde Telegram, la ruta `/telegram` y el resto de las piezas ya están construidos.
+4. Decidir qué pasa con el cliente al cambiar un pedido en el panel (cada mensaje al cliente cuenta en el cupo gratis).
+
+---
+
+## Panel de administración (D32)
+
+**Estado (2026-10-28):** dirección decidida por Franco; detalles propuestos en D32. Nada construido todavía.
+
+**Qué es:** una página privada en el mismo Worker (`/panel`), gratis, donde Constanza y el dueño ven los pedidos y los avisos del bot, los confirman y administran a los clientes por ubicación, bidones y mapa. Los datos viven en D1 (fuente de verdad) con la planilla como espejo.
+
+| Fase | Qué incluye |
+|---|---|
+| P1 Bandeja | Inicio de sesión; pedidos por confirmar y avisos, con confirmar / cambiar / rechazar; interruptor del bot y aviso de contingencia; actualización automática con sonido |
+| P2 Reparto del día | Lista del día por comuna lista para copiar (`rutaDelDia.ts`), envases por retirar |
+| P3 Clientes y mapa | Ficha, historial y envases por cliente; importación del Excel; mapa por comuna y con punto exacto; el bot pasa a leer los clientes de D1 |
+| P4 Estadísticas | Bidones y ventas por día, semana y mes; clientes que dejaron de pedir; reclamos abiertos; comprobantes por revisar |
+| P5 Configuración | Precios, feriados y textos editables, sin tocar la planilla |
+
+**Antes de P1:** conectar el flujo de pedido (Etapa 4) para que escriba en D1, y elegir el acceso (Cloudflare Access o inicio de sesión con Google).
+
+**Cuidados:** el panel muestra datos personales (teléfonos, direcciones): acceso solo para personas autorizadas, sesión segura, registro de quién confirma qué, y ninguna dirección sale hacia servicios externos (el mapa no geocodifica con terceros).
 
 ---
 
