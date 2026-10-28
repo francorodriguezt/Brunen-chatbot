@@ -90,3 +90,8 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Motivo: ver en el panel de Cloudflare los errores del Worker (token vencido, Meta rechaza un envío) sin tener `wrangler tail` abierto. Los logs ya enmascaran los teléfonos (`enmascararTelefono`).
 - Límites verificados hoy en la documentación de Cloudflare: plan gratis con 200.000 eventos de log por día y 3 días de retención; muestreo del 100 % por defecto. Revisar si el volumen se acerca al tope.
 - Fuente: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
+
+### D18 · 2026-10-28 · Tomada
+**Graph API v25.0 en `wrangler.toml`.**
+- Fuente: la pantalla "Paso 1. Pruébalo" (API Setup) de la app Brunen Chatbot en developers.facebook.com, que usa `https://graph.facebook.com/v25.0/...` en su ejemplo. Visto el 2026-10-28.
+- Meta da unos 2 años de vida a cada versión: revisar el aviso de fin de vida y subir de versión antes de que venza.

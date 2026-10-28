@@ -22,6 +22,6 @@
 - [ ] Preguntar a Constanza si acepta que su nombre y horario figuren en el repo público (`docs/conocimiento_brunen.md`, sección 8).
 
 ## Técnicos
-- [ ] Verificar la versión vigente de la Graph API y ponerla en `wrangler.toml` (hoy `v00.0` a propósito; el bot la rechaza hasta que se cambie).
+- [x] Versión de la Graph API: v25.0 (D18).
 - [ ] Token permanente (System User) antes de producción; el de API Setup dura 24 h.
 - [ ] Revisar disponibilidad de coexistencia en Chile si el dueño la elige.
