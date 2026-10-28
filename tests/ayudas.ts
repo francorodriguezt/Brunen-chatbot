@@ -85,3 +85,63 @@ export const FERIADOS_2026_2027: Set<string> = new Set([
   '2027-08-15', '2027-09-17', '2027-09-18', '2027-09-19', '2027-10-11', '2027-10-31', '2027-11-01', '2027-12-08',
   '2027-12-25',
 ]);
+
+export interface MundoFalso {
+  /** Mensajes que el bot mandó por WhatsApp. */
+  enviados: Array<{ para: string; texto: string }>;
+  /** Lo que se le pidió enviar a Telegram. */
+  telegram: Array<{ metodo: string; cuerpo: Record<string, unknown> }>;
+  /** Filas que se anotaron en la planilla. */
+  anotadasEnPlanilla: string[][];
+  llamadas: string[];
+}
+
+/**
+ * Un mundo falso completo para probar el Worker de punta a punta: WhatsApp (Meta), Google (token y hojas), Telegram y
+ * Groq. Cada uno puede responder bien o fallar con un estado HTTP.
+ */
+export function stubMundo(
+  opciones: {
+    hojas?: Record<string, string[][] | 'falla'>;
+    whatsapp?: number;
+    telegram?: number;
+    groq?: unknown;
+  } = {},
+): MundoFalso {
+  const mundo: MundoFalso = { enviados: [], telegram: [], anotadasEnPlanilla: [], llamadas: [] };
+  vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+    mundo.llamadas.push(url);
+    const cuerpo = typeof init?.body === 'string' ? init.body : '';
+    if (url.startsWith('https://graph.facebook.com')) {
+      const estado = opciones.whatsapp ?? 200;
+      if (estado === 200) {
+        const dato = JSON.parse(cuerpo) as { to: string; text: { body: string } };
+        mundo.enviados.push({ para: dato.to, texto: dato.text.body });
+      }
+      // 401: el token venció (código 190 de Meta); cualquier otro error es una falla común.
+      return new Response(estado === 200 ? '{}' : JSON.stringify({ error: { code: estado === 401 ? 190 : 1 } }), { status: estado });
+    }
+    if (url.startsWith('https://api.telegram.org')) {
+      mundo.telegram.push({ metodo: url.split('/').pop() ?? '', cuerpo: JSON.parse(cuerpo) as Record<string, unknown> });
+      return new Response('{"ok":true}', { status: opciones.telegram ?? 200 });
+    }
+    if (url.startsWith('https://api.groq.com')) {
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(opciones.groq ?? { intencion: 'desconocido', items: [], envases_a_retirar: null, tipo_pregunta: null }) } }] }), { status: 200 });
+    }
+    if (url.startsWith('https://oauth2.googleapis.com')) {
+      return new Response(JSON.stringify({ access_token: 'tk', expires_in: 3600 }), { status: 200 });
+    }
+    if (url.startsWith('https://sheets.googleapis.com')) {
+      if (init?.method === 'POST') {
+        mundo.anotadasEnPlanilla.push(...((JSON.parse(cuerpo) as { values?: string[][] }).values ?? []));
+        return new Response('{}', { status: 200 });
+      }
+      const hoja = decodeURIComponent(url.split('/values/')[1] ?? '').split('!')[0] ?? '';
+      const valores = opciones.hojas?.[hoja];
+      if (valores === 'falla') return new Response('caído', { status: 500 });
+      return new Response(JSON.stringify({ values: valores ?? [] }), { status: 200 });
+    }
+    return new Response('no esperado', { status: 404 });
+  });
+  return mundo;
+}
