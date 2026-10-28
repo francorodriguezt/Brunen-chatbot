@@ -44,3 +44,19 @@
 - [ ] Cargar en la hoja CLIENTES los clientes reales (Constanza), con sus teléfonos, comunas y tipos, para probar el flujo con fichas. Sin esos datos todos los clientes son "nuevos".
 - [ ] Confirmar en la D1 remota que una escritura `INSERT ... ON CONFLICT ... WHERE` que no cambia nada devuelve `changes = 0` (D27). Prioridad baja.
 - [ ] La planilla real (Etapa 7): copiar la hoja FERIADOS, CONFIGURACION y PRECIOS, y revisar que la ficha de cada cliente use los nombres de columna de `docs/conocimiento_brunen.md`, sección 11.
+
+## Decide Franco
+- [ ] Licencia del repositorio público (por ejemplo MIT, o ninguna): hoy no tiene y, sin licencia, nadie puede reutilizar el código.
+- [ ] Historial de git: ¿se reescribe para quitar el correo personal, el apellido de la operadora y los avisos de coautoría de los commits? Exige reescribir y forzar el push (D15); se decide después de la respuesta de la operadora (pregunta 14 del cuestionario).
+- [ ] Qué hacer con las cuentas a nombre de Franco (Cloudflare, Google Cloud, Meta): traspaso a Brunen en la Etapa 7.
+
+## Antes de salir a producción (Etapa 7)
+Datos de Meta tomados de fuentes secundarias el 2026-10-28: confirmar todo en la documentación oficial de Meta antes de actuar.
+- [ ] Número definitivo. Lo más simple es un número nuevo solo para la API. La "coexistencia" (usar el mismo número en la app de WhatsApp Business y en la API) parece estar disponible en Chile, pero su alta pasa por un flujo de registro ("Embedded Signup") pensado para proveedores de tecnología: verificar si Franco puede hacerlo directo.
+- [ ] Verificación de empresa en Meta y aprobación del nombre visible. Sin verificar, el límite es de unos 250 contactos nuevos por día iniciados por la empresa (los clientes que escriben primero no cuentan); con verificación sube. Puede tardar de días a semanas.
+- [ ] Método de pago registrado en Meta (lo exige aunque no se cobre dentro del cupo gratis).
+- [ ] Mensajes que inicia la empresa fuera de las 24 horas (por ejemplo, avisar la hora aproximada a los clientes con `Aviso_Hora`) exigen plantillas aprobadas por Meta y pueden cobrarse: decidir si se hacen.
+- [ ] Monitoreo: cuenta gratuita de UptimeRobot (o similar) apuntando a `/salud`, con aviso por correo.
+- [ ] Datos personales: la Ley 21.719 (vigencia 1-dic-2026 según el documento de conocimiento; se discute postergarla) pide informar al cliente qué datos se guardan y para qué. Redactar un aviso breve de privacidad (qué se guarda, cuánto tiempo, que parte del texto pasa por Groq en EE. UU. con retención cero) y decidir cuándo se le muestra al cliente.
+- [ ] Planilla real: copiar la de desarrollo, correr `npm run preparar-planilla` con la clave de esa planilla, compartirla con la cuenta de servicio, cambiar `GOOGLE_SHEET_ID` y revisar los permisos de quién puede editarla.
+- [ ] Copia de seguridad de la planilla (el historial de versiones de Google sirve para lo básico) y quién tiene acceso a Cloudflare, Meta, Groq y Telegram.
