@@ -329,11 +329,12 @@ function bloquearTarjeta(idDePedido, bloqueada) {
 }
 
 async function cambiarEstado(pedido, nuevo, motivo = '') {
-  bloquearTarjeta(pedido.id, true);
+  bloquearTarjeta(pedido.id, true); // para que un segundo toque no mande el mismo cambio dos veces
   try {
     await api(`/api/pedidos/${encodeURIComponent(pedido.id)}/estado`, motivo ? { estado: nuevo, motivo } : { estado: nuevo });
     avisar(MENSAJE_DE_CAMBIO[nuevo] ?? 'Listo.');
   } catch (falla) {
+    bloquearTarjeta(pedido.id, false); // si la lista no cambia, la tarjeta no se vuelve a dibujar y los botones quedarían apagados
     avisar(falla.message, true);
   }
   await refrescar();
@@ -539,6 +540,7 @@ async function resolverAviso(aviso, elementoBoton) {
     await api(`/api/avisos/${aviso.id}/resolver`, {});
     avisar('Aviso resuelto.');
   } catch (falla) {
+    elementoBoton.disabled = false; // igual que con los pedidos: si nada cambia, el botón no se vuelve a dibujar
     avisar(falla.message, true);
   }
   await refrescar();
