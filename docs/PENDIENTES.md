@@ -22,8 +22,9 @@
 - [ ] Preguntar a Constanza si acepta que su nombre y horario figuren en el repo público (`docs/conocimiento_brunen.md`, sección 8).
 
 ## Técnicos
-- [ ] Respaldo con IA: aplicar la migración `0002_uso_llm.sql` en D1, crear la clave en Groq, cargarla como `GROQ_API_KEY` y probar una llamada real (D24).
-- [ ] Agregar la fila `BOT_ACTIVO` = `SI` en la hoja CONFIGURACION (la planilla real no se tocó sin permiso).
+- [x] Respaldo con IA activo: migración `0002` aplicada, `GROQ_API_KEY` cargada y probado con una llamada real (D24).
+- [x] Fila `BOT_ACTIVO` = `SI` agregada en la hoja CONFIGURACION de la planilla de desarrollo.
+- [ ] Traspasar a la cuenta de Brunen (correo de la empresa) lo que hoy está a nombre de Franco: Cloudflare, Google Cloud/planilla y la app de Meta. Mientras tanto, invitar a contactobrunen@gmail.com como administrador de Cloudflare. Se hace completo en la Etapa 7.
 - [x] Cuenta de Groq a nombre de Brunen, plan gratis sin tarjeta y retención de datos cero activada (D23).
 - [ ] Cargar la lista oficial de feriados de Chile en la hoja FERIADOS de la planilla (Fecha YYYY-MM-DD y Nombre).
 - [ ] La clave JSON de Google quedó en la carpeta Descargas del computador: guardarla en un lugar seguro fuera del proyecto o borrarla (ya está en Cloudflare y se puede generar otra).
