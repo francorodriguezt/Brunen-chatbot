@@ -23,6 +23,13 @@ export type TipoAlerta =
   /** Algo falló del lado del sistema (una hoja que no se pudo leer, la tabla de precios con errores...). */
   | 'error';
 
+/**
+ * Avisos que nacen junto con un pedido. El panel no los pone en la bandeja de avisos: el pedido ya está en "Por
+ * confirmar", con sus observaciones y lo que escribió el cliente. En la bandeja quedan solo los casos que no tienen
+ * pedido (reclamos, facturas, comprobantes, mensajes que el bot no entendió y fallas).
+ */
+export const TIPOS_DE_AVISO_DE_PEDIDO: readonly TipoAlerta[] = ['pedido', 'pedido_revision', 'cliente_nuevo', 'fuera_de_zona'];
+
 export interface Alerta {
   tipo: TipoAlerta;
   /** Teléfono completo del cliente, en el formato de WhatsApp: la operadora lo necesita para contactarlo. */

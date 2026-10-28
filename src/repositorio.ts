@@ -10,7 +10,7 @@
  *  - Todo cambio queda en el historial con quién lo hizo.
  */
 
-import type { Alerta, TipoAlerta } from './alertas';
+import { TIPOS_DE_AVISO_DE_PEDIDO, type Alerta, type TipoAlerta } from './alertas';
 import type { BaseDatos } from './almacen';
 import type { LineaPedido, PedidoARegistrar } from './pedidos';
 import type { TipoBidon } from './precios';
@@ -46,6 +46,8 @@ export interface PedidoGuardado {
   observaciones: string;
   confirmadoPor: string | null;
   actualizadoEn: number;
+  /** Lo que escribió el cliente, tomado del aviso del pedido (vacío si ya pasaron 90 días o no hubo texto). */
+  mensajeCliente: string;
 }
 
 export interface AvisoGuardado {
@@ -158,6 +160,7 @@ function aPedido(fila: Record<string, unknown>): PedidoGuardado {
     observaciones: texto(fila.observaciones),
     confirmadoPor: typeof fila.confirmado_por === 'string' ? fila.confirmado_por : null,
     actualizadoEn: numero(fila.actualizado_en),
+    mensajeCliente: texto(fila.mensaje_cliente),
   };
 }
 
@@ -179,8 +182,12 @@ function aAviso(fila: Record<string, unknown>): AvisoGuardado {
   };
 }
 
-const COLUMNAS_PEDIDO =
-  'id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, fecha_confirmada, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, confirmado_por, actualizado_en';
+/** Los tipos son constantes del código (no vienen del usuario), así que se pueden escribir directo en el SQL. */
+const TIPOS_DE_PEDIDO_SQL = TIPOS_DE_AVISO_DE_PEDIDO.map((tipo) => `'${tipo}'`).join(', ');
+
+// `mensaje_cliente`: lo que escribió al hacer el pedido, del aviso que nació con él (no de un reclamo o pago posterior).
+const COLUMNAS_PEDIDO = `id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, fecha_confirmada, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, confirmado_por, actualizado_en,
+  (SELECT texto FROM avisos WHERE avisos.id_pedido = pedidos.id AND avisos.tipo IN (${TIPOS_DE_PEDIDO_SQL}) AND avisos.texto != '' ORDER BY avisos.id LIMIT 1) AS mensaje_cliente`;
 
 export interface FiltroDePedidos {
   estados?: readonly EstadoDePedido[];
@@ -196,6 +203,16 @@ export interface ResumenDelPanel {
   ultimaActualizacionDePedidos: number;
   ultimoAviso: number;
 }
+
+/**
+ * Lo que el panel pregunta cada pocos segundos mientras está abierto. D1 gratis permite 5 millones de filas leídas por
+ * día y esta consulta se repite miles de veces: cada parte tiene que resolverse con un índice (la prueba lo vigila).
+ */
+export const SQL_RESUMEN = `SELECT
+  (SELECT COUNT(*) FROM pedidos WHERE estado IN ('Pendiente_Confirmacion', 'Fuera_de_zona')) AS por_confirmar,
+  (SELECT COUNT(*) FROM avisos WHERE estado = 'abierto' AND tipo NOT IN (${TIPOS_DE_PEDIDO_SQL})) AS avisos_abiertos,
+  (SELECT COALESCE(MAX(actualizado_en), 0) FROM pedidos) AS ultima_actualizacion,
+  (SELECT COALESCE(MAX(id), 0) FROM avisos) AS ultimo_aviso`;
 
 export class RepositorioD1 {
   constructor(
@@ -346,10 +363,12 @@ export class RepositorioD1 {
     return { ok: true, valor: (await this.obtenerPedido(id)) as PedidoGuardado };
   }
 
+  /** La bandeja de avisos: sin los que nacen con un pedido, que se ven en el pedido (ver `TIPOS_DE_AVISO_DE_PEDIDO`). */
   async listarAvisos(estado: 'abierto' | 'resuelto' = 'abierto', limite = 100): Promise<AvisoGuardado[]> {
     const tope = Math.min(Math.max(Math.trunc(limite), 1), 300);
     const filas = await this.filas(
-      `SELECT id, creado_en, tipo, telefono, nombre, resumen, motivos, texto, id_pedido, estado, resuelto_por, resuelto_en FROM avisos WHERE estado = ?1 ORDER BY creado_en DESC, id DESC LIMIT ${tope}`,
+      `SELECT id, creado_en, tipo, telefono, nombre, resumen, motivos, texto, id_pedido, estado, resuelto_por, resuelto_en FROM avisos
+       WHERE estado = ?1 AND tipo NOT IN (${TIPOS_DE_PEDIDO_SQL}) ORDER BY creado_en DESC, id DESC LIMIT ${tope}`,
       estado,
     );
     return filas.map(aAviso);
@@ -363,13 +382,7 @@ export class RepositorioD1 {
   }
 
   async resumen(): Promise<ResumenDelPanel> {
-    const [fila] = await this.filas(
-      `SELECT
-        (SELECT COUNT(*) FROM pedidos WHERE estado = 'Pendiente_Confirmacion') AS por_confirmar,
-        (SELECT COUNT(*) FROM avisos WHERE estado = 'abierto') AS avisos_abiertos,
-        (SELECT COALESCE(MAX(actualizado_en), 0) FROM pedidos) AS ultima_actualizacion,
-        (SELECT COALESCE(MAX(id), 0) FROM avisos) AS ultimo_aviso`,
-    );
+    const [fila] = await this.filas(SQL_RESUMEN);
     return {
       porConfirmar: numero(fila?.por_confirmar),
       avisosAbiertos: numero(fila?.avisos_abiertos),

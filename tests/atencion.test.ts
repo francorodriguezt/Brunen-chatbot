@@ -361,8 +361,10 @@ describe('lo que ve el panel después', () => {
     const repositorio = new RepositorioD1(env.DB);
     const [pedido] = await repositorio.listarPedidos({ estados: ['Pendiente_Confirmacion'] });
     expect(pedido?.lineas).toEqual([{ tipo: '20L', cantidad: 2, precioUnitario: 3300, subtotal: 6600 }]);
+    expect(pedido?.mensajeCliente).toBe('quiero 2 de 20');
+    expect(await repositorio.resumen()).toMatchObject({ porConfirmar: 1, avisosAbiertos: 0 }); // el aviso del pedido se ve en el pedido
     const confirmado = await repositorio.cambiarEstado(pedido?.id ?? '', 'Confirmado', 'operadora@brunen.test', 1793000100);
     expect(confirmado).toMatchObject({ ok: true, valor: { estado: 'Confirmado', confirmadoPor: 'operadora@brunen.test' } });
-    expect(await repositorio.resumen()).toMatchObject({ porConfirmar: 0, avisosAbiertos: 1 });
+    expect(await repositorio.resumen()).toMatchObject({ porConfirmar: 0, avisosAbiertos: 0 });
   });
 });
