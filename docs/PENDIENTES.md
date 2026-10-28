@@ -22,6 +22,8 @@
 - [ ] Preguntar a Constanza si acepta que su nombre y horario figuren en el repo público (`docs/conocimiento_brunen.md`, sección 8).
 
 ## Técnicos
+- [ ] Cargar la lista oficial de feriados de Chile en la hoja FERIADOS de la planilla (Fecha YYYY-MM-DD y Nombre).
+- [ ] La clave JSON de Google quedó en la carpeta Descargas del computador: guardarla en un lugar seguro fuera del proyecto o borrarla (ya está en Cloudflare y se puede generar otra).
 - [x] Versión de la Graph API: v25.0 (D18).
 - [x] Base D1 `brunen-chatbot` creada, migrada y activa (D20).
 - [x] Token permanente (usuario del sistema `bot-brunen`, sin vencimiento) cargado en Cloudflare el 2026-10-28.

@@ -115,3 +115,11 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - 2026-10-28: base `brunen-chatbot` creada y activada (binding `DB`, región ENAM) y migración aplicada. Verificado en producción: el mismo `wamid` enviado dos veces se registra una vez ("Mensaje repetido ignorado") y, si el envío falla, el mensaje se libera.
 - Sin el bloque `[[d1_databases]]` en `wrangler.toml` no se deduplica: así el despliegue actual no cambia hasta crear la base.
 - Fuente: https://developers.cloudflare.com/d1/platform/pricing/
+
+### D21 · 2026-10-28 · Tomada
+**Registro en Google Sheets con cuenta de servicio, sin librerías y en segundo plano.**
+- Cuenta de servicio `bot-brunen` del proyecto de Google Cloud `brunen-chatbot`; la clave JSON va solo como secreto de Cloudflare (`GOOGLE_SERVICE_ACCOUNT_JSON`) y la planilla como `GOOGLE_SHEET_ID`. La clave no entra al repositorio.
+- El JWT se firma con RS256 en WebCrypto y el token de acceso se guarda en memoria hasta 2 minutos antes de vencer, para no gastar CPU en cada mensaje (límite de 10 ms en el plan gratis).
+- La planilla es una vista para Constanza: si Google falla, el mensaje se atiende igual y el error queda en el log. Nunca se anota el texto del mensaje, y el teléfono va enmascarado.
+- Los mensajes repetidos (reintentos de Meta) no se anotan en la planilla: solo quedan en el log.
+- Las hojas y sus columnas salen de `docs/conocimiento_brunen.md` (sección 11) y se crean con `npm run preparar-planilla`, que no pisa datos. RUTA_DEL_DIA tiene columnas provisionales hasta conocer el formato de importación de la app de rutas.

@@ -48,21 +48,21 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 **Objetivo:** un mismo mensaje enviado dos veces (Meta reintenta si no recibe el 200 a tiempo) recibe una sola respuesta y deja una sola fila, y los mensajes y errores quedan en una planilla que Constanza puede mirar.
 
-**Avance (2026-10-28):** adelantado sin cuentas nuevas. Deduplicación por `wamid` con la base D1 de Cloudflare (código, migración y pruebas; la base ya está creada y activa en producción desde el 2026-10-28), registro de los avisos de entrega fallida de Meta y aviso claro en el registro cuando el token de WhatsApp vence. Falta todo lo que toca Google Sheets.
+**Avance (2026-10-28):** ✅ Lista, salvo cargar los feriados. En producción:
+- Deduplicación por `wamid` en la base D1 (D20), con liberación si el envío falla.
+- Registro de cada mensaje en la hoja MENSAJES_PROCESADOS (teléfono enmascarado, sin el texto) y de cada fallo en ERRORES, en la planilla de desarrollo.
+- Aviso en el log cuando el token de WhatsApp vence, y registro de las entregas fallidas de Meta.
+- Lectura de la hoja FERIADOS con caché de 6 horas (`src/feriados.ts`), todavía sin conectar al cálculo de fechas (Etapa 4).
 
-**Lo haces tú:**
-1. Crear un proyecto en Google Cloud, activar la API de Sheets y crear una cuenta de servicio con su clave JSON. La clave es un secreto: va a `wrangler secret`, nunca al repositorio.
-2. Crear una planilla de desarrollo, sin datos reales, con las hojas PEDIDOS, CLIENTES, PRECIOS, PAGOS, CONFIGURACION, FERIADOS, RUTA_DEL_DIA, DASHBOARD, ERRORES y MENSAJES_PROCESADOS, y compartirla (editor) con el correo de la cuenta de servicio.
-3. Confirmar la creación de la base D1 (cambia tu cuenta de Cloudflare).
+**Verificado en producción:** el mismo `wamid` enviado dos veces dejó 1 fila en D1, 1 fila en la planilla y una sola respuesta.
 
-**Lo hace Claude:**
-1. ~~Crear la base D1 y aplicar la migración~~ (hecho el 2026-10-28).
-2. Cliente de Google Sheets para Workers (firma RS256 con WebCrypto y token en caché), con pruebas sin red.
-3. Registrar cada mensaje en MENSAJES_PROCESADOS y cada fallo en ERRORES, como vista para Constanza.
-4. Leer FERIADOS desde la hoja y guardar el resultado en caché.
+**Pendiente:**
+- [ ] Cargar en la hoja FERIADOS la lista oficial de feriados de Chile (no se inventó). Mientras esté vacía, el bot no sabe qué días son feriados y lo deja anotado en el log.
+- [ ] Conectar la lectura de feriados al cálculo de la fecha de entrega y avisar a una persona si la hoja está vacía (Etapa 4).
+- [ ] Copiar la planilla de desarrollo a la planilla real cuando se pase a producción (Etapa 7), con `npm run preparar-planilla` y los secretos de esa planilla.
 
 **Prueba de aceptación:**
-- El mismo `wamid` enviado dos veces recibe una sola respuesta y deja una sola fila.
-- El mensaje aparece en MENSAJES_PROCESADOS.
-- Un fallo al enviar a Meta aparece en ERRORES.
-- Los feriados se leen de la hoja FERIADOS, no del código.
+- ✅ El mismo `wamid` enviado dos veces recibe una sola respuesta y deja una sola fila.
+- ✅ El mensaje aparece en MENSAJES_PROCESADOS.
+- ✅ Un fallo al enviar a Meta aparece en ERRORES (probado con Meta simulado).
+- ⏳ Los feriados se leen de la hoja FERIADOS, no del código: la lectura está hecha y probada; falta cargar los datos.
