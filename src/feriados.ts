@@ -10,6 +10,8 @@
 import { ClienteSheets, type CuentaServicio } from './google';
 
 const DURACION_CACHE_SEGUNDOS = 6 * 3600;
+/** Una hoja vacía o ilegible se vuelve a leer pronto: así, al corregirla, el bot lo nota en un minuto y no en 6 horas. */
+const DURACION_CACHE_VACIA_SEGUNDOS = 60;
 
 interface EntradaCache {
   feriados: Set<string>;
@@ -51,8 +53,13 @@ export async function cargarFeriados(env: EntornoFeriados, ahoraSegundos: number
     const cuenta = JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_JSON) as CuentaServicio;
     const filas = await new ClienteSheets(cuenta, env.GOOGLE_SHEET_ID).leerFilas('FERIADOS!A2:B', ahoraSegundos);
     const feriados = parsearFeriados(filas);
-    if (feriados.size === 0) console.error('La hoja FERIADOS está vacía: el bot no sabe qué días son feriados.');
-    cache.set(env.GOOGLE_SHEET_ID, { feriados, hastaSegundos: ahoraSegundos + DURACION_CACHE_SEGUNDOS });
+    if (feriados.size === 0) {
+      console.error(
+        `La hoja FERIADOS no aporta feriados (${filas.length} filas leídas, ninguna con fecha YYYY-MM-DD en la columna A): el bot no sabe qué días son feriados.`,
+      );
+    }
+    const duracion = feriados.size === 0 ? DURACION_CACHE_VACIA_SEGUNDOS : DURACION_CACHE_SEGUNDOS;
+    cache.set(env.GOOGLE_SHEET_ID, { feriados, hastaSegundos: ahoraSegundos + duracion });
     return feriados;
   } catch (error) {
     console.error('No se pudo leer FERIADOS:', error instanceof Error ? error.message : error);
