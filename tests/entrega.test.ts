@@ -87,7 +87,7 @@ describe('proponerEntrega cuando el cliente pide un día', () => {
   });
 
   it('un domingo no se despacha: se pasa al lunes y se explica', async () => {
-    expect(await proponer(MIERCOLES, { solicitada: 'domingo' })).toMatchObject({ fecha: '2026-11-02', motivoAjuste: 'sin_despacho' });
+    expect(await proponer(MIERCOLES, { solicitada: 'domingo' })).toMatchObject({ fecha: '2026-11-02', motivoAjuste: 'sin_despacho', fechaPedida: '2026-11-01' });
   });
 
   it('un feriado en sábado tampoco: se pasa al siguiente día de despacho', async () => {
