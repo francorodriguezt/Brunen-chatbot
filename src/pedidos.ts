@@ -8,7 +8,6 @@
  * el bot va en Fecha_Entrega_Solicitada; Fecha_Entrega_Confirmada la llena la operadora.
  */
 
-import { fechaHoraLocal } from './despacho';
 import type { TipoBidon } from './precios';
 
 export const COLUMNAS_PEDIDOS = [
@@ -56,11 +55,6 @@ export function generarIdPedido(wamid: string, fechaLocal: string): string {
   }
   const sufijo = (hash >>> 0).toString(36).toUpperCase().padStart(7, '0').slice(-5);
   return `P${fechaLocal.slice(2, 4)}${fechaLocal.slice(5, 7)}${fechaLocal.slice(8, 10)}-${sufijo}`;
-}
-
-/** La fecha del pedido en la hora de Santiago, para `generarIdPedido`. */
-export function fechaLocalDe(instante: Date): string {
-  return fechaHoraLocal(instante).fecha;
 }
 
 const nombreProducto = (tipo: TipoBidon): string => `Bidón ${tipo.replace('L', ' L')}`;

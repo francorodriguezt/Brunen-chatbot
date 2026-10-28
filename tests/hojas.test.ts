@@ -159,3 +159,13 @@ describe('lecturas a la vez', () => {
     expect(intentos).toBe(2);
   });
 });
+
+describe('clave de Google dañada', () => {
+  it('el aviso del log no repite ningún trozo de la clave', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const env = { GOOGLE_SERVICE_ACCOUNT_JSON: '{"private_key": "SECRETO-QUE-NO-DEBE-SALIR" <<<', GOOGLE_SHEET_ID: 'X' };
+    expect(await leerHoja(env, contarFilas(), 1000)).toBeUndefined();
+    expect(JSON.stringify(error.mock.calls)).toContain('no es un JSON válido');
+    expect(JSON.stringify(error.mock.calls)).not.toContain('SECRETO');
+  });
+});
