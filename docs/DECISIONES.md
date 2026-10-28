@@ -147,6 +147,7 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Se cargaron como texto (`2026-01-01`) en la hoja FERIADOS de la planilla de desarrollo, no en el código. Con la planilla real hay que copiarlos (Etapa 7).
 - `proponerEntrega` une la hoja con las reglas de despacho y devuelve `feriadosAlDia`: false si la hoja está vacía o no tiene feriados del año de la entrega. Mientras no exista el flujo de pedido, solo se muestra en modo prueba.
 - Hay que renovar la hoja antes del 31 de diciembre de 2027.
+- Lección del 2026-10-28: la primera carga guardó el tabulador dentro de la celda A (fecha y nombre juntos) y el Worker leyó la hoja como vacía. Se corrigió escribiendo cada columna por separado, y una hoja vacía ahora se relee al minuto (antes se recordaba 6 horas). Para cargar datos en la planilla, no usar tabuladores al teclear: pegar o escribir columna por columna.
 
 ### D24 · 2026-10-28 · Tomada
 **El respaldo con IA solo extrae, solo entra cuando las reglas no entienden y nunca deja al cliente sin respuesta.**
