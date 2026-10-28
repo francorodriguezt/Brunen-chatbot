@@ -7,7 +7,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | 0 | Repo base: precios, despacho, firma y webhook de eco con pruebas | ✅ Lista |
 | 1 | Esqueleto de punta a punta con el número de prueba de Meta | ✅ Lista (2026-10-28) |
 | 2 | Planilla de desarrollo + deduplicación por wamid + registro de mensajes | ✅ Lista, falta cargar FERIADOS (2026-10-28) |
-| 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | 🟡 Parser por reglas listo (45 casos) y conectado en modo prueba; falta el LLM de respaldo |
+| 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | 🟡 Reglas (54 casos) y respaldo con IA listos y probados; falta cargar la clave de Groq y verificarlo con una llamada real |
 | 4 | Flujo de pedido: cotizar, fecha, registrar en PEDIDOS, responder 1 mensaje, ERRORES | |
 | 5 | Constanza: alerta por Telegram con botones Confirmar / Cambiar, actualiza estado | |
 | 6 | Imágenes (Drive + PAGOS), audio, fuera de zona, reclamos, RUTA_DEL_DIA | |
@@ -66,3 +66,20 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 - ✅ El mensaje aparece en MENSAJES_PROCESADOS.
 - ✅ Un fallo al enviar a Meta aparece en ERRORES (probado con Meta simulado).
 - ⏳ Los feriados se leen de la hoja FERIADOS, no del código: la lectura está hecha y probada; falta cargar los datos.
+
+---
+
+## Etapa 3 — Intérprete: reglas y respaldo con IA
+
+**Objetivo:** convertir el texto del cliente en datos (intención, bidones, fecha, comuna) sin gastar dinero, y escalar lo que no se entiende.
+
+**Avance (2026-10-28):**
+- ✅ Parser por reglas conectado en modo prueba: el bot responde lo que entendió y lo anota en la planilla.
+- ✅ Respaldo con IA (Groq, `src/llm.ts`, D24): solo se usa cuando las reglas dicen "desconocido", con tope de 500 llamadas al día y sin enviar teléfono ni nombre. Su respuesta se valida con el mismo contrato que las reglas y, si falla en cualquier punto, queda el resultado de las reglas. Probado con Groq simulado; **todavía sin llamar a Groq de verdad** (falta la clave).
+- ✅ `BOT_ACTIVO` se puede apagar desde la hoja CONFIGURACION (se lee cada minuto), además de la variable del Worker.
+
+**Para dejarla funcionando de punta a punta:**
+1. Aplicar la migración `0002_uso_llm.sql` en D1 (`npx wrangler d1 migrations apply brunen-chatbot --remote`).
+2. Crear la clave en Groq y cargarla con `npx wrangler secret put GROQ_API_KEY`.
+3. Desplegar y enviar un mensaje que las reglas no entiendan (por ejemplo "necesito aguita pal finde"): la respuesta debe decir "(con IA)".
+4. En la hoja CONFIGURACION, agregar la fila `BOT_ACTIVO` con `SI` (columnas Variable, Valor, Descripción).

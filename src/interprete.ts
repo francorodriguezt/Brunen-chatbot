@@ -300,7 +300,7 @@ function tipoDePregunta(t: string, hayComuna: boolean): TipoPregunta | undefined
   return undefined;
 }
 
-function accionDePedido(items: readonly ItemInterpretado[]): AccionSugerida | undefined {
+export function accionDePedido(items: readonly ItemInterpretado[]): AccionSugerida | undefined {
   if (items.length === 0) return 'preguntar_pedido';
   if (items.some((item) => item.tipo === 'no_especificado')) return 'preguntar_tipo';
   if (items.some((item) => item.cantidad === null)) return 'preguntar_cantidad';

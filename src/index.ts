@@ -11,9 +11,11 @@
  * (deduplicación, interpretación, cotización, registro en Sheets, alerta a Constanza).
  */
 
-import { almacenDe, esMensajeNuevo, liberarMensaje, limpiarAlmacen, type BaseDatos } from './almacen';
+import { leerBotActivo } from './configuracion';
+import { almacenDe,esMensajeNuevo, liberarMensaje, limpiarAlmacen, type BaseDatos } from './almacen';
 import { igualesTiempoConstante, verificarFirma } from './firma';
-import { interpretar, type Intencion } from './interprete';
+import type { Intencion } from './interprete';
+import { interpretarConRespaldo } from './llm';
 import { planillaDe, type RegistroMensaje, type Resultado } from './planilla';
 import { describirInterpretacion } from './resumen';
 import {
@@ -41,6 +43,8 @@ export interface Env {
   /** Clave JSON de la cuenta de servicio de Google (secreto). Sin ella no se registra en la planilla. */
   GOOGLE_SERVICE_ACCOUNT_JSON?: string;
   GOOGLE_SHEET_ID?: string;
+  /** Clave de Groq (secreto) para el respaldo con IA. Sin ella el bot usa solo las reglas. */
+  GROQ_API_KEY?: string;
 }
 
 /** Subconjunto de ExecutionContext que usamos; facilita las pruebas. */
@@ -64,18 +68,23 @@ export interface ResultadoMensaje {
 }
 
 export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promise<ResultadoMensaje> {
-  if ((env.BOT_ACTIVO ?? 'SI').toUpperCase() === 'NO') {
+  const botApagado = (): ResultadoMensaje => {
     console.log(`Bot apagado; mensaje de ${enmascararTelefono(mensaje.de)} ignorado`);
     return { resultado: 'ignorado_bot_apagado' };
-  }
+  };
+  if ((env.BOT_ACTIVO ?? 'SI').toUpperCase() === 'NO') return botApagado();
   if (!numerosPermitidos(env).has(mensaje.de)) {
     console.log(`Modo prueba: ${enmascararTelefono(mensaje.de)} no está en NUMEROS_PERMITIDOS`);
     return { resultado: 'ignorado_modo_prueba' };
   }
-  // Modo prueba: responde lo que entendió el intérprete. El flujo de pedido real llega en la Etapa 4.
-  const interpretacion = mensaje.tipo === 'text' && mensaje.texto ? interpretar(mensaje.texto) : null;
+  // También se apaga con NO en la hoja CONFIGURACION; se lee después de filtrar para no gastar Google en números ajenos.
+  if ((await leerBotActivo(env)) === false) return botApagado();
+  // Modo prueba: responde lo que entendió el intérprete (reglas y, si no alcanzan, la IA de respaldo).
+  // El flujo de pedido real llega en la Etapa 4.
+  const entendido = mensaje.tipo === 'text' && mensaje.texto ? await interpretarConRespaldo(mensaje.texto, env) : null;
+  const interpretacion = entendido?.interpretacion ?? null;
   const respuesta = interpretacion
-    ? describirInterpretacion(interpretacion)
+    ? describirInterpretacion(interpretacion, entendido?.conIa)
     : `Recibí un mensaje de tipo "${mensaje.tipo}".`;
   await enviarTexto(
     {

@@ -27,7 +27,7 @@ const NOMBRE_ACCION: Readonly<Record<string, string>> = {
   preguntar_pedido: 'preguntaría qué quiere pedir',
 };
 
-export function describirInterpretacion(interpretacion: Interpretacion): string {
+export function describirInterpretacion(interpretacion: Interpretacion, conIa = false): string {
   const partes = [`Modo prueba. Entendí: ${NOMBRE_INTENCION[interpretacion.intencion]}`];
   if (interpretacion.tipo_pregunta) partes.push(`sobre ${interpretacion.tipo_pregunta}`);
   for (const item of interpretacion.items) {
@@ -38,5 +38,6 @@ export function describirInterpretacion(interpretacion: Interpretacion): string 
   if (interpretacion.fecha_texto) partes.push(`para ${interpretacion.fecha_texto}`);
   if (interpretacion.comuna_mencionada) partes.push(`comuna ${interpretacion.comuna_mencionada}`);
   if (interpretacion.accion) partes.push(NOMBRE_ACCION[interpretacion.accion] ?? interpretacion.accion);
+  if (conIa) partes.push('(con IA)');
   return partes.join(' · ');
 }
