@@ -171,7 +171,7 @@
     },
     {
       "mensaje": "tengo 3 bidones vacíos para devolver",
-      "esperado": { "intencion": "desconocido" }
+      "esperado": { "intencion": "envases", "items": [], "envases_a_retirar": 3 }
     },
     {
       "mensaje": "de 20",
@@ -188,6 +188,34 @@
     {
       "mensaje": "quiero un par de 20 y una de 10",
       "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }, { "tipo": "10L", "cantidad": 1 }] }
+    },
+    {
+      "mensaje": "reparten los domingo",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "horario" }
+    },
+    {
+      "mensaje": "despachan los domingos",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "horario" }
+    },
+    {
+      "mensaje": "hay reparto el domingo?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "horario" }
+    },
+    {
+      "mensaje": "los feriados reparten?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "horario" }
+    },
+    {
+      "mensaje": "cuanto me cobraron la semana pasada",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "pago" }
+    },
+    {
+      "mensaje": "tengo 2 vacíos para que los retiren",
+      "esperado": { "intencion": "envases", "items": [] }
+    },
+    {
+      "mensaje": "hola me puede traer dos bidones grandes",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "no_especificado", "cantidad": 2 }], "accion": "preguntar_tipo" }
     }
   ]
 }
