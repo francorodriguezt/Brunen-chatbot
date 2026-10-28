@@ -79,11 +79,28 @@ describe('cargarFeriados', () => {
     expect(error).toHaveBeenCalled();
   });
 
+  it('una hoja vacía se vuelve a leer en un minuto, no en 6 horas (para notar que se corrigió)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const llamadas = stub([]);
+    await cargarFeriados(env(), 1000);
+    await cargarFeriados(env(), 1030);
+    expect(llamadas.filter((u) => u.includes('/values/FERIADOS')).length).toBe(1);
+    stub([['2026-12-25', 'Navidad']]);
+    expect([...(await cargarFeriados(env(), 1061))]).toEqual(['2026-12-25']);
+  });
+
+  it('si ninguna fila trae una fecha válida (por ejemplo, fecha y nombre pegados en una celda), el aviso lo dice', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    stub([['2026-01-01	Año Nuevo'], ['2026-04-03	Viernes Santo']]);
+    expect((await cargarFeriados(env(), 1000)).size).toBe(0);
+    expect(error.mock.calls.some((c) => String(c[0]).includes('2 filas leídas, ninguna con fecha'))).toBe(true);
+  });
+
   it('una hoja vacía avisa en el log', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     stub([]);
     expect((await cargarFeriados(env(), 1000)).size).toBe(0);
-    expect(error.mock.calls.some((c) => String(c[0]).includes('FERIADOS está vacía'))).toBe(true);
+    expect(error.mock.calls.some((c) => String(c[0]).includes('FERIADOS no aporta feriados'))).toBe(true);
   });
 
   it('sin credenciales no llama a Google', async () => {
