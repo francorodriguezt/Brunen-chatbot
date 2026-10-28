@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Alerta } from '../src/alertas';
 import type { PedidoARegistrar } from '../src/pedidos';
-import { RepositorioD1, calcularTotal } from '../src/repositorio';
+import { RepositorioD1, SQL_RESUMEN, calcularTotal } from '../src/repositorio';
 import { crearBaseSqlite } from './ayudas';
 
 const AHORA = 1793000000;
@@ -70,6 +70,7 @@ describe('guardar lo que decide el bot', () => {
       observaciones: '',
       confirmadoPor: null,
       actualizadoEn: AHORA,
+      mensajeCliente: '',
     });
     expect(await r.historialDe('P261028-AAAAA')).toEqual([{ en: AHORA, quien: 'bot', accion: 'creado', detalle: '' }]);
   });
@@ -114,10 +115,37 @@ describe('guardar lo que decide el bot', () => {
 
   it('el aviso guarda los motivos y el pedido al que se refiere', async () => {
     const { r } = repo();
-    await r.guardarAviso(aviso({ tipo: 'pedido_revision', motivos: ['Cantidad inusual', 'Fecha por confirmar'], idPedido: 'P261028-AAAAA' }), 'wamid.1', AHORA);
+    await r.guardarAviso(aviso({ tipo: 'reclamo', motivos: ['Bidón defectuoso', 'Pide cambio'], idPedido: 'P261028-AAAAA' }), 'wamid.1', AHORA);
     expect(await r.listarAvisos()).toEqual([
-      expect.objectContaining({ tipo: 'pedido_revision', motivos: ['Cantidad inusual', 'Fecha por confirmar'], idPedido: 'P261028-AAAAA', estado: 'abierto', telefono: '56911111111' }),
+      expect.objectContaining({ tipo: 'reclamo', motivos: ['Bidón defectuoso', 'Pide cambio'], idPedido: 'P261028-AAAAA', estado: 'abierto', telefono: '56911111111' }),
     ]);
+  });
+
+  it('los avisos que nacen con un pedido no van a la bandeja de avisos: se ven en el pedido', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA);
+    for (const [i, tipo] of (['pedido', 'pedido_revision', 'cliente_nuevo', 'fuera_de_zona'] as const).entries()) {
+      await r.guardarAviso(aviso({ tipo, idPedido: 'P261028-AAAAA' }), `wamid.${i}`, AHORA + i);
+    }
+    await r.guardarAviso(aviso({ tipo: 'reclamo' }), 'wamid.9', AHORA + 9);
+    expect((await r.listarAvisos()).map((a) => a.tipo)).toEqual(['reclamo']);
+    expect(await r.resumen()).toMatchObject({ porConfirmar: 1, avisosAbiertos: 1, ultimoAviso: 5 });
+  });
+
+  it('el pedido trae lo que escribió el cliente, y queda vacío si no hubo texto o ya se borró', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ idPedido: 'P261028-AAAAA' }), AHORA);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-BBBBB' }), AHORA + 1);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-CCCCC' }), AHORA + 2);
+    await r.guardarAviso(aviso({ tipo: 'pedido', texto: 'quiero 2 de 20', idPedido: 'P261028-AAAAA' }), 'wamid.1', AHORA);
+    await r.guardarAviso(aviso({ tipo: 'cliente_nuevo', texto: 'otro texto', idPedido: 'P261028-AAAAA' }), 'wamid.1', AHORA);
+    await r.guardarAviso(aviso({ tipo: 'pedido', texto: '', idPedido: 'P261028-BBBBB' }), 'wamid.2', AHORA + 1);
+    await r.guardarAviso(aviso({ tipo: 'reclamo', texto: 'el bidón venía roto', idPedido: 'P261028-CCCCC' }), 'wamid.3', AHORA + 2); // no es lo que pidió
+    expect((await r.obtenerPedido('P261028-AAAAA'))?.mensajeCliente).toBe('quiero 2 de 20');
+    expect((await r.obtenerPedido('P261028-BBBBB'))?.mensajeCliente).toBe('');
+    expect((await r.obtenerPedido('P261028-CCCCC'))?.mensajeCliente).toBe('');
+    const listados = await r.listarPedidos();
+    expect(listados.find((p) => p.id === 'P261028-AAAAA')?.mensajeCliente).toBe('quiero 2 de 20');
   });
 });
 
@@ -357,6 +385,22 @@ describe('avisos y resumen', () => {
     await r.guardarAviso(aviso(), 'wamid.1', AHORA + 20);
     await r.cambiarEstado('P261028-AAAAA', 'Confirmado', OPERADORA, AHORA + 30);
     expect(await r.resumen()).toEqual({ porConfirmar: 1, avisosAbiertos: 1, ultimaActualizacionDePedidos: AHORA + 30, ultimoAviso: 1 });
+  });
+
+  it('"por confirmar" cuenta lo mismo que la lista del panel: también los pedidos fuera de zona', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ idPedido: 'P261028-AAAAA' }), AHORA);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-BBBBB', estado: 'Fuera_de_zona', comuna: 'Maipú' }), AHORA + 1);
+    expect((await r.resumen()).porConfirmar).toBe(2);
+  });
+});
+
+describe('costo de lo que el panel repite', () => {
+  it('el resumen no recorre las tablas enteras: D1 gratis permite 5 millones de filas leídas al día y esta consulta se repite miles de veces', () => {
+    const { db } = repo();
+    const detalles = db.sql(`EXPLAIN QUERY PLAN ${SQL_RESUMEN}`).map((fila) => String((fila as { detail: unknown }).detail));
+    expect(detalles.filter((d) => /^SCAN (pedidos|avisos)\b/.test(d))).toEqual([]);
+    expect(detalles.join('\n')).toContain('idx_pedidos_actualizado'); // el último cambio es leer una sola fila
   });
 });
 

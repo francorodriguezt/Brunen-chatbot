@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS pedidos (
 );
 CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos (estado, fecha_entrega);
 CREATE INDEX IF NOT EXISTS idx_pedidos_telefono ON pedidos (telefono, creado_en);
+-- El panel pregunta cada pocos segundos cuál fue el último cambio: con este índice es leer una sola fila.
+CREATE INDEX IF NOT EXISTS idx_pedidos_actualizado ON pedidos (actualizado_en);
 
 -- Avisos para una persona: reclamos, mensajes que el bot no entendió, pedidos para revisar, fallas...
 CREATE TABLE IF NOT EXISTS avisos (
@@ -41,6 +43,8 @@ CREATE TABLE IF NOT EXISTS avisos (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_avisos_origen ON avisos (origen, tipo) WHERE origen IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_avisos_estado ON avisos (estado, creado_en);
+-- Para mostrar en cada pedido lo que escribió el cliente sin recorrer todos los avisos.
+CREATE INDEX IF NOT EXISTS idx_avisos_pedido ON avisos (id_pedido) WHERE id_pedido IS NOT NULL;
 
 -- Quién hizo qué con cada pedido (confirmar, cambiar, cancelar...).
 CREATE TABLE IF NOT EXISTS historial_pedidos (
