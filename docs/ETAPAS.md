@@ -65,7 +65,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 - ✅ El mismo `wamid` enviado dos veces recibe una sola respuesta y deja una sola fila.
 - ✅ El mensaje aparece en MENSAJES_PROCESADOS.
 - ✅ Un fallo al enviar a Meta aparece en ERRORES (probado con Meta simulado).
-- ✅ Los feriados se leen de la hoja FERIADOS, no del código: cargados y probados con la hoja simulada; falta verificarlo en producción con un pedido real tras el próximo despliegue.
+- ✅ Los feriados se leen de la hoja FERIADOS, no del código: cargados, probados con la hoja simulada y verificados en producción el 2026-10-28 con un pedido real (sin avisos en el registro).
 
 ---
 
