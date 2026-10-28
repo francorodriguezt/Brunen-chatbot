@@ -19,13 +19,22 @@ npm run check      # typecheck + pruebas: deben pasar todas
 
 Con un token real y tu número permitido, la respuesta llega de verdad a tu WhatsApp. WhatsApp solo entrega texto libre si el destinatario le escribió al número en las últimas 24 horas: antes de probar, escríbele "hola" al número de prueba desde tu celular.
 
+## Probar el panel
+Todo corre en tu computador y no toca la base real (`--local`):
+1. `npm run datos-locales` crea las tablas y carga pedidos y avisos ficticios (`scripts/datos-de-prueba.sql`). Se puede repetir sin duplicar.
+2. `npm run dev:panel -- --var PANEL_DEV_CORREO:tu@correo.test` y abre http://localhost:8787 (si ese puerto lo usa `npm run dev`, agrega `--port 8788`). `PANEL_DEV_CORREO` deja entrar sin Cloudflare Access, pero solo desde localhost: nunca va en `wrangler.panel.toml`.
+3. Para ver cómo llega algo nuevo: `npx.cmd wrangler d1 execute brunen-chatbot --local --command "INSERT INTO avisos (creado_en, tipo, telefono, resumen) VALUES (strftime('%s','now'), 'reclamo', '56955550000', 'Prueba')"`. Con la pantalla abierta, el contador sube, el título de la pestaña cambia y suena un aviso (el navegador deja sonar después de un clic en la página).
+
 ## Comandos
 | Comando | Qué hace |
 |---|---|
 | `npm run check` | Typecheck + pruebas |
 | `npm test` | Solo pruebas |
 | `npm run dev` | Worker local en http://localhost:8787 (lee `.dev.vars`) |
-| `npm run deploy` | Publica en Cloudflare |
+| `npm run deploy` | Publica el bot en Cloudflare |
+| `npm run dev:panel` | Worker del panel en local (`wrangler.panel.toml`); ver "Probar el panel" |
+| `npm run deploy:panel` | Publica el panel. No lo hagas sin Cloudflare Access (ver `docs/ETAPAS.md`) |
+| `npm run datos-locales` | Aplica las migraciones y carga pedidos y avisos ficticios en la base D1 **local** |
 | `npm run verificar-config` | Revisa `.dev.vars` y `wrangler.toml` sin mostrar valores |
 | `npm run simular-mensaje -- "texto"` | Envía al Worker un mensaje firmado como Meta (`--url` para apuntar a producción) |
 | `npm run preparar-planilla -- CLAVE.json ID_PLANILLA` | Crea las hojas y columnas de la planilla de Google (no pisa datos) |

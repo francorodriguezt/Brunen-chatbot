@@ -10,6 +10,11 @@ compatibility_date = "2026-09-01"
 # de tu app en developers.facebook.com (formato vNN.N). No adivinarla.
 GRAPH_API_VERSION = "v25.0"
 BOT_ACTIVO = "SI"
+# Flujo de pedido completo (D33): ficha, precio, entrega y pedido guardado en D1 para el panel. Apagado, el bot responde
+# en modo prueba. Se enciende solo después de aplicar las migraciones 0003 y 0004 en D1 (pasos en docs/ETAPAS.md).
+# FLUJO_PEDIDO = "SI"
+# Espera para juntar los mensajes seguidos de un cliente, en milisegundos (D27; por defecto 7000).
+# ESPERA_AGRUPADOR_MS = "7000"
 
 [observability]
 # Workers Logs: los errores del Worker se ven en el panel de Cloudflare sin tener `wrangler tail`
