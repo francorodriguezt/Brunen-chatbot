@@ -1,28 +1,14 @@
 /**
  * Feriados leídos de la hoja FERIADOS (columnas Fecha YYYY-MM-DD y Nombre). Regla del proyecto:
- * los feriados nunca van fijos en el código. El resultado se guarda en memoria unas horas para no
- * leer la planilla en cada mensaje.
+ * los feriados nunca van fijos en el código. La lectura y su caché están en `hojas.ts`.
  *
  * Si la hoja está vacía o Google falla, devuelve lo último que se leyó (o un conjunto vacío) y lo
  * anota en el log: el llamador debe avisar a una persona cuando no hay feriados cargados.
  */
 
-import { ClienteSheets, type CuentaServicio } from './google';
+import { leerHoja, type EntornoHojas } from './hojas';
 
-const DURACION_CACHE_SEGUNDOS = 6 * 3600;
-/** Una hoja vacía o ilegible se vuelve a leer pronto: así, al corregirla, el bot lo nota en un minuto y no en 6 horas. */
-const DURACION_CACHE_VACIA_SEGUNDOS = 60;
-
-interface EntradaCache {
-  feriados: Set<string>;
-  hastaSegundos: number;
-}
-const cache = new Map<string, EntradaCache>();
-
-/** Solo para pruebas. */
-export function olvidarFeriados(): void {
-  cache.clear();
-}
+const DURACION_SEGUNDOS = 6 * 3600;
 
 function esFechaValida(texto: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
@@ -40,29 +26,19 @@ export function parsearFeriados(filas: ReadonlyArray<ReadonlyArray<string>>): Se
   return feriados;
 }
 
-export interface EntornoFeriados {
-  GOOGLE_SERVICE_ACCOUNT_JSON?: string;
-  GOOGLE_SHEET_ID?: string;
-}
-
-export async function cargarFeriados(env: EntornoFeriados, ahoraSegundos: number = Math.floor(Date.now() / 1000)): Promise<Set<string>> {
-  if (!env.GOOGLE_SERVICE_ACCOUNT_JSON || !env.GOOGLE_SHEET_ID) return new Set();
-  const guardado = cache.get(env.GOOGLE_SHEET_ID);
-  if (guardado && guardado.hastaSegundos > ahoraSegundos) return guardado.feriados;
-  try {
-    const cuenta = JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_JSON) as CuentaServicio;
-    const filas = await new ClienteSheets(cuenta, env.GOOGLE_SHEET_ID).leerFilas('FERIADOS!A2:B', ahoraSegundos);
-    const feriados = parsearFeriados(filas);
-    if (feriados.size === 0) {
-      console.error(
+export async function cargarFeriados(env: EntornoHojas, ahoraSegundos?: number): Promise<Set<string>> {
+  const feriados = await leerHoja(
+    env,
+    {
+      nombre: 'FERIADOS',
+      rango: 'FERIADOS!A2:B',
+      parsear: parsearFeriados,
+      duracionSegundos: DURACION_SEGUNDOS,
+      esVacio: (f) => f.size === 0,
+      avisoVacio: (filas) =>
         `La hoja FERIADOS no aporta feriados (${filas.length} filas leídas, ninguna con fecha YYYY-MM-DD en la columna A): el bot no sabe qué días son feriados.`,
-      );
-    }
-    const duracion = feriados.size === 0 ? DURACION_CACHE_VACIA_SEGUNDOS : DURACION_CACHE_SEGUNDOS;
-    cache.set(env.GOOGLE_SHEET_ID, { feriados, hastaSegundos: ahoraSegundos + duracion });
-    return feriados;
-  } catch (error) {
-    console.error('No se pudo leer FERIADOS:', error instanceof Error ? error.message : error);
-    return guardado?.feriados ?? new Set();
-  }
+    },
+    ahoraSegundos,
+  );
+  return feriados ?? new Set();
 }

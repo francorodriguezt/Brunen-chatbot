@@ -69,9 +69,9 @@ export interface ResultadoMensaje {
 }
 
 /** La fecha es una ayuda: si no se puede calcular (por ejemplo, Google caído), el pedido se atiende igual sin ella. */
-async function entregaPropuesta(env: Env): Promise<PropuestaEntrega | undefined> {
+async function entregaPropuesta(env: Env, solicitada?: string): Promise<PropuestaEntrega | undefined> {
   try {
-    return await proponerEntrega(env);
+    return await proponerEntrega(env, new Date(), { solicitada });
   } catch (error) {
     console.error('No se pudo calcular la entrega:', error instanceof Error ? error.message : error);
     return undefined;
@@ -94,7 +94,7 @@ export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promi
   // El flujo de pedido real llega en la Etapa 4.
   const entendido = mensaje.tipo === 'text' && mensaje.texto ? await interpretarConRespaldo(mensaje.texto, env) : null;
   const interpretacion = entendido?.interpretacion ?? null;
-  const entrega = interpretacion?.intencion === 'pedido' ? await entregaPropuesta(env) : undefined;
+  const entrega = interpretacion?.intencion === 'pedido' ? await entregaPropuesta(env, interpretacion.fecha_texto) : undefined;
   const respuesta = interpretacion
     ? describirInterpretacion(interpretacion, entendido?.conIa, entrega)
     : `Recibí un mensaje de tipo "${mensaje.tipo}".`;
