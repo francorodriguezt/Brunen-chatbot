@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Brunen · Panel</title>
+  <link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="barra-contenido">
+      <h1 class="marca">Brunen <span>Panel</span></h1>
+      <div class="barra-derecha">
+        <button type="button" id="activar-avisos" class="boton boton-chico" hidden>Activar avisos del navegador</button>
+        <span id="usuario" class="usuario"></span>
+      </div>
+    </div>
+    <nav class="pestanas" role="tablist" aria-label="Secciones">
+      <button type="button" role="tab" id="pestana-pedidos" aria-selected="true" aria-controls="vista-pedidos">
+        Pedidos <span class="contador" id="cuenta-pedidos" hidden></span>
+      </button>
+      <button type="button" role="tab" id="pestana-avisos" aria-selected="false" aria-controls="vista-avisos" tabindex="-1">
+        Avisos <span class="contador" id="cuenta-avisos" hidden></span>
+      </button>
+    </nav>
+  </header>
+
+  <div id="conexion" class="conexion" role="status" hidden></div>
+
+  <main>
+    <section id="vista-pedidos" role="tabpanel" aria-labelledby="pestana-pedidos">
+      <div class="filtros" role="group" aria-label="Qué pedidos mostrar" id="filtros-pedidos"></div>
+      <div id="lista-pedidos" class="lista"></div>
+    </section>
+    <section id="vista-avisos" role="tabpanel" aria-labelledby="pestana-avisos" hidden>
+      <div class="filtros" role="group" aria-label="Qué avisos mostrar" id="filtros-avisos"></div>
+      <div id="lista-avisos" class="lista"></div>
+    </section>
+  </main>
+
+  <dialog id="dialogo-editar" aria-labelledby="titulo-editar">
+    <form method="dialog" id="formulario-editar">
+      <h2 id="titulo-editar">Cambiar pedido</h2>
+      <div class="campos">
+        <label>Fecha de entrega <input type="date" name="fecha" required></label>
+        <label>Comuna <input type="text" name="comuna" maxlength="80" autocomplete="off"></label>
+        <label class="ancho">Dirección <input type="text" name="direccion" maxlength="200" autocomplete="off"></label>
+        <label class="ancho">Notas para el repartidor <textarea name="notas" rows="2" maxlength="500"></textarea></label>
+      </div>
+      <fieldset>
+        <legend>Bidones</legend>
+        <div id="editar-lineas"></div>
+        <div class="fila-total"><button type="button" id="agregar-linea" class="boton boton-chico">Agregar línea</button><strong id="editar-total"></strong></div>
+      </fieldset>
+      <p class="error-formulario" id="error-editar" role="alert" hidden></p>
+      <div class="acciones-dialogo">
+        <button type="button" class="boton" id="cancelar-editar">Cerrar</button>
+        <button type="submit" class="boton boton-principal" id="guardar-editar">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogo-accion" aria-labelledby="titulo-accion">
+    <form method="dialog" id="formulario-accion">
+      <h2 id="titulo-accion"></h2>
+      <p id="texto-accion" class="suave"></p>
+      <label class="ancho" id="campo-motivo">Motivo (opcional) <textarea name="motivo" rows="2" maxlength="300"></textarea></label>
+      <div class="acciones-dialogo">
+        <button type="button" class="boton" id="volver-accion">Volver</button>
+        <button type="submit" class="boton" id="confirmar-accion"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="mensaje" class="mensaje" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="sin-js">El panel necesita JavaScript para funcionar.</p></noscript>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
