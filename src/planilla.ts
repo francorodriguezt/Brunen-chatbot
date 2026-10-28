@@ -19,6 +19,8 @@ export interface RegistroMensaje {
   telefonoEnmascarado: string;
   tipo: string;
   resultado: Resultado;
+  /** Lo que entendió el intérprete (pedido, pregunta, reclamo...). */
+  intencion?: string;
   /** Solo cuando resultado = "error". */
   error?: string;
 }
@@ -43,7 +45,7 @@ class PlanillaSheets implements Planilla {
 
   async guardar(registros: readonly RegistroMensaje[], ahora: Date = new Date()): Promise<void> {
     const cuando = textoFechaHora(ahora);
-    const mensajes = registros.map((r) => [cuando, r.wamid, r.telefonoEnmascarado, r.tipo, r.resultado]);
+    const mensajes = registros.map((r) => [cuando, r.wamid, r.telefonoEnmascarado, r.tipo, r.resultado, r.intencion ?? '']);
     const errores = registros.filter((r) => r.error).map((r) => [cuando, 'webhook', r.wamid, (r.error ?? '').slice(0, 300)]);
     await Promise.all([
       this.cliente.agregarFilas('MENSAJES_PROCESADOS', mensajes),

@@ -15,10 +15,10 @@ Brunen vende por WhatsApp el 100 % de sus pedidos: una persona recibe cada mensa
 | 0 | Precios, despacho, firma del webhook y pruebas | Lista |
 | 1 | Worker desplegado y conectado a la API de WhatsApp de Meta (modo prueba) | Lista |
 | 2 | Deduplicación por mensaje en la base D1 y registro de mensajes y errores en Google Sheets | Lista, falta cargar los feriados |
-| 3 | Intérprete de mensajes por reglas | Parcial: funciona y está probado, aún sin conectar al bot |
+| 3 | Intérprete de mensajes por reglas | Parcial: conectado en modo prueba (el bot responde lo que entendió); falta el LLM de respaldo |
 | 4 a 7 | Flujo de pedido, alertas a la operadora, comprobantes, producción y piloto | Pendientes |
 
-Hoy el bot responde "Recibí: …" a los números de prueba. Detalle y criterios de cada etapa en [docs/ETAPAS.md](docs/ETAPAS.md).
+Hoy el bot responde a los números de prueba lo que entendió del mensaje ("Modo prueba. Entendí: pedido · 2 de 20 L"). Detalle y criterios de cada etapa en [docs/ETAPAS.md](docs/ETAPAS.md).
 
 ## Cómo funciona
 ```mermaid

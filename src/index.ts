@@ -13,7 +13,9 @@
 
 import { almacenDe, esMensajeNuevo, liberarMensaje, limpiarAlmacen, type BaseDatos } from './almacen';
 import { igualesTiempoConstante, verificarFirma } from './firma';
+import { interpretar, type Intencion } from './interprete';
 import { planillaDe, type RegistroMensaje, type Resultado } from './planilla';
+import { describirInterpretacion } from './resumen';
 import {
   enmascararTelefono,
   enviarTexto,
@@ -55,19 +57,26 @@ export function numerosPermitidos(env: Env): Set<string> {
   );
 }
 
-export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promise<Resultado> {
+export interface ResultadoMensaje {
+  resultado: Resultado;
+  /** Lo que entendió el intérprete, solo para mensajes de texto atendidos. */
+  intencion?: Intencion;
+}
+
+export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promise<ResultadoMensaje> {
   if ((env.BOT_ACTIVO ?? 'SI').toUpperCase() === 'NO') {
     console.log(`Bot apagado; mensaje de ${enmascararTelefono(mensaje.de)} ignorado`);
-    return 'ignorado_bot_apagado';
+    return { resultado: 'ignorado_bot_apagado' };
   }
   if (!numerosPermitidos(env).has(mensaje.de)) {
     console.log(`Modo prueba: ${enmascararTelefono(mensaje.de)} no está en NUMEROS_PERMITIDOS`);
-    return 'ignorado_modo_prueba';
+    return { resultado: 'ignorado_modo_prueba' };
   }
-  const respuesta =
-    mensaje.tipo === 'text' && mensaje.texto
-      ? `Recibí: ${mensaje.texto}`
-      : `Recibí un mensaje de tipo "${mensaje.tipo}".`;
+  // Modo prueba: responde lo que entendió el intérprete. El flujo de pedido real llega en la Etapa 4.
+  const interpretacion = mensaje.tipo === 'text' && mensaje.texto ? interpretar(mensaje.texto) : null;
+  const respuesta = interpretacion
+    ? describirInterpretacion(interpretacion)
+    : `Recibí un mensaje de tipo "${mensaje.tipo}".`;
   await enviarTexto(
     {
       token: env.WHATSAPP_TOKEN,
@@ -77,7 +86,7 @@ export async function procesarMensaje(mensaje: MensajeEntrante, env: Env): Promi
     mensaje.de,
     respuesta,
   );
-  return 'respondido';
+  return { resultado: 'respondido', intencion: interpretacion?.intencion };
 }
 
 async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void> {
@@ -92,7 +101,7 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
         continue;
       }
       reclamado = almacen !== null;
-      registros.push({ ...base, resultado: await procesarMensaje(mensaje, env) });
+      registros.push({ ...base, ...(await procesarMensaje(mensaje, env)) });
     } catch (error) {
       // Si falló, se suelta el mensaje para que un reintento de Meta sí lo procese.
       if (almacen && reclamado) await liberarMensaje(almacen, mensaje.id);

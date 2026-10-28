@@ -72,7 +72,7 @@ describe('registro en la planilla', () => {
     const mensajes = anexos.find((a) => a.hoja === 'MENSAJES_PROCESADOS');
     expect(mensajes?.filas).toHaveLength(1);
     const [fila] = mensajes?.filas ?? [];
-    expect(fila?.slice(1)).toEqual(['wamid.A', '*******0001', 'text', 'respondido']);
+    expect(fila?.slice(1)).toEqual(['wamid.A', '*******0001', 'text', 'respondido', 'desconocido']);
     expect(JSON.stringify(anexos)).not.toContain('texto privado');
     expect(JSON.stringify(anexos)).not.toContain('56900000001');
     expect(anexos.some((a) => a.hoja === 'ERRORES')).toBe(false);
