@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { leerBotActivo, parsearBotActivo } from '../src/configuracion';
+import { leerBotActivo, leerServicio, parsearBotActivo, parsearConfiguracion } from '../src/configuracion';
 import { olvidarTokens } from '../src/google';
 import { olvidarHojas } from '../src/hojas';
 import { procesarMensaje, type Env } from '../src/index';
@@ -120,5 +120,36 @@ describe('el bot respeta BOT_ACTIVO de la planilla', () => {
     const r = await procesarMensaje(mensaje, { ...ENV, BOT_ACTIVO: 'NO', GOOGLE_SERVICE_ACCOUNT_JSON: await crearClaveJson(), GOOGLE_SHEET_ID: 'PLANILLA1' });
     expect(r.resultado).toBe('ignorado_bot_apagado');
     expect(enviados).toHaveLength(0);
+  });
+});
+
+describe('parsearConfiguracion', () => {
+  it('lee el interruptor, el estado del servicio y el aviso de contingencia', () => {
+    const r = parsearConfiguracion([
+      ['BOT_ACTIVO', 'SI'],
+      ['ESTADO_SERVICIO', 'reducido'],
+      ['MENSAJE_EXCEPCION', '  Hoy hay retrasos.  '],
+    ]);
+    expect(r).toEqual({ botActivo: true, servicio: { reducido: true, mensajeExcepcion: 'Hoy hay retrasos.' } });
+  });
+
+  it('el servicio es normal salvo que diga reducido (sin importar mayúsculas)', () => {
+    expect(parsearConfiguracion([['ESTADO_SERVICIO', 'normal']]).servicio.reducido).toBe(false);
+    expect(parsearConfiguracion([['estado_servicio', 'REDUCIDO']]).servicio.reducido).toBe(true);
+    expect(parsearConfiguracion([]).servicio).toEqual({ reducido: false, mensajeExcepcion: '' });
+  });
+});
+
+describe('leerServicio', () => {
+  it('lee el servicio de la misma hoja que el interruptor, con una sola lectura', async () => {
+    const llamadas = stubGoogle({ CONFIGURACION: [['BOT_ACTIVO', 'SI'], ['ESTADO_SERVICIO', 'reducido'], ['MENSAJE_EXCEPCION', 'Retrasos hoy']] });
+    const env = await entornoGoogle();
+    expect(await leerServicio(env, 1000)).toEqual({ reducido: true, mensajeExcepcion: 'Retrasos hoy' });
+    expect(await leerBotActivo(env, 1010)).toBe(true);
+    expect(lecturasDe(llamadas, 'CONFIGURACION')).toBe(1);
+  });
+
+  it('sin hoja legible no agrega ningún aviso', async () => {
+    expect(await leerServicio({}, 1000)).toEqual({ reducido: false, mensajeExcepcion: '' });
   });
 });

@@ -34,7 +34,8 @@ export interface EntornoPlanilla {
   GOOGLE_SHEET_ID?: string;
 }
 
-function textoFechaHora(ahora: Date): string {
+/** "2026-10-28 14:05", en la hora de Santiago. */
+export function textoFechaHora(ahora: Date): string {
   const local = fechaHoraLocal(ahora);
   const dosDigitos = (n: number) => String(n).padStart(2, '0');
   return `${local.fecha} ${dosDigitos(local.hora)}:${dosDigitos(local.minuto)}`;

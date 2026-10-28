@@ -36,6 +36,15 @@ function proximaFecha(hoy: string, mes: number, dia: number): string | null {
   return armarFecha(ano + 1, mes, dia);
 }
 
+const NOMBRE_DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const NOMBRE_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/** "lunes 2 de noviembre" para una fecha YYYY-MM-DD. */
+export function fechaEnPalabras(fecha: string): string {
+  const [, mes = 1, dia = 1] = fecha.split('-').map(Number);
+  return `${NOMBRE_DIAS[diaSemana(fecha)]} ${dia} de ${NOMBRE_MESES[mes - 1]}`;
+}
+
 export function resolverFechaTexto(texto: string, hoy: string): string | null {
   // Se quitan los artículos del principio: "el viernes", "para el 15 de noviembre", "el dia 20".
   const t = normalizar(texto).replace(/^(?:para )?(?:(?:el|este|proximo) )+(?:dia )?/, '');

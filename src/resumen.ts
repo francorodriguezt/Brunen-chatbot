@@ -4,8 +4,8 @@
  * de pedido (Etapa 4).
  */
 
-import { diaSemana } from './despacho';
 import type { PropuestaEntrega } from './entrega';
+import { fechaEnPalabras } from './fechas';
 import type { Intencion, Interpretacion } from './interprete';
 
 const NOMBRE_INTENCION: Readonly<Record<Intencion, string>> = {
@@ -28,15 +28,6 @@ const NOMBRE_ACCION: Readonly<Record<string, string>> = {
   preguntar_cantidad: 'preguntaría cuántos',
   preguntar_pedido: 'preguntaría qué quiere pedir',
 };
-
-const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-
-/** "lunes 2 de noviembre" para una fecha YYYY-MM-DD. */
-export function fechaEnPalabras(fecha: string): string {
-  const [, mes = 1, dia = 1] = fecha.split('-').map(Number);
-  return `${DIAS[diaSemana(fecha)]} ${dia} de ${MESES[mes - 1]}`;
-}
 
 /**
  * "entrega propuesta lunes 2 de noviembre". Entre paréntesis dice por qué no es el día pedido y si los
