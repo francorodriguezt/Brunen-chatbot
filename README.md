@@ -17,9 +17,10 @@ Brunen vende por WhatsApp el 100 % de sus pedidos: una persona recibe cada mensa
 | 2 | Deduplicación por mensaje en la base D1, registro en Google Sheets y feriados | Lista |
 | 3 | Intérprete de mensajes: reglas y respaldo con IA (Groq) | Lista |
 | 4 | Flujo de pedido: cliente, precio, fecha, memoria de la conversación, registro | Piezas listas y probadas, sin conectar: esperan decisiones del dueño |
-| 5 | Aviso a la operadora por Telegram con botones Confirmar / Cambiar | Aviso listo; falta crear el bot y conectar |
+| 5 | Bandeja de pedidos y avisos para la operadora; Telegram solo para lo muy urgente | Aviso de Telegram listo; la bandeja pasa al panel |
 | 6 | Comprobantes, audio y lista del día para el repartidor | Lista del día lista; falta decidir dónde guardar los comprobantes |
 | 7 | Producción y piloto con clientes | Pendiente |
+| P | Panel de administración: pedidos, avisos, clientes por ubicación, mapa y estadísticas | Dirección decidida; empieza al conectar el flujo |
 
 Hoy el bot responde a los números de prueba lo que entendió del mensaje ("Modo prueba. Entendí: pedido · 2 de 20 L · entrega propuesta jueves 29 de octubre"). Lo que ya está construido para el flujo real, y cómo conversará con los clientes, está en [docs/CONVERSACIONES.md](docs/CONVERSACIONES.md). Detalle y criterios de cada etapa en [docs/ETAPAS.md](docs/ETAPAS.md).
 
@@ -43,7 +44,7 @@ flowchart LR
 - **Presupuesto de mensajes:** WhatsApp regala 1.000 mensajes de servicio al mes por número. El diseño apunta a 1 mensaje por pedido, junta los mensajes seguidos del cliente y no responde a un simple "gracias".
 - **Plan gratuito de Cloudflare:** 10 ms de CPU por solicitud. Las lecturas de la planilla se guardan en memoria, el token de Google se pide una sola vez y el flujo lee solo lo que cada mensaje necesita.
 - **Datos personales:** los teléfonos se enmascaran en los logs, los secretos viven solo en `.dev.vars` o en `wrangler secret`, la IA corre con retención de datos cero y los datos reales de clientes no entran al repositorio.
-- Las 31 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
+- Las 32 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
 
 ## Calidad
 - Más de 600 pruebas automáticas con Vitest: los casos de precios del negocio, mensajes de ejemplo para el intérprete y conversaciones completas de punta a punta.
