@@ -16,11 +16,11 @@ Brunen vende por WhatsApp el 100 % de sus pedidos: una persona recibe cada mensa
 | 1 | Worker desplegado y conectado a la API de WhatsApp de Meta (modo prueba) | Lista |
 | 2 | Deduplicación por mensaje en la base D1, registro en Google Sheets y feriados | Lista |
 | 3 | Intérprete de mensajes: reglas y respaldo con IA (Groq) | Lista |
-| 4 | Flujo de pedido: cliente, precio, fecha, memoria de la conversación, registro | Piezas listas y probadas, sin conectar: esperan decisiones del dueño |
-| 5 | Bandeja de pedidos y avisos para la operadora; Telegram solo para lo muy urgente | Aviso de Telegram listo; la bandeja pasa al panel |
+| 4 | Flujo de pedido: cliente, precio, fecha, memoria de la conversación, registro en D1 | Conectado al Worker y probado de punta a punta; apagado en producción hasta las decisiones del dueño |
+| 5 | Bandeja de pedidos y avisos para la operadora; Telegram solo para lo muy urgente | La bandeja está en el panel; el aviso de Telegram está listo |
 | 6 | Comprobantes, audio y lista del día para el repartidor | Lista del día lista; falta decidir dónde guardar los comprobantes |
 | 7 | Producción y piloto con clientes | Pendiente |
-| P | Panel de administración: pedidos, avisos, clientes por ubicación, mapa y estadísticas | Dirección decidida; empieza al conectar el flujo |
+| P | Panel de administración: pedidos, avisos, clientes por ubicación, mapa y estadísticas | P1 (bandeja de pedidos y avisos) lista y probada en local; falta el acceso y el despliegue |
 
 Hoy el bot responde a los números de prueba lo que entendió del mensaje ("Modo prueba. Entendí: pedido · 2 de 20 L · entrega propuesta jueves 29 de octubre"). Lo que ya está construido para el flujo real, y cómo conversará con los clientes, está en [docs/CONVERSACIONES.md](docs/CONVERSACIONES.md). Detalle y criterios de cada etapa en [docs/ETAPAS.md](docs/ETAPAS.md).
 
@@ -43,11 +43,12 @@ flowchart LR
 - **Lo dudoso no se le promete al cliente:** si el precio depende de algo pendiente, la tabla de precios tiene errores o la fecha no es segura, el pedido se anota igual, una persona recibe los motivos y al cliente se le dice que se lo confirman.
 - **Presupuesto de mensajes:** WhatsApp regala 1.000 mensajes de servicio al mes por número. El diseño apunta a 1 mensaje por pedido, junta los mensajes seguidos del cliente y no responde a un simple "gracias".
 - **Plan gratuito de Cloudflare:** 10 ms de CPU por solicitud. Las lecturas de la planilla se guardan en memoria, el token de Google se pide una sola vez y el flujo lee solo lo que cada mensaje necesita.
+- **Panel de administración con acceso cerrado por defecto:** es un Worker aparte, detrás de Cloudflare Access, sin ningún secreto de WhatsApp ni de Google. Comprueba en cada solicitud el token de Access (firma RS256, emisor, audiencia y vencimiento) y, si falta configuración, no sirve nada. Las escrituras exigen una cabecera propia y el mismo origen, la política de contenido solo permite scripts propios y lo que escribe un cliente se muestra siempre como texto, nunca como HTML. La consulta que se repite cada pocos segundos usa solo índices, y una prueba lo vigila para no pasar el límite gratuito de lecturas de D1.
 - **Datos personales:** los teléfonos se enmascaran en los logs, los secretos viven solo en `.dev.vars` o en `wrangler secret`, la IA corre con retención de datos cero y los datos reales de clientes no entran al repositorio.
-- Las 32 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
+- Las 33 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
 
 ## Calidad
-- Más de 600 pruebas automáticas con Vitest: los casos de precios del negocio, mensajes de ejemplo para el intérprete y conversaciones completas de punta a punta.
+- Más de 700 pruebas automáticas con Vitest: los casos de precios del negocio, mensajes de ejemplo para el intérprete, conversaciones completas de punta a punta y la seguridad del panel (tokens falsificados, vencidos o de otra aplicación).
 - Las pruebas de la base de datos corren el SQL de verdad sobre SQLite con las migraciones reales, no sobre un doble.
 - TypeScript en modo estricto y CI en GitHub Actions (`npm run check` en cada push).
 - Scripts para validar la configuración y simular un mensaje firmado como Meta, sin depender de Meta.
@@ -55,10 +56,11 @@ flowchart LR
 ## Estructura
 | Carpeta | Contenido |
 |---|---|
-| `src/` | Worker, firma, WhatsApp, deduplicación, intérprete y respaldo con IA, precios, fechas y despacho, lectura de la planilla, motor del flujo de pedido y avisos |
+| `src/` | Worker, firma, WhatsApp, deduplicación, intérprete y respaldo con IA, precios, fechas y despacho, lectura de la planilla, motor del flujo de pedido, pedidos y avisos en D1, y el Worker del panel (`src/panel/`) |
+| `panel/` | Pantalla del panel: HTML, CSS y JavaScript sin dependencias |
 | `tests/` | Pruebas, mensajes de ejemplo (`mensajes.json`) y ayudas compartidas |
 | `migrations/` | Esquema de la base D1 |
-| `scripts/` | `verificar-config`, `simular-mensaje` y `preparar-planilla` |
+| `scripts/` | `verificar-config`, `simular-mensaje`, `preparar-planilla` y los datos ficticios para ver el panel en local |
 | `docs/` | Conocimiento del negocio, decisiones, etapas, pendientes, conversaciones de ejemplo y guía de desarrollo |
 
 Para correrlo, probarlo y desplegarlo: [docs/DESARROLLO.md](docs/DESARROLLO.md).

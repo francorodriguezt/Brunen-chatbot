@@ -89,7 +89,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 ## Etapa 4 — Flujo de pedido
 
-**Estado (2026-10-28):** las piezas están construidas y probadas, **sin conectar** al Worker: el bot en producción sigue en modo prueba. Falta el visto bueno del dueño sobre los textos y las decisiones pendientes, y conectar (más abajo).
+**Estado (2026-10-28):** conectada al Worker detrás del interruptor `FLUJO_PEDIDO` (D33), guardando pedidos y avisos en D1 y probada de punta a punta con Meta, Google, Telegram y Groq simulados. **En producción sigue apagada**: el bot responde en modo prueba. Falta aplicar las migraciones 0003 y 0004, el visto bueno del dueño sobre los textos y las decisiones pendientes, y encenderla (más abajo).
 
 **Qué hay** (todo en `src/`, con sus pruebas en `tests/`):
 
@@ -101,14 +101,15 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | Mensajes seguidos | `agrupador.ts` | Junta "2 bidones" y "de 20" para responder una sola vez |
 | Decisión | `motor.ts`, `textos.ts`, `pedidos.ts`, `alertas.ts` | Decide respuesta, fila de PEDIDOS y aviso a la operadora; lo dudoso se manda a revisión |
 | Flujo | `flujo.ts` | Une todo con dependencias inyectables y nunca lanza errores |
+| Conexión | `atencion.ts`, `index.ts`, `repositorio.ts` | Recibe cada mensaje, junta los seguidos, guarda el pedido y el aviso en D1, envía la respuesta única y avisa por Telegram solo lo urgente |
 
-Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con el motor). Por qué así: D26 a D28.
+Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con el motor). Por qué así: D26 a D28 y D33.
 
-**Cómo conectarlo** (cuando el dueño apruebe; cada paso se verifica con `npm run check` y un mensaje de prueba):
-1. Aplicar la migración: `npx wrangler d1 migrations apply brunen-chatbot --remote` (crea `conversaciones`, `ultimos_pedidos` y `mensajes_pendientes`).
-2. En `procesarLote` (`src/index.ts`), por cada número: anotar sus mensajes de texto con `agruparMensaje` (una sola espera por número, no una por mensaje) y llamar a `atenderTexto` con los puertos reales: `buscarCliente`, `cargarTablaPrecios`, `proponerEntrega`, `leerServicio`, `interpretarConRespaldo` y `new MemoriaConversaciones(env.DB)`.
-3. Enviar `decision.respuesta` (si no es null), escribir el pedido y el aviso en D1 (tablas nuevas, D32) y, como espejo, el pedido en la planilla con `ClienteSheets.agregarFilas('PEDIDOS', filasDePedido(decision.pedido))`, y registrar la intención y los errores en las hojas de siempre. Los avisos urgentes salen por Telegram; el resto se ve en el panel.
-4. Probar con los 12 casos de CONVERSACIONES.md desde un número de `NUMEROS_PERMITIDOS`, y con 2 o 3 mensajes seguidos para el agrupador.
+**Cómo encenderlo** (cada paso con aprobación de Franco; se verifica con `npm run check` y un mensaje de prueba desde un número de `NUMEROS_PERMITIDOS`):
+1. Aplicar las migraciones: `npx.cmd wrangler d1 migrations apply brunen-chatbot --remote` (crea `conversaciones`, `ultimos_pedidos`, `mensajes_pendientes`, `pedidos`, `avisos` e `historial_pedidos`).
+2. Desplegar el bot (`npm run deploy`): el flujo sigue apagado.
+3. Descomentar `FLUJO_PEDIDO = "SI"` en `[vars]` de `wrangler.toml` y volver a desplegar. Opcional: `ESPERA_AGRUPADOR_MS` (7.000 por defecto, D27).
+4. Probar con los 12 casos de CONVERSACIONES.md y con 2 o 3 mensajes seguidos para el agrupador. Cada pedido y cada aviso debe aparecer en el panel.
 5. Medir el CPU de cada tipo de mensaje con `wrangler tail` (límite de 10 ms en el plan gratis, D31) y la cantidad de llamadas a Google.
 6. Recién entonces, ampliar a más números (Etapa 7).
 
@@ -126,31 +127,41 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 
 ## Etapa 5 — La operadora recibe y confirma
 
-**Estado (2026-10-28):** `telegram.ts` está listo (aviso con botones, lectura de botones, secreto del webhook; D29), pero con D32 la bandeja y los botones Confirmar / Cambiar pasan al **panel**. Telegram queda solo para lo muy urgente (propuesta: reclamos y fallas del sistema).
+**Estado (2026-10-28):** la bandeja y las acciones Confirmar / Cambiar / Cancelar viven en el **panel** (fase P1, D33), no en Telegram: el flujo ya guarda lo que decide el motor en D1 y el panel lo muestra, guardando quién hizo cada cambio. Telegram queda solo para lo muy urgente (reclamos y fallas del sistema): `telegram.ts` y el filtro ya están listos (D29).
 
 **Falta:**
-1. Migración con las tablas `pedidos` y `alertas` en D1, y que el flujo escriba ahí lo que decide el motor (`decision.pedido`, `decision.alerta`), con la planilla como espejo.
-2. La bandeja del panel (fase P1, abajo): confirmar, cambiar o rechazar un pedido y cerrar avisos, guardando quién lo hizo.
-3. Telegram: crear el bot con @BotFather, cargar `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID`, y enviar solo los avisos urgentes (hay que agregar ese filtro). Si más adelante se quiere confirmar desde Telegram, la ruta `/telegram` y el resto de las piezas ya están construidos.
-4. Decidir qué pasa con el cliente al cambiar un pedido en el panel (cada mensaje al cliente cuenta en el cupo gratis).
+1. Crear el bot de Telegram con @BotFather y cargar `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y el secreto del webhook. Sin ellos no sale ningún aviso por ahí, pero el panel los muestra igual. Si más adelante se quiere confirmar desde Telegram, la ruta `/telegram` y el resto de las piezas ya están construidas.
+2. Que el panel esté desplegado con su acceso (ver "Panel de administración").
+3. Decidir qué pasa con el cliente al cambiar un pedido en el panel (cada mensaje al cliente cuenta en el cupo gratis). Hoy el panel no escribe al cliente.
 
 ---
 
 ## Panel de administración (D32)
 
-**Estado (2026-10-28):** dirección decidida por Franco; detalles propuestos en D32. Nada construido todavía.
+**Estado (2026-10-28):** la fase P1 (bandeja) está construida y probada en local (D33); falta elegir el acceso, aplicar las migraciones y desplegar. Las demás fases, sin empezar.
 
-**Qué es:** una página privada en el mismo Worker (`/panel`), gratis, donde Constanza y el dueño ven los pedidos y los avisos del bot, los confirman y administran a los clientes por ubicación, bidones y mapa. Los datos viven en D1 (fuente de verdad) con la planilla como espejo.
+**Qué es:** una página privada en un Worker aparte (`brunen-panel`), gratis, donde Constanza y el dueño ven los pedidos y los avisos del bot, los confirman y, más adelante, administran a los clientes por ubicación, bidones y mapa. Los datos viven en D1 (fuente de verdad); el panel no tiene ningún secreto de WhatsApp, Google ni Groq.
 
 | Fase | Qué incluye |
 |---|---|
-| P1 Bandeja | Inicio de sesión; pedidos por confirmar y avisos, con confirmar / cambiar / rechazar; interruptor del bot y aviso de contingencia; actualización automática con sonido |
+| P1 Bandeja (lista) | Pedidos por confirmar, confirmados y cerrados, con confirmar / cambiar (fecha, comuna, dirección, notas, bidones y precios) / cancelar / en ruta / entregado, lo que escribió el cliente, observaciones del bot e historial de cambios; avisos (reclamos, facturas, comprobantes, mensajes no entendidos, fallas) con "resuelto"; se actualiza sola con sonido y notificación; funciona en el celular y con tema oscuro |
 | P2 Reparto del día | Lista del día por comuna lista para copiar (`rutaDelDia.ts`), envases por retirar |
 | P3 Clientes y mapa | Ficha, historial y envases por cliente; importación del Excel; mapa por comuna y con punto exacto; el bot pasa a leer los clientes de D1 |
 | P4 Estadísticas | Bidones y ventas por día, semana y mes; clientes que dejaron de pedir; reclamos abiertos; comprobantes por revisar |
-| P5 Configuración | Precios, feriados y textos editables, sin tocar la planilla |
+| P5 Configuración | Interruptor del bot y aviso de contingencia, precios, feriados y textos editables, sin tocar la planilla |
 
-**Antes de P1:** conectar el flujo de pedido (Etapa 4) para que escriba en D1, y elegir el acceso (Cloudflare Access o inicio de sesión con Google).
+**Probarlo en tu computador** (sin tocar producción: todo es local):
+1. `npm run datos-locales`: crea las tablas en la base D1 local y carga pedidos y avisos ficticios (se puede repetir).
+2. `npm run dev:panel -- --var PANEL_DEV_CORREO:tu@correo.test` y abrir http://localhost:8787 (si el puerto está ocupado, agregar `--port 8788`). `PANEL_DEV_CORREO` solo funciona desde localhost.
+
+**Cómo encenderlo en producción** (cada paso con aprobación de Franco):
+1. Aplicar las migraciones y desplegar el bot, como en la Etapa 4.
+2. Cloudflare → Zero Trust: elegir el nombre del equipo (queda `<equipo>.cloudflareaccess.com`) y el plan Free. **Cloudflare pide registrar un método de pago aunque no cobre** (D33); confirmar antes la opción de acceso (`docs/PENDIENTES.md`).
+3. `npm run deploy:panel`: el panel queda en `https://brunen-panel.<subdominio>.workers.dev` y responde 503 hasta el paso 5. No muestra nada sin acceso configurado.
+4. Zero Trust → Access controls → Applications → Create new application → "Self-hosted and private" → agregar el nombre de host del panel → política "Allow" con los correos de Constanza, Franco y el dueño → método de acceso con código por correo. Si el menú no deja elegir un `workers.dev`, la configuración del Worker permite activar Access para su dirección `workers.dev` (https://developers.cloudflare.com/workers/configuration/routing/workers-dev/). Los nombres de los menús son los de la documentación del 2026-10-28; verificarlos al hacerlo.
+5. En la aplicación: Configure → Additional settings → copiar el "Application Audience (AUD) Tag". En `wrangler.panel.toml` poner `ACCESS_TEAM_DOMAIN = "<equipo>.cloudflareaccess.com"` y `ACCESS_AUD = "<el tag>"` (no son secretos) y volver a desplegar el panel.
+6. Abrir la dirección: debe pedir el correo, mandar un código y mostrar la bandeja. Probar que un correo que no está en la política no entra. Opcional: `PANEL_CORREOS` como segunda barrera.
+7. Medir el CPU del panel con `wrangler tail` (límite de 10 ms, D31 y D33).
 
 **Cuidados:** el panel muestra datos personales (teléfonos, direcciones): acceso solo para personas autorizadas, sesión segura, registro de quién confirma qué, y ninguna dirección sale hacia servicios externos (el mapa no geocodifica con terceros).
 

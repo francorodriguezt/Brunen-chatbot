@@ -86,12 +86,16 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 - Canal: WhatsApp Cloud API (Meta). Número: nuevo vs. coexistencia con el actual (PENDIENTE, decide el dueño).
 - Motor: código propio en **Cloudflare Workers + TypeScript** (plan gratuito). Reemplaza la idea inicial de n8n.
 - Interpretación: parser por reglas + LLM de respaldo (Groq gratis). Gemini gratis descartado (usa los datos).
-- Datos: Google Sheets. Memoria del bot (mensajes ya vistos, pedido a medias, último pedido): base D1 de Cloudflare. Alertas a Constanza: Telegram. Comprobantes: dónde guardarlos está por decidir (D30; Drive con la cuenta de servicio no sirve). Monitoreo: UptimeRobot → `/salud`.
+- Datos: los pedidos y los avisos viven en la base D1 de Cloudflare, junto con la memoria del bot (mensajes ya vistos, pedido a medias, último pedido); Google Sheets sigue para CLIENTES, PRECIOS, CONFIGURACION y FERIADOS (D32, D33).
+- Panel de administración propio (un Worker aparte, detrás de Cloudflare Access) para que Constanza y el dueño vean, confirmen y cambien pedidos y avisos. Telegram queda solo para lo muy urgente (reclamos y fallas del sistema).
+- Comprobantes: se guardarán en D1 por 60 días y se verán en el panel (D30, D32; Drive con la cuenta de servicio no sirve). Monitoreo: UptimeRobot → `/salud`.
 - Flujo: webhook → validar firma → 200 inmediato → deduplicar → revisar `BOT_ACTIVO` → buscar cliente → según tipo:
-  - Texto: juntar los mensajes seguidos → parser (→ LLM si hace falta) → pedido / pregunta frecuente / escalamiento. Lo dudoso se anota igual y se manda a revisión; al cliente no se le promete.
-  - Imagen: comprobante → PAGOS + alerta. Audio u otro: pedir texto.
+  - Texto: juntar los mensajes seguidos → parser (→ LLM si hace falta) → pedido / pregunta frecuente / escalamiento. El pedido y su aviso quedan en D1. Lo dudoso se anota igual y se manda a revisión; al cliente no se le promete.
+  - Imagen: posible comprobante → aviso en el panel (guardar la imagen y anotar en PAGOS: Etapa 6). Audio u otro: pedir texto.
 
 ## 11. Google Sheets (un archivo)
+> Desde D33 los pedidos y los avisos viven en D1 y el panel los lee y los cambia; las columnas de PEDIDOS de abajo quedan como formato de referencia y para un espejo futuro en la planilla.
+
 - PEDIDOS: ID_Pedido, Fecha_Hora, Telefono, Nombre, Producto, Cantidad, Precio_Unitario, Total, Fecha_Entrega_Solicitada, Fecha_Entrega_Confirmada, Estado, Comuna, Direccion, Notas_Repartidor, Envases_A_Retirar, Confirmado_Por, Observaciones
 - CLIENTES: Telefono (clave), Nombre, Direccion, Comuna, Tipo (normal/mayorista/empresa/especial), Precio_Especial_20L, Envases_Pendientes, Primera_Compra, Aviso_Hora, Credito (PENDIENTE: qué significa), Fecha_Ultimo_Pedido, Total_Pedidos, Notas, Estado (activo/bloqueado; PENDIENTE: qué hace el bot con bloqueados)
 - PRECIOS (reemplaza a PRODUCTOS): Tipo, Desde, Hasta, Precio

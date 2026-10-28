@@ -3,7 +3,8 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Decide Franco
-Franco aceptó las recomendaciones el 2026-10-28; quedan abiertas las dos que dependen de Constanza.
+Franco aceptó las recomendaciones el 2026-10-28; quedan abiertas la del acceso al panel, que cambió al verificarla, y las dos que dependen de Constanza.
+- [ ] **Acceso al panel: confirmar la opción.** Verifiqué en la documentación de Cloudflare (2026-10-28) que Zero Trust Free pide registrar un método de pago aunque no cobre (D33), y habías aceptado "pasar a inicio de sesión con Google si pide tarjeta". **A.** Access con esa tarjeta registrada: código por correo, nada que programar ni mantener, sin cobro mientras sean pocas personas (el tope de 50 usuarios gratis solo lo confirman fuentes de terceros). **B.** Inicio de sesión con Google dentro del Worker: sin tarjeta, pero hay que programarlo, probarlo y mantenerlo, y crear una credencial OAuth en Google Cloud. Recomendación: A, porque Meta ya exige un método de pago para el número del bot y así no escribimos código de seguridad propio. Qué tarjeta usar (la tuya hoy, la de Brunen después) lo deciden tú y el dueño.
 - [x] Qué es "muy urgente" para Telegram (D32). Recomendación: reclamos y fallas del sistema (token de WhatsApp vencido, Google o D1 caídos, hoja PRECIOS dañada, tope de la IA agotado). Todo lo demás, en el panel.
 - [x] Acceso al panel (D32): Cloudflare Access (código por correo, sin programar; confirmar si pide tarjeta) o inicio de sesión con Google en el propio Worker. Recomendación: probar Access primero.
 - [x] Datos del panel: D1 como fuente de verdad de pedidos, avisos y clientes, con la planilla como espejo (D32). Recomendación: sí.
@@ -50,8 +51,12 @@ Están en el documento para el dueño, numeradas igual:
 - [x] Versión de la Graph API: v25.0 (D18).
 - [x] Base D1 `brunen-chatbot` creada, migrada y activa (D20).
 - [x] Token permanente (usuario del sistema `bot-brunen`, sin vencimiento) cargado en Cloudflare el 2026-10-28.
-- [ ] Panel de administración (D32): conectar el flujo de pedido escribiendo en D1, y construir el panel por fases (ver `docs/ETAPAS.md`).
-- [ ] Al conectar el flujo: aplicar las migraciones nuevas en D1, medir el CPU por mensaje con `wrangler tail` (D31) y ajustar la espera del agrupador (D27) con mensajes reales.
+- [x] Flujo de pedido conectado al Worker y guardando en D1, detrás de `FLUJO_PEDIDO` (D33). Probado con SQLite real y con Meta, Google, Telegram y Groq simulados.
+- [x] Panel, fase P1 (bandeja de pedidos y avisos): construido y probado en local (D33).
+- [ ] Salida a prueba, cada paso con aprobación de Franco: aplicar las migraciones 0003 y 0004 en la D1 remota, desplegar el bot, encender `FLUJO_PEDIDO` con un número de prueba, desplegar el panel y activar Access (pasos en `docs/ETAPAS.md`).
+- [ ] Medir el CPU por mensaje del bot y por solicitud del panel con `wrangler tail` (D31, D33) y ajustar la espera del agrupador (D27) con mensajes reales.
+- [ ] Panel, fases P2 a P5 (reparto del día, clientes y mapa, estadísticas, configuración; ver `docs/ETAPAS.md`).
+- [ ] Acotar por fecha las listas "Cerrados" y "Todos" del panel cuando haya miles de pedidos (D1 gratis: 5 millones de filas leídas al día; D33).
 - [ ] Crear el bot de Telegram (@BotFather) solo para lo muy urgente y cargar `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y el secreto del webhook (D29, D32). Lo hace Franco: no se pueden crear cuentas desde aquí.
 - [ ] Clientes: importar el Excel desde el panel cuando exista esa pantalla; mientras tanto, 2 o 3 clientes de prueba en la hoja CLIENTES (tu número, un mayorista, uno fuera de zona) para probar el flujo. Sin fichas, todos los clientes son "nuevos".
 - [ ] Traspasar a la cuenta de Brunen lo que hoy está a nombre de Franco: Cloudflare, Google Cloud/planilla y la app de Meta. Mientras tanto, invitar a contactobrunen@gmail.com como administrador de Cloudflare. Se hace completo en la Etapa 7.
