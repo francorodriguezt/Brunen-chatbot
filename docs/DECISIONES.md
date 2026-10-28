@@ -104,3 +104,12 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Arreglo: `POST /{WABA_ID}/subscribed_apps` con el token de la app (HTTP 200, `{"success":true}`). Desde ese momento empezaron a llegar los avisos.
 - Para el número definitivo (Etapa 7): repetir la suscripción en su cuenta de WhatsApp.
 - Primera prueba sin respuesta: Meta aceptó el envío (200) pero el texto libre solo se entrega si el destinatario escribió al número en las últimas 24 h. Se confirmó cuando el mensaje llegó después de escribirle al número de prueba. Con clientes reales no pasa: el cliente siempre escribe primero.
+
+### D20 · 2026-10-28 · Tomada
+**Deduplicar mensajes en D1 (base de Cloudflare), no en Google Sheets.** D8 se mantiene para los datos del negocio (pedidos, clientes).
+- Motivo: Meta puede reintentar dos veces casi a la vez. D1 hace la revisión atómica (`INSERT OR IGNORE` sobre una clave primaria); Sheets es lento y no atómico, así que dos reintentos simultáneos pasarían los dos.
+- Límites del plan gratis, verificados el 2026-10-27: 5 millones de filas leídas y 100.000 escritas por día, 5 GB. El bot usa una escritura por mensaje.
+- Si D1 falla, el mensaje se procesa igual (quizá dos veces): el cliente nunca debe quedar sin respuesta.
+- Retención de 7 días; las filas viejas se borran en 1 de cada ~50 mensajes.
+- Sin el bloque `[[d1_databases]]` en `wrangler.toml` no se deduplica: así el despliegue actual no cambia hasta crear la base.
+- Fuente: https://developers.cloudflare.com/d1/platform/pricing/

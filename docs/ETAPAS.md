@@ -41,3 +41,28 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 - Escribes "hola 2 bidones de 20" → recibes "Recibí: hola 2 bidones de 20" en < 5 s.
 - Desde un número fuera de `NUMEROS_PERMITIDOS` no hay respuesta (modo prueba).
 - `npx wrangler tail` muestra el log con el teléfono enmascarado.
+
+---
+
+## Etapa 2 — Planilla, deduplicación y registro de mensajes
+
+**Objetivo:** un mismo mensaje enviado dos veces (Meta reintenta si no recibe el 200 a tiempo) recibe una sola respuesta y deja una sola fila, y los mensajes y errores quedan en una planilla que Constanza puede mirar.
+
+**Avance (2026-10-28):** adelantado sin cuentas nuevas. Deduplicación por `wamid` con la base D1 de Cloudflare (código, migración y pruebas; la base aún no está creada, así que producción no deduplica todavía), registro de los avisos de entrega fallida de Meta y aviso claro en el registro cuando el token de WhatsApp vence. Falta todo lo que toca Google Sheets.
+
+**Lo haces tú:**
+1. Crear un proyecto en Google Cloud, activar la API de Sheets y crear una cuenta de servicio con su clave JSON. La clave es un secreto: va a `wrangler secret`, nunca al repositorio.
+2. Crear una planilla de desarrollo, sin datos reales, con las hojas PEDIDOS, CLIENTES, PRECIOS, PAGOS, CONFIGURACION, FERIADOS, RUTA_DEL_DIA, DASHBOARD, ERRORES y MENSAJES_PROCESADOS, y compartirla (editor) con el correo de la cuenta de servicio.
+3. Confirmar la creación de la base D1 (cambia tu cuenta de Cloudflare).
+
+**Lo hace Claude:**
+1. Crear la base D1 y aplicar la migración, con tu confirmación; después activar el bloque `[[d1_databases]]` de `wrangler.toml` y desplegar.
+2. Cliente de Google Sheets para Workers (firma RS256 con WebCrypto y token en caché), con pruebas sin red.
+3. Registrar cada mensaje en MENSAJES_PROCESADOS y cada fallo en ERRORES, como vista para Constanza.
+4. Leer FERIADOS desde la hoja y guardar el resultado en caché.
+
+**Prueba de aceptación:**
+- El mismo `wamid` enviado dos veces recibe una sola respuesta y deja una sola fila.
+- El mensaje aparece en MENSAJES_PROCESADOS.
+- Un fallo al enviar a Meta aparece en ERRORES.
+- Los feriados se leen de la hoja FERIADOS, no del código.
