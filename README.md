@@ -20,12 +20,14 @@ Brunen vende por WhatsApp el 100 % de sus pedidos: una persona recibe cada mensa
 Hoy el bot responde "Recibí: …" a los números de prueba. Detalle y criterios de cada etapa en [docs/ETAPAS.md](docs/ETAPAS.md).
 
 ## Cómo funciona
-```
-Cliente (WhatsApp) -> API de Meta -> Cloudflare Worker (/webhook)
-                                        1. valida la firma HMAC
-                                        2. responde 200 de inmediato
-                                        3. procesa en segundo plano:
-                                           intérprete -> precios y fechas -> respuesta
+```mermaid
+flowchart LR
+  A[Cliente en WhatsApp] --> B[API de Meta]
+  B --> C[Worker de Cloudflare en /webhook]
+  C --> D{Firma HMAC válida}
+  D -- No --> E[401, se descarta]
+  D -- Sí --> F[200 inmediato a Meta]
+  F --> G[Segundo plano: intérprete, precios y fechas, respuesta]
 ```
 
 ## Decisiones que vale la pena mirar
@@ -42,12 +44,14 @@ Cliente (WhatsApp) -> API de Meta -> Cloudflare Worker (/webhook)
 - Scripts para validar la configuración y simular un mensaje firmado como Meta, sin depender de Meta.
 
 ## Estructura
-```
-src/       Worker, firma, WhatsApp, precios, despacho, comunas e intérprete
-tests/     Pruebas y mensajes de ejemplo (mensajes.json)
-scripts/   verificar-config y simular-mensaje
-docs/      Conocimiento del negocio, decisiones, etapas, pendientes y guía de desarrollo
-```
+| Carpeta | Contenido |
+|---|---|
+| `src/` | Worker, firma, WhatsApp, deduplicación, precios, despacho, comunas e intérprete |
+| `tests/` | Pruebas y mensajes de ejemplo (`mensajes.json`) |
+| `migrations/` | Esquema de la base D1 |
+| `scripts/` | `verificar-config` y `simular-mensaje` |
+| `docs/` | Conocimiento del negocio, decisiones, etapas, pendientes y guía de desarrollo |
+
 Para correrlo, probarlo y desplegarlo: [docs/DESARROLLO.md](docs/DESARROLLO.md).
 
 ## Autor
