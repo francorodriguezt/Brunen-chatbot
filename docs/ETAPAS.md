@@ -41,8 +41,3 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 - Escribes "hola 2 bidones de 20" → recibes "Recibí: hola 2 bidones de 20" en < 5 s.
 - Desde un número fuera de `NUMEROS_PERMITIDOS` no hay respuesta (modo prueba).
 - `npx wrangler tail` muestra el log con el teléfono enmascarado.
-
-## Primer mensaje para Claude Code
-Abre la carpeta del repo, ejecuta `claude` y pega:
-
-> Lee CLAUDE.md, docs/ETAPAS.md y docs/PENDIENTES.md. Corre `npm install` y `npm run check` y dime si todo pasa. Crea la carpeta `.claude` y mueve `claude-settings.example.json` a `.claude/settings.json` (son los permisos del proyecto). Inicializa git (`git init -b main`) y haz el primer commit. Después explícame en pocas líneas cómo está organizado el código (precios, despacho, firma, webhook) y guíame paso a paso por la Etapa 1. No despliegues ni cargues secretos sin preguntarme.
