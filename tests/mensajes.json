@@ -180,6 +180,14 @@
     {
       "mensaje": "😊",
       "esperado": { "intencion": "desconocido" }
+    },
+    {
+      "mensaje": "buenas, necesito 2 de 20 y un par de 12 para el sábado en las condes",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }, { "tipo": "12L", "cantidad": 2 }], "fecha_texto": "sábado", "comuna_mencionada": "Las Condes" }
+    },
+    {
+      "mensaje": "quiero un par de 20 y una de 10",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }, { "tipo": "10L", "cantidad": 1 }] }
     }
   ]
 }

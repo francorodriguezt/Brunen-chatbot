@@ -11,6 +11,8 @@ describe('extraerItems', () => {
     ['necesito 12 bidones de 12', [{ tipo: '12L', cantidad: 12 }]],
     ['12 de 20', [{ tipo: '20L', cantidad: 12 }]],
     ['un par de bidones de 20', [{ tipo: '20L', cantidad: 2 }]],
+    ['un par de 12', [{ tipo: '12L', cantidad: 2 }]],
+    ['2 de 20 y un par de 12', [{ tipo: '20L', cantidad: 2 }, { tipo: '12L', cantidad: 2 }]],
     ['2 vidones de 20', [{ tipo: '20L', cantidad: 2 }]],
     ['5 bidonez de 12 lts', [{ tipo: '12L', cantidad: 5 }]],
     ['bidon de 20 x 3', [{ tipo: '20L', cantidad: 3 }]],

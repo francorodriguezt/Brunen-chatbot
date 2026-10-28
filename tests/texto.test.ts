@@ -22,6 +22,9 @@ describe('numerosACifras', () => {
   it.each([
     ['dos de veinte litros', '2 de 20 litros'],
     ['un par de bidones de doce', '2 bidones de 12'],
+    ['un par de 12', '2 de 12'],
+    ['un par de doce', '2 de 12'],
+    ['2 de 20 y un par de 12', '2 de 20 y 2 de 12'],
     ['una de 20 y tres de 12', '1 de 20 y 3 de 12'],
     ['veintidos bidones', '22 bidones'],
     ['quiero un bidon', 'quiero 1 bidon'],
