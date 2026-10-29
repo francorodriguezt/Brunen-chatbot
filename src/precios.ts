@@ -6,7 +6,7 @@
  *
  * Reglas implementadas (en este orden):
  *   1. Cliente con precio especial  -> se usa su precio por bidón (solo definido para 20 L).
- *   2. Cliente mayorista            -> $1.250 por bidón (solo definido para 20 L).
+ *   2. Cliente mayorista            -> $1.250 por bidón de 20 L y $1.100 por bidón de 12 L o 10 L (dueño, D36).
  *   3. Resto                        -> tramos por tipo y cantidad.
  *   Pedidos mezclados: cada tipo se calcula por separado (los tramos NO se suman entre tipos).
  *
@@ -54,6 +54,8 @@ export interface Cotizacion {
 }
 
 export const PRECIO_MAYORISTA = 1250;
+/** Mayorista, recarga de 12 L y 10 L (respuesta del dueño, D36). */
+export const PRECIO_MAYORISTA_12_Y_10L = 1100;
 
 /**
  * Tabla por defecto (sección 2 del documento de conocimiento).
@@ -126,8 +128,8 @@ export function cotizarPedido(
     if (cliente.tipo === 'especial' && tieneEspecial && tipo === '20L') {
       precioUnitario = especial;
       regla = 'especial';
-    } else if (cliente.tipo === 'mayorista' && tipo === '20L') {
-      precioUnitario = PRECIO_MAYORISTA;
+    } else if (cliente.tipo === 'mayorista') {
+      precioUnitario = tipo === '20L' ? PRECIO_MAYORISTA : PRECIO_MAYORISTA_12_Y_10L;
       regla = 'mayorista';
     } else {
       precioUnitario = precioPorTramo(tipo, cantidad, tabla);
@@ -136,8 +138,6 @@ export function cotizarPedido(
         motivos.push('Cliente marcado como especial sin precio especial registrado.');
       } else if (cliente.tipo === 'especial') {
         motivos.push(`Precio especial definido solo para 20 L; ${tipo} se calculó con tramos (PENDIENTE).`);
-      } else if (cliente.tipo === 'mayorista') {
-        motivos.push(`Precio mayorista definido solo para 20 L; ${tipo} se calculó con tramos (PENDIENTE).`);
       }
     }
 
@@ -161,20 +161,55 @@ export interface CotizacionCargaInicial {
   motivo?: string;
 }
 
+interface PreciosCargaInicial {
+  uno: number;
+  /** Total por dos envases. */
+  dos: number;
+  /** Por envase, desde el tercero. `null` = el dueño no lo definió (PENDIENTE). */
+  desdeTres: number | null;
+}
+
+/** Cliente sin envase (respuestas del dueño, D36). Los 3 o más de 20 L son la promoción vigente. */
+const CARGA_INICIAL: Record<TipoBidon, PreciosCargaInicial> = {
+  '20L': { uno: 5500, dos: 10000, desdeTres: 5000 },
+  '12L': { uno: 4500, dos: 8000, desdeTres: null },
+  '10L': { uno: 4500, dos: 8000, desdeTres: null },
+};
+
+/** Carga inicial mayorista por envase (respuesta del dueño, D36; lectura nuestra: es por envase, a confirmar). */
+const CARGA_INICIAL_MAYORISTA: Record<TipoBidon, number> = { '20L': 3250, '12L': 2000, '10L': 2000 };
+
 /**
- * Carga inicial para cliente sin envase (sección 2): 1 envase $5.500, 2 envases $10.000.
- * PENDIENTE: si aplica solo a 20 L y cuánto cuestan 3 o más envases.
+ * Carga inicial para un cliente sin envase. Lo que el dueño no definió no se inventa: va a revisión con el motivo.
  */
-export function cotizarCargaInicial(envases: number): CotizacionCargaInicial {
+export function cotizarCargaInicial(tipo: TipoBidon, envases: number, cliente: TipoCliente = 'normal'): CotizacionCargaInicial {
   validarCantidad(envases);
-  if (envases === 1) return { envases, total: 5500, requiereRevision: false };
-  if (envases === 2) return { envases, total: 10000, requiereRevision: false };
-  return {
-    envases,
-    total: null,
-    requiereRevision: true,
-    motivo: 'Precio de carga inicial para 3 o más envases no definido (PENDIENTE).',
-  };
+  if (cliente === 'empresa') {
+    return { envases, total: null, requiereRevision: true, motivo: 'Empresa con plan mensual: Constanza define la carga inicial.' };
+  }
+  if (cliente === 'mayorista') {
+    const total = envases * CARGA_INICIAL_MAYORISTA[tipo];
+    if (envases === 1) return { envases, total, requiereRevision: false };
+    return {
+      envases,
+      total,
+      requiereRevision: true,
+      motivo: 'Carga inicial mayorista calculada por envase: confirmar con el dueño que el precio es por envase (D36).',
+    };
+  }
+
+  const precios = CARGA_INICIAL[tipo];
+  let total: number | null;
+  if (envases === 1) total = precios.uno;
+  else if (envases === 2) total = precios.dos;
+  else total = precios.desdeTres === null ? null : envases * precios.desdeTres;
+  if (total === null) {
+    return { envases, total, requiereRevision: true, motivo: `Precio de carga inicial de ${tipo} para 3 o más envases no definido (PENDIENTE).` };
+  }
+  if (cliente === 'especial') {
+    return { envases, total, requiereRevision: true, motivo: 'Cliente con precio especial: confirmar la carga inicial.' };
+  }
+  return { envases, total, requiereRevision: false };
 }
 
 /** Formatea pesos chilenos sin depender del locale del entorno: 9900 -> "$9.900". */

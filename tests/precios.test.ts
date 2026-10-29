@@ -62,10 +62,27 @@ describe('clientes con condiciones especiales', () => {
     expect(c.requiereRevision).toBe(false);
   });
 
-  it('mayorista pide 10 L: tramo y revisión (PENDIENTE)', () => {
-    const c = cotizarPedido([{ tipo: '10L', cantidad: 2 }], { tipo: 'mayorista' });
-    expect(c.total).toBe(4400);
-    expect(c.requiereRevision).toBe(true);
+  it.each([
+    ['12L', 3, 3300],
+    ['10L', 2, 2200],
+  ] as const)('mayorista pide %s x %i: $1.100 c/u y sin revisión (D36)', (tipo, cantidad, total) => {
+    const c = cotizarPedido([{ tipo, cantidad }], { tipo: 'mayorista' });
+    expect(c.total).toBe(total);
+    expect(c.lineas[0]).toMatchObject({ precioUnitario: 1100, regla: 'mayorista' });
+    expect(c.requiereRevision).toBe(false);
+    expect(c.motivos).toEqual([]);
+  });
+
+  it('mayorista con 20 L y 12 L en el mismo pedido: $1.250 y $1.100 por bidón', () => {
+    const c = cotizarPedido(
+      [
+        { tipo: '20L', cantidad: 4 },
+        { tipo: '12L', cantidad: 2 },
+      ],
+      { tipo: 'mayorista' },
+    );
+    expect(c.total).toBe(4 * 1250 + 2 * 1100);
+    expect(c.requiereRevision).toBe(false);
   });
 
   it('empresa con plan mensual: siempre a revisión', () => {
@@ -97,13 +114,59 @@ describe('pedidos mezclados', () => {
   });
 });
 
-describe('cliente nuevo: carga inicial', () => {
-  it('1 envase -> $5.500', () => expect(cotizarCargaInicial(1).total).toBe(5500));
-  it('2 envases -> $10.000', () => expect(cotizarCargaInicial(2).total).toBe(10000));
-  it('3 envases -> sin precio definido, a revisión', () => {
-    const c = cotizarCargaInicial(3);
+describe('cliente nuevo: carga inicial (respuestas del dueño, D36)', () => {
+  it.each([
+    [1, 5500],
+    [2, 10000],
+    [3, 15000],
+    [4, 20000],
+  ])('20 L, %i envase(s) -> $%i', (envases, total) => {
+    const c = cotizarCargaInicial('20L', envases);
+    expect(c.total).toBe(total);
+    expect(c.requiereRevision).toBe(false);
+  });
+
+  it.each(['12L', '10L'] as const)('%s: 1 envase $4.500 y 2 envases $8.000', (tipo) => {
+    expect(cotizarCargaInicial(tipo, 1)).toMatchObject({ total: 4500, requiereRevision: false });
+    expect(cotizarCargaInicial(tipo, 2)).toMatchObject({ total: 8000, requiereRevision: false });
+  });
+
+  it.each(['12L', '10L'] as const)('%s con 3 o más envases: sin precio definido, a revisión (PENDIENTE)', (tipo) => {
+    const c = cotizarCargaInicial(tipo, 3);
     expect(c.total).toBeNull();
     expect(c.requiereRevision).toBe(true);
+    expect(c.motivo).toContain('PENDIENTE');
+  });
+
+  it.each([
+    ['20L', 3250],
+    ['12L', 2000],
+    ['10L', 2000],
+  ] as const)('mayorista, %s: 1 envase -> $%i', (tipo, precio) => {
+    expect(cotizarCargaInicial(tipo, 1, 'mayorista')).toMatchObject({ total: precio, requiereRevision: false });
+  });
+
+  it('mayorista con 2 o más envases: se calcula por envase pero va a revisión hasta confirmar que el precio es por envase', () => {
+    const c = cotizarCargaInicial('20L', 4, 'mayorista');
+    expect(c.total).toBe(4 * 3250);
+    expect(c.requiereRevision).toBe(true);
+    expect(c.motivo).toContain('por envase');
+  });
+
+  it('empresa con plan mensual: sin precio, a revisión', () => {
+    const c = cotizarCargaInicial('20L', 1, 'empresa');
+    expect(c.total).toBeNull();
+    expect(c.requiereRevision).toBe(true);
+  });
+
+  it('cliente con precio especial: precio de lista, pero a revisión', () => {
+    const c = cotizarCargaInicial('20L', 1, 'especial');
+    expect(c.total).toBe(5500);
+    expect(c.requiereRevision).toBe(true);
+  });
+
+  it.each([0, -1, 1.5, Number.NaN])('rechaza %s envases', (envases) => {
+    expect(() => cotizarCargaInicial('20L', envases)).toThrow(ErrorPrecio);
   });
 });
 
