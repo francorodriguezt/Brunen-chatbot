@@ -79,3 +79,32 @@ Datos de Meta tomados de fuentes secundarias el 2026-10-28: confirmar todo en la
 - [ ] Planilla real: copiar la de desarrollo, correr `npm run preparar-planilla` con la clave de esa planilla, compartirla con la cuenta de servicio, cambiar `GOOGLE_SHEET_ID` y revisar los permisos de quién puede editarla.
 - [ ] Copias de seguridad según D35 (los pedidos ya no están en la planilla) y quién tiene acceso a Cloudflare, Meta, Groq y Telegram.
 - [ ] Plan B si el bot o el panel se caen: cómo responde una persona a los clientes y desde dónde. Con coexistencia sigue la app de WhatsApp Business de siempre; con un número solo para la API habría que verificar qué bandeja de Meta permite responder a mano. Definir cuándo se usa `BOT_ACTIVO = NO` y qué se le avisa al cliente. Pesa en la decisión 7 del dueño (número).
+
+## Información que falta o es ambigua (2026-10-28)
+Además de las 12 preguntas del dueño. Entre paréntesis, quién la tiene o decide.
+- [ ] Turno de reparto (Franco, Constanza, repartidor): cómo se arman hoy la carga y la ruta, quién lo hace, cuánto tarda y qué se complica; quién anotará en la calle las entregas y los vacíos; si la ruta propia reemplaza a la app de rutas o la complementa.
+- [ ] Vacíos que faltan en una entrega (dueño, Constanza): después de justificar el faltante, ¿se retira al día siguiente, queda como saldo del cliente o se cobra? ¿Se espera un vacío por cada bidón entregado?
+- [ ] Planta (dueño): dirección o coordenadas para calcular la ruta desde y hacia ella, capacidad del furgón en bidones y si alguna vez se hacen dos cargas en un día.
+- [ ] Coordenadas de los clientes (Franco): D32 dice que las direcciones no salen de Brunen. Propuesta: guardar el punto exacto con el GPS del celular del repartidor al entregar o con la ubicación que comparta el cliente, y mientras tanto ordenar por comuna. Confirmar eso o permitir un servicio externo de geocodificación.
+- [ ] Quién entra al panel y con qué permisos (Franco, dueño): operadora, dueño, repartidor y repartidor de emergencia. Hoy todos los que pasan por Access ven y cambian todo.
+- [ ] Qué se le dice al cliente cuando la operadora cambia o cancela un pedido en el panel (Franco): hoy no se le escribe, y cada mensaje cuenta en el cupo gratis.
+- [ ] `Aviso_Hora` (dueño): algunos clientes piden aviso de la hora aproximada. Un mensaje extra gasta el cupo y, fuera de las 24 horas, exige plantilla aprobada. ¿Basta una llamada del repartidor?
+- [ ] Costo sobre el cupo gratis (dueño): pasado el límite de 1.000 mensajes al mes, el peor caso ronda USD 6 al mes (`docs/conocimiento_brunen.md`, sección 14). Confirmar que es aceptable.
+- [ ] Comprobantes (Franco): a qué pedido se asocia la imagen cuando el cliente tiene varios sin pagar.
+- [ ] Excel de clientes y de pedidos anteriores (dueño): su formato, para importar las fichas y para que el bot entienda "lo de siempre".
+- [ ] Cuánto tiempo se guardan los pedidos y las fichas (dueño, Franco): lo pide el aviso de privacidad de la Ley 21.719. Hoy: texto de los avisos 90 días y comprobantes 60 días (por construir).
+- [ ] Datos de Meta tomados de fuentes secundarias (coexistencia en Chile, límite de unos 250 contactos nuevos al día, costos): confirmarlos en la documentación oficial antes de elegir el número.
+
+## Mejoras posibles
+Ninguna bloquea la salida a prueba; van de más a menos útiles para el piloto.
+- [ ] Guía de uso del panel para la operadora (una página) y "qué hacer si falla": token de WhatsApp vencido, Google caído, el panel pide volver a entrar.
+- [ ] Capturas del panel con datos ficticios en el README: hoy solo tiene la insignia de la revisión automática, y es lo primero que mira un reclutador.
+- [ ] Buscar pedidos por teléfono o nombre en el panel: hoy solo se filtra por grupo y fecha.
+- [ ] Bajar el CPU del bot pasando CLIENTES, PRECIOS, CONFIGURACION y FERIADOS de Google Sheets a D1 (D31 y D32: la firma del token de Google y las lecturas de las hojas son lo que más gasta). Llega con las fases P3 y P5.
+- [ ] Espejo de PEDIDOS en la planilla cada noche, como segunda copia y para quien prefiera ver Excel durante la transición.
+- [ ] Panel instalable en el celular ("Agregar a la pantalla de inicio"), botón "Salir" y vista del repartidor que tolere mala señal.
+- [ ] Pruebas automáticas de la pantalla (hoy se probó a mano en el navegador): sacar la lógica de `panel/app.js` a módulos que se puedan probar.
+- [ ] Dependabot y `npm audit` en la revisión automática (hoy solo corre `npm ci` y `npm run check`), y subir wrangler a 4.155.0 (parche).
+- [ ] Formateador y linter (hoy no hay): estilo uniforme con Prettier y ESLint.
+- [ ] Distancias reales por calle para la ruta, solo si se permite enviar coordenadas a un servicio externo.
+- [ ] Reescribir el historial de git (correo personal y coautoría): ver "Decide Franco".
