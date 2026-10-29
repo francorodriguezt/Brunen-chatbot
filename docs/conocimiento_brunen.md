@@ -119,3 +119,12 @@ Ver borradores en la sección 12 del documento del proyecto. Regla: una sola res
 - Cloudflare Workers gratis: 100.000 solicitudes/día, 10 ms de CPU por invocación.
 - Groq gratis: no entrena ni retiene datos por defecto.
 - Ley 21.719 de datos personales: vigencia 1-dic-2026 (proyecto para postergar a 2027).
+
+## 15. Turno de reparto (lo describió Franco el 2026-10-28; falta confirmarlo con el dueño y el repartidor)
+1. El repartidor llega a la planta.
+2. Le dicen cuántos bidones debe sacar para cuántos puntos; la cantidad de bidones puede variar de un punto a otro.
+3. Reparte en cada punto y retira los bidones vacíos. Si faltan vacíos (por ejemplo, el cliente pidió 3 y solo tiene 2 para entregar), se debe avisar y justificar el faltante.
+4. Al terminar de entregar, pasa una de dos cosas: le piden que vaya a dejar los vacíos y deje el furgón en la planta, o que se lleve el furgón y vaya al día siguiente a dejar los vacíos que quedaron en él.
+- Idea de Franco: al empezar el día, generar la ruta de direcciones lo más óptima posible, "de más cerca a más lejos de la planta de agua y de vuelta".
+- Hoy `src/rutaDelDia.ts` solo ordena por comuna y dirección y deja la optimización a la app de rutas (formato provisional).
+- PENDIENTE: cómo se arman hoy la carga y la ruta (Excel + app "Optiroute"), quién lo hace y qué se complica; quién anotará en la calle las entregas y los vacíos (¿el repartidor desde el celular o Constanza?); dirección o coordenadas de la planta (las da el dueño); cómo conseguir las coordenadas de las direcciones sin enviarlas a servicios externos (D32).
