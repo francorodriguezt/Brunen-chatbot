@@ -118,6 +118,7 @@ a { color: var(--acento); }
 .filtro-fecha { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 500; margin-left: auto; }
 .filtro-fecha input { width: auto; padding: 0.3rem 0.5rem; }
 .conexion { background: var(--peligro-suave); color: var(--peligro); border-bottom: 1px solid var(--peligro); padding: 0.5rem 1rem; text-align: center; font-weight: 600; }
+.conexion .boton { margin-left: 0.6rem; }
 
 .acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-top: 0.2rem; }
 .boton {

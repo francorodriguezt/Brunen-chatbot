@@ -73,6 +73,8 @@ const estado = {
   ultimaCarga: 0,
   sondeando: false,
   sinConexion: false,
+  sesionVencida: false,
+  fallosSeguidos: 0,
 };
 const historiales = new Map(); // id de pedido -> historial ya cargado
 const historialesAbiertos = new Set(); // los que la persona dejó desplegados
@@ -152,27 +154,43 @@ function totalDe(lineas) {
 
 // ---- Comunicación con el servidor ----
 
+const SESION_VENCIDA = 'Se cerró tu sesión: no verás pedidos nuevos hasta que vuelvas a entrar.';
+
 class ErrorApi extends Error {
   constructor(mensaje, codigo) {
     super(mensaje);
     this.codigo = codigo;
+    /** Se arregla volviendo a entrar, no revisando el internet. */
+    this.sesionVencida = codigo === 401;
   }
 }
 
-/** Sin `cuerpo` es un GET; con `cuerpo` es un POST de JSON. La cabecera X-Panel es parte de la defensa contra CSRF. */
+/** La sesión se avisa a toda la pantalla (no solo a quien hizo la llamada) y corta la llamada en curso. */
+function fallarPorSesion() {
+  marcarConexion(false, SESION_VENCIDA, true);
+  throw new ErrorApi(SESION_VENCIDA, 401);
+}
+
+/**
+ * Sin `cuerpo` es un GET; con `cuerpo` es un POST de JSON. La cabecera X-Panel es parte de la defensa contra CSRF.
+ * `X-Requested-With` hace que Cloudflare Access conteste 401 cuando venció la sesión; sin ella redirige al inicio de
+ * sesión y la página no puede leer esa respuesta (https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/session-management/).
+ */
 async function api(ruta, cuerpo) {
+  const cabeceras = { 'x-requested-with': 'XMLHttpRequest' };
   let respuesta;
   try {
     respuesta = await fetch(
       ruta,
       cuerpo === undefined
-        ? { headers: { accept: 'application/json' }, cache: 'no-store' }
-        : { method: 'POST', headers: { 'content-type': 'application/json', 'x-panel': '1' }, body: JSON.stringify(cuerpo), cache: 'no-store' },
+        ? { headers: { ...cabeceras, accept: 'application/json' }, cache: 'no-store', redirect: 'manual' }
+        : { method: 'POST', headers: { ...cabeceras, 'content-type': 'application/json', 'x-panel': '1' }, body: JSON.stringify(cuerpo), cache: 'no-store', redirect: 'manual' },
     );
   } catch {
-    // También pasa cuando venció la sesión de Cloudflare Access: la redirección al inicio de sesión no se puede leer.
-    throw new ErrorApi('Sin conexión con el panel. Revisa tu internet; si sigue igual, recarga la página.', 0);
+    throw new ErrorApi('Sin conexión con el panel. Revisa tu internet.', 0);
   }
+  // Con `redirect: 'manual'`, que Access mande al inicio de sesión llega como "opaqueredirect": también es la sesión vencida.
+  if (respuesta.type === 'opaqueredirect' || respuesta.status === 401) fallarPorSesion();
   let datos = null;
   try {
     datos = await respuesta.json();
@@ -195,11 +213,38 @@ function avisar(texto, esError = false) {
   }, esError ? 7000 : 3500);
 }
 
-function marcarConexion(conectado, texto = '') {
+const FALLOS_ANTES_DE_AVISAR = 3; // sondeos seguidos (~25 s a la vista) antes de molestar por un tropiezo de la red
+
+function actualizarTitulo() {
+  const pendientes = estado.resumen ? estado.resumen.porConfirmar + estado.resumen.avisosAbiertos : 0;
+  if (estado.sesionVencida) document.title = '⚠ Vuelve a entrar · Brunen · Panel';
+  else if (estado.sinConexion) document.title = '⚠ Sin conexión · Brunen · Panel';
+  else document.title = pendientes > 0 ? `(${pendientes}) Brunen · Panel` : 'Brunen · Panel';
+}
+
+/**
+ * Si la pantalla deja de enterarse de los pedidos y nadie la mira (otra pestaña, otro programa), el silencio parece
+ * "no hay pedidos". Por eso la caída se ve en el título de la pestaña y, la primera vez, suena y notifica.
+ */
+function marcarConexion(conectado, texto = '', sesionVencida = false) {
+  const vencidaAntes = estado.sesionVencida;
   estado.sinConexion = !conectado;
+  estado.sesionVencida = !conectado && sesionVencida;
+  estado.fallosSeguidos = conectado ? 0 : estado.fallosSeguidos + 1;
+
   const aviso = $('conexion');
   aviso.hidden = conectado;
-  aviso.textContent = conectado ? '' : texto;
+  aviso.replaceChildren(...(conectado ? [] : sesionVencida ? [texto, ' ', boton('Volver a entrar', 'boton', () => location.reload())] : [texto]));
+  actualizarTitulo();
+
+  if (conectado) return;
+  if (sesionVencida ? !vencidaAntes : estado.fallosSeguidos === FALLOS_ANTES_DE_AVISAR) {
+    pitar();
+    notificarDelNavegador(
+      sesionVencida ? 'Se cerró tu sesión: abre el panel para volver a entrar.' : 'El panel perdió la conexión: no verás pedidos nuevos hasta que vuelva.',
+      'Brunen: el panel dejó de actualizarse',
+    );
+  }
 }
 
 // ---- Pedidos ----
@@ -651,8 +696,7 @@ function pintarContadores({ porConfirmar, avisosAbiertos }) {
     $(id).hidden = cantidad === 0;
     $(id).textContent = String(cantidad);
   }
-  const pendientes = porConfirmar + avisosAbiertos;
-  document.title = pendientes > 0 ? `(${pendientes}) Brunen · Panel` : 'Brunen · Panel';
+  actualizarTitulo();
 }
 
 /** Pregunta lo mínimo al servidor y recién recarga la lista si algo cambió (o si pasó un minuto, por si acaso). */
@@ -674,7 +718,8 @@ async function sondear({ silencioso = false } = {}) {
     const cambio = !anterior || Object.keys(resumen).some((clave) => resumen[clave] !== anterior[clave]);
     if (volvio || cambio || Date.now() - estado.ultimaCarga > REFRESCO_FORZADO_MS) await recargarVistaActual();
   } catch (falla) {
-    marcarConexion(false, falla.message);
+    // La sesión vencida ya quedó marcada dentro de `api`.
+    if (!falla.sesionVencida) marcarConexion(false, falla.message);
   } finally {
     if (!silencioso) estado.sondeando = false;
   }
@@ -717,10 +762,10 @@ function pitar() {
   }
 }
 
-function notificarDelNavegador(cuerpo) {
+function notificarDelNavegador(cuerpo, titulo = 'Brunen: hay novedades') {
   if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
   try {
-    const notificacion = new Notification('Brunen: hay novedades', { body: cuerpo, tag: 'brunen-panel', renotify: true });
+    const notificacion = new Notification(titulo, { body: cuerpo, tag: 'brunen-panel', renotify: true });
     notificacion.addEventListener('click', () => {
       window.focus();
       notificacion.close();
