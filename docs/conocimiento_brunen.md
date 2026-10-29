@@ -73,7 +73,7 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 1. Registra y calcula; no confirma. Constanza confirma.
 2. Reclamos, facturas y pagos a proveedores: derivar de inmediato con contexto.
 3. No avisa automáticamente cuando el pedido sale a despacho.
-4. Cliente nuevo: ofrecer carga inicial y crear ficha.
+4. Cliente nuevo: se anota el pedido y el bot le pide su nombre y su dirección con comuna y, si es departamento, el edificio y el número (D37). No se le promete precio ni fecha; una persona confirma el pedido y las condiciones de envases (carga inicial).
 5. Cliente con envases pendientes: anotar para el repartidor.
 6. Fuera de zona: informar comunas y registrar con estado `Fuera_de_zona`.
 7. Festivo o pedido posterior a las 9:00: proponer el siguiente día de despacho.
@@ -134,6 +134,6 @@ Lo que el dueño quiere ver en el panel (2026-10-29): pedidos por confirmar (con
 - Hoy `src/rutaDelDia.ts` solo ordena por comuna y dirección y deja la optimización a la app de rutas (formato provisional).
 - El dueño (audios que le mandó a Franco, 2026-10-29): si el repartidor termina temprano, deja el furgón estacionado en el lugar del dueño (confirmar si es la planta); si termina cerca de las 18:00, carga al día siguiente. El dueño lleva el control de los bidones que sobran del turno y al día siguiente le dice cuántos sacar (ejemplo: saca 60, sobran 5, al día siguiente saca 55). Eso debería poder hacerse en el panel.
 - Lo que más le interesa al dueño: tener el Excel de los pedidos listo y ordenado, subirlo a la plataforma, que el repartidor use la plataforma, que él y Constanza le hagan seguimiento desde ahí y que la plataforma le entregue punto por punto lo que debe repartir.
-- Franco aclaró (2026-10-29): hoy usan Optiroute y con él ven punto por punto dónde va el repartidor, su ubicación en vivo y cuánto demora de un punto a otro. Lectura nuestra, por confirmar: "la plataforma" de los audios es Optiroute y lo que el dueño necesita del sistema es el Excel del día listo y ordenado para subirlo ahí.
-- Franco pidió que el bot pregunte el nombre, la dirección y, si es un departamento, el edificio, y que dé una referencia de la hora de llegada según la programación que se arma en Optiroute (propuesta en D37; falta el visto bueno).
-- PENDIENTE: nombre exacto y plan de Optiroute (¿es OptimoRoute?) y el archivo que suben hoy; quién arma ese Excel y a qué hora; si los sobrantes siempre quedan en el furgón y si la carga lleva margen; qué pasa con un vacío que falta después de justificarlo; a quién se le da la hora de llegada y por qué canal.
+- Franco aclaró (2026-10-29): hoy usan Optiroute y con él ven punto por punto dónde va el repartidor, su ubicación en vivo y cuánto demora de un punto a otro. Lo que se busca es crear una plataforma propia que haga las mismas funciones: la ruta con los puntos de la forma más eficiente posible y el seguimiento en vivo del repartidor (D38).
+- Franco pidió que el bot pregunte el nombre, la dirección y, si es un departamento, el edificio, (hecho, D37), y que dé una referencia de la hora de llegada según la programación de la ruta (por diseñar con la plataforma propia, D38).
+- PENDIENTE: nombre exacto y plan de Optiroute (¿es OptimoRoute?) y qué funciones usan; el archivo que suben hoy y quién lo arma; si los sobrantes siempre quedan en el furgón y si la carga lleva margen; qué pasa con un vacío que falta después de justificarlo; a quién se le da la hora de llegada y por qué canal; dirección de la planta (la ruta parte y termina ahí).

@@ -113,18 +113,30 @@ Las responde solo, sin molestar a la operadora.
 
 ### 6. Un cliente nuevo
 
-Se anota el pedido, pero no se le promete precio ni fecha: una persona coordina la dirección.
+Se anota el pedido, pero no se le promete precio ni fecha. El bot hace una sola pregunta para saber a dónde llevarlo y, con la respuesta, completa el pedido y confirma (D37).
 
 **Cliente:** quiero 2 de 20
 
 **Bot:**
-> ¡Hola! Anotamos tu pedido de 2 bidones de 20 L. Como es tu primer pedido, una persona del equipo te escribirá para confirmar tu dirección y los detalles.
+> ¡Hola! Anotamos tu pedido de 2 bidones de 20 L. Para coordinar la entrega, ¿me dices tu nombre y tu dirección con comuna? Si es departamento, también el edificio y el número.
 
-**Aviso a la operadora (Telegram):**
-> 🆕 Cliente nuevo · P261028-3YMK9
-> +56 9 1111 1111
-> 2 bidones de 20 L
-> “quiero 2 de 20”
+**Cliente:** Juan Pérez, Los Leones 123, Providencia
+
+**Bot:**
+> Gracias, anotamos tu dirección. Una persona del equipo confirmará tu pedido.
+
+**En el panel de la operadora:** el pedido queda "Por confirmar", con el nombre, la dirección y la comuna ya llenos, y lo que escribió el cliente a la vista. Esa respuesta no pasa por la IA.
+
+Si es un departamento y no dice el edificio, el mismo mensaje de confirmación se lo pregunta. Su respuesta se anota para el repartidor y no se le vuelve a escribir:
+
+**Cliente:** Ana Torres, Av. Irarrázaval 2345 depto 502, Ñuñoa
+
+**Bot:**
+> Gracias, anotamos tu dirección. ¿Cómo se llama el edificio? Una persona del equipo confirmará tu pedido.
+
+**Cliente:** Torre Norte
+
+Si lo que contesta no parece una dirección, el bot se lo pide una vez más ("No alcancé a entender tu dirección. ¿Me la escribes con calle, número y comuna?") y, si tampoco, lo deja a una persona.
 
 ### 7. Una comuna que no se atiende
 
