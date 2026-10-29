@@ -58,10 +58,11 @@ Respondió el cuestionario el 2026-10-29 (D36). Marcadas las que quedaron resuel
 - [ ] Respaldo de D1 (D35), antes de encender `FLUJO_PEDIDO` con clientes reales: hacer una exportación (`wrangler d1 export`), restaurarla en una base local y anotar quién la hace cada semana y dónde se guarda (fuera del repositorio).
 - [ ] Medir el CPU por mensaje del bot y por solicitud del panel con `wrangler tail` (D31, D33) y ajustar la espera del agrupador (D27) con mensajes reales.
 - [ ] Panel, fases P2 a P5 (reparto del día, clientes y mapa, estadísticas, configuración; ver `docs/ETAPAS.md`).
-- [ ] Precios nuevos del dueño (D36) en `src/precios.ts`, con pruebas primero: carga inicial por tipo y desde 3 envases, mayorista de 12 L y 10 L y carga inicial mayorista. Lo que sigue sin respuesta queda marcado como pendiente y va a revisión.
-- [ ] Audios (D36): el bot deja de responder y avisa a Constanza. Cambia `atencion.ts`, sus pruebas y el ejemplo de `docs/CONVERSACIONES.md`.
+- [x] Precios nuevos del dueño (D36) en `src/precios.ts`, con pruebas primero (2026-10-29): la recarga mayorista de 12 L y 10 L ya se cotiza en el flujo. La carga inicial por tipo y la mayorista están calculadas y probadas, pero el bot todavía no las usa: a un cliente nuevo no se le promete precio. Lo que sigue sin respuesta va a revisión.
+- [x] Audios (D36), hecho el 2026-10-29: el bot ya no responde y deja un aviso de tipo escalamiento para Constanza (`atencion.ts`, con prueba). `docs/CONVERSACIONES.md` no tenía ejemplo de audio.
 - [ ] Coexistencia (D36): confirmar con Meta o con un Tech Provider si Franco puede hacer el alta de la línea actual, y acordar el plan B con el dueño. Con coexistencia, el bot debería ignorar los ecos de lo que Constanza escribe desde la app y no responder una conversación que Constanza ya tomó.
-- [ ] Ruta y turno de reparto (idea de Franco, 2026-10-28; el proceso está en `docs/conocimiento_brunen.md`, sección 15): al empezar el día, generar la ruta de direcciones lo más óptima posible desde y hacia la planta, con la carga por punto, los vacíos por parada (avisando y justificando los faltantes) y el cierre del turno (vacíos en la planta o en el furgón). Con los audios del dueño (D36) cambió el foco: primero importar el Excel del día, la vista del repartidor punto por punto, el seguimiento y los sobrantes de cada turno; la ruta óptima pasa a segundo lugar. Está en diseño: faltan las respuestas de la segunda ronda (abajo) y no se construye nada antes de aprobar el diseño. Amplía la fase P2 del panel y no depende de Meta.
+- [ ] Reparto (idea de Franco, 2026-10-28; el proceso está en `docs/conocimiento_brunen.md`, sección 15): ruta, carga por punto, vacíos por parada (avisando y justificando los faltantes) y cierre del turno (vacíos en la planta o en el furgón). Lectura corregida el 2026-10-29 (D36), por confirmar con el dueño: "la plataforma" de sus audios es Optiroute, donde ya ven punto por punto al repartidor, su ubicación en vivo y cuánto demora entre puntos. Entonces no se construye una app para el repartidor, ni seguimiento en vivo, ni optimización propia: el sistema aporta el Excel del día listo y ordenado para subirlo a Optiroute, el control de los bidones que sobran de cada turno ("saco 60, sobran 5, al día siguiente saca 55"), los vacíos por parada con justificación de faltantes y, más adelante, la hora de llegada que sale de Optiroute. Está en diseño y no se construye nada antes de aprobarlo. Amplía la fase P2 del panel y no depende de Meta.
+- [ ] El bot pide nombre, dirección y edificio, y da una referencia de la hora de llegada (pedido de Franco, 2026-10-29; propuesta en D37, pendiente de visto bueno). No se construye antes de aprobar los textos y el costo en mensajes.
 - [ ] Acotar por fecha las listas "Cerrados" y "Todos" del panel cuando haya miles de pedidos (D1 gratis: 5 millones de filas leídas al día; D33).
 - [ ] Crear el bot de Telegram (@BotFather) solo para lo muy urgente y cargar `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y el secreto del webhook (D29, D32). Lo hace Franco: no se pueden crear cuentas desde aquí.
 - [ ] Clientes: importar el Excel desde el panel cuando exista esa pantalla; mientras tanto, 2 o 3 clientes de prueba en la hoja CLIENTES (tu número, un mayorista, uno fuera de zona) para probar el flujo. Sin fichas, todos los clientes son "nuevos".
@@ -87,9 +88,9 @@ Datos de Meta tomados de fuentes secundarias el 2026-10-28: confirmar todo en la
 Segunda ronda: lo que falta después del cuestionario respondido y de los audios del dueño. Entre paréntesis, quién la tiene o decide.
 
 **Dueño**
-- [ ] Excel de los pedidos del día: un ejemplo de un día real (sin datos de clientes) con sus columnas, cómo se anotan los bidones de cada punto, los envases por retirar y cómo se ordena; quién lo arma, a qué hora queda listo y si lo ordena la app de rutas.
-- [ ] Seguimiento del repartidor: ¿basta ver qué puntos van entregados y cuáles faltan, o también su ubicación en vivo o una foto de la entrega? Recomendación: lo primero.
-- [ ] Repartidor: quién es, si tiene celular con internet y un correo (Gmail) para entrar, y lo mismo para el repartidor de emergencia.
+- [ ] Archivo que suben hoy a Optiroute (o su plantilla de importación), de un día real y sin datos de clientes: columnas, cómo se anotan los bidones de cada punto, los envases por retirar y cómo se ordena; quién lo arma y a qué hora queda listo.
+- [ ] Optiroute: nombre exacto o dirección web (¿es OptimoRoute?), qué plan tienen (si incluye avisos a clientes e integración por API) y si el repartidor usa su app con GPS. Es lo que decide cuánto hay que construir para el reparto.
+- [ ] Hora de llegada para el cliente (`Aviso_Hora`): ¿a todos o solo a los que la piden? ¿La manda Optiroute por SMS o correo, o el bot por WhatsApp con un mensaje extra (gasta el cupo gratis y, fuera de las 24 horas, exige plantilla aprobada)?
 - [ ] Sobrantes: confirmar que los bidones que sobran quedan en el furgón de un día para otro, si se cuentan por tamaño y si la carga de cada día lleva un margen "por si acaso".
 - [ ] Furgón: si el lugar donde se estaciona es la planta, qué pasa con los vacíos cuando el repartidor termina tarde y si alguna vez se lleva el furgón a su casa.
 - [ ] Vacíos que faltan en una entrega: después de justificar el faltante, ¿se retira al día siguiente, queda como saldo del cliente o se cobra? ¿Se espera un vacío por cada bidón entregado?
@@ -97,7 +98,7 @@ Segunda ronda: lo que falta después del cuestionario respondido y de los audios
 - [ ] Gestiones en Meta (método de pago y verificación de empresa) y las otras acciones del dueño: en qué estado están.
 - [ ] Precios que faltan: carga inicial de 12 L y 10 L desde 3 envases; precios especiales para 12 L y 10 L; confirmar que la carga inicial mayorista ($3.250 y $2.000) es por envase.
 - [ ] `Credito`: qué significa en su Excel; y si a un cliente bloqueado se le contesta algo.
-- [ ] `Aviso_Hora`: ¿basta una llamada del repartidor? Un mensaje extra gasta el cupo gratis y, fuera de las 24 horas, exige plantilla aprobada.
+- [ ] Nombre, dirección y edificio (propuesta D37): ¿el bot los pide siempre a los clientes nuevos y a los que no tienen dirección en su ficha? ¿Se acepta pasar de 1 a 2 mensajes del bot en esos pedidos?
 - [ ] Costo: si un mes se pasan de 1.000 mensajes, el peor caso ronda USD 6 al mes. Confirmar que es aceptable.
 - [ ] Excel de clientes y de pedidos anteriores: su formato, para importar las fichas y para "lo de siempre".
 - [ ] Cuánto tiempo se guardan los pedidos y las fichas (lo pide el aviso de privacidad de la Ley 21.719).
@@ -109,8 +110,8 @@ Segunda ronda: lo que falta después del cuestionario respondido y de los audios
 - [ ] Desde qué aparato usará el panel (computador o celular) y con qué correo entrará.
 
 **Franco**
-- [ ] Coordenadas de los clientes (D32: las direcciones no salen de Brunen). Propuesta: guardar el punto exacto con el GPS del celular del repartidor al entregar o con la ubicación que comparta el cliente, y mientras tanto ordenar por comuna; o permitir un servicio externo.
-- [ ] Permisos del panel: el repartidor no debería ver precios ni todos los clientes; hoy todos los que pasan por Access ven y cambian todo.
+- [ ] Coordenadas de los clientes para el mapa del panel (P3; D32: las direcciones no salen de Brunen). La ruta la calcula Optiroute con las direcciones. Propuesta: guardar el punto exacto con la ubicación que comparta el cliente o que marque Constanza, y mientras tanto mostrar por comuna.
+- [ ] Permisos del panel: hoy todos los que pasan por Access ven y cambian todo. Si algún día entra el repartidor, habría que separar roles.
 - [ ] Qué se le dice al cliente cuando la operadora cambia o cancela un pedido en el panel (hoy no se le escribe y cada mensaje cuenta en el cupo gratis).
 - [ ] Comprobantes: a qué pedido se asocia la imagen cuando el cliente tiene varios sin pagar.
 - [ ] Datos de Meta que vienen de fuentes secundarias (límite de unos 250 contactos nuevos al día, costos, países de la coexistencia): confirmarlos en la documentación oficial.
@@ -122,9 +123,8 @@ Ninguna bloquea la salida a prueba; van de más a menos útiles para el piloto.
 - [ ] Buscar pedidos por teléfono o nombre en el panel: hoy solo se filtra por grupo y fecha.
 - [ ] Bajar el CPU del bot pasando CLIENTES, PRECIOS, CONFIGURACION y FERIADOS de Google Sheets a D1 (D31 y D32: la firma del token de Google y las lecturas de las hojas son lo que más gasta). Llega con las fases P3 y P5.
 - [ ] Espejo de PEDIDOS en la planilla cada noche, como segunda copia y para quien prefiera ver Excel durante la transición.
-- [ ] Panel instalable en el celular ("Agregar a la pantalla de inicio"), botón "Salir" y vista del repartidor que tolere mala señal.
+- [ ] Panel instalable en el celular ("Agregar a la pantalla de inicio") y botón "Salir".
 - [ ] Pruebas automáticas de la pantalla (hoy se probó a mano en el navegador): sacar la lógica de `panel/app.js` a módulos que se puedan probar.
 - [ ] Dependabot y `npm audit` en la revisión automática (hoy solo corre `npm ci` y `npm run check`), y subir wrangler a 4.155.0 (parche).
 - [ ] Formateador y linter (hoy no hay): estilo uniforme con Prettier y ESLint.
-- [ ] Distancias reales por calle para la ruta, solo si se permite enviar coordenadas a un servicio externo.
 - [ ] Reescribir el historial de git (correo personal y coautoría): ver "Decide Franco".
