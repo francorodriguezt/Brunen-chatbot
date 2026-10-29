@@ -89,7 +89,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 ## Etapa 4 — Flujo de pedido
 
-**Estado (2026-10-28):** conectada al Worker detrás del interruptor `FLUJO_PEDIDO` (D33), guardando pedidos y avisos en D1 y probada de punta a punta con Meta, Google, Telegram y Groq simulados. **En producción sigue apagada**: el bot responde en modo prueba. Falta aplicar las migraciones 0003 y 0004, el visto bueno del dueño sobre los textos y las decisiones pendientes, y encenderla (más abajo).
+**Estado (2026-10-28):** conectada al Worker detrás del interruptor `FLUJO_PEDIDO` (D33), guardando pedidos y avisos en D1 y probada de punta a punta con Meta, Google, Telegram y Groq simulados. **En producción sigue apagada**: el bot responde en modo prueba. Las migraciones 0003 y 0004 ya están aplicadas en la D1 real y el bot desplegado con esta versión (2026-10-29). Falta el visto bueno del dueño sobre los textos y las decisiones pendientes, y encenderla (más abajo).
 
 **Qué hay** (todo en `src/`, con sus pruebas en `tests/`):
 
@@ -106,8 +106,8 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con el motor). Por qué así: D26 a D28 y D33.
 
 **Cómo encenderlo** (cada paso con aprobación de Franco; se verifica con `npm run check` y un mensaje de prueba desde un número de `NUMEROS_PERMITIDOS`):
-1. Aplicar las migraciones: `npx.cmd wrangler d1 migrations apply brunen-chatbot --remote` (crea `conversaciones`, `ultimos_pedidos`, `mensajes_pendientes`, `pedidos`, `avisos` e `historial_pedidos`).
-2. Desplegar el bot (`npm run deploy`): el flujo sigue apagado.
+1. Aplicar las migraciones: `npx.cmd wrangler d1 migrations apply brunen-chatbot --remote` (crea `conversaciones`, `ultimos_pedidos`, `mensajes_pendientes`, `pedidos`, `avisos` e `historial_pedidos`). Hecho el 2026-10-29; antes conviene anotar el punto de restauración con `wrangler d1 time-travel info brunen-chatbot`.
+2. Desplegar el bot (`npm run deploy`): el flujo sigue apagado. Hecho el 2026-10-29 (versión `55bb523b`).
 3. Descomentar `FLUJO_PEDIDO = "SI"` en `[vars]` de `wrangler.toml` y volver a desplegar. Opcional: `ESPERA_AGRUPADOR_MS` (7.000 por defecto, D27).
 4. Probar con los 12 casos de CONVERSACIONES.md y con 2 o 3 mensajes seguidos para el agrupador. Cada pedido y cada aviso debe aparecer en el panel.
 5. Medir el CPU de cada tipo de mensaje con `wrangler tail` (límite de 10 ms en el plan gratis, D31) y la cantidad de llamadas a Google.
@@ -155,7 +155,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 2. `npm run dev:panel -- --var PANEL_DEV_CORREO:tu@correo.test` y abrir http://localhost:8787 (si el puerto está ocupado, agregar `--port 8788`). `PANEL_DEV_CORREO` solo funciona desde localhost.
 
 **Cómo encenderlo en producción** (cada paso con aprobación de Franco):
-1. Aplicar las migraciones y desplegar el bot, como en la Etapa 4.
+1. Aplicar las migraciones y desplegar el bot, como en la Etapa 4 (hecho el 2026-10-29).
 2. Cloudflare → Zero Trust: elegir el nombre del equipo (queda `<equipo>.cloudflareaccess.com`) y el plan Free (hasta 50 usuarios, sin costo). **Cloudflare pide registrar un método de pago aunque no cobre** (D33): lo registra Franco o el dueño, y no se activa ningún producto de pago. El acceso con Cloudflare Access ya está decidido (D34).
 3. `npm run deploy:panel`: el panel queda en `https://brunen-panel.<subdominio>.workers.dev` (sin direcciones de versión, D34) y responde 503 hasta el paso 5. No muestra nada sin acceso configurado.
 4. Zero Trust → Access controls → Applications → Create new application → "Self-hosted and private" → agregar el nombre de host del panel → política "Allow" con los correos de Constanza, Franco y el dueño → método de acceso con código por correo. Si el menú no deja elegir un `workers.dev`, la configuración del Worker permite activar Access para su dirección `workers.dev` (https://developers.cloudflare.com/workers/configuration/routing/workers-dev/). Los nombres de los menús son los de la documentación del 2026-10-28; verificarlos al hacerlo. Duración de la sesión: dejar las 24 horas (D34).
