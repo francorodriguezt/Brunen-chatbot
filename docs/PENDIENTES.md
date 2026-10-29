@@ -3,8 +3,8 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Decide Franco
-Franco aceptó las recomendaciones el 2026-10-28; quedan abiertas la del acceso al panel, que cambió al verificarla, y las dos que dependen de Constanza.
-- [ ] **Acceso al panel: confirmar la opción.** Verifiqué en la documentación de Cloudflare (2026-10-28) que Zero Trust Free pide registrar un método de pago aunque no cobre (D33), y habías aceptado "pasar a inicio de sesión con Google si pide tarjeta". **A.** Access con esa tarjeta registrada: código por correo, nada que programar ni mantener, sin cobro mientras sean pocas personas (el tope de 50 usuarios gratis solo lo confirman fuentes de terceros). **B.** Inicio de sesión con Google dentro del Worker: sin tarjeta, pero hay que programarlo, probarlo y mantenerlo, y crear una credencial OAuth en Google Cloud. Recomendación: A, porque Meta ya exige un método de pago para el número del bot y así no escribimos código de seguridad propio. Qué tarjeta usar (la tuya hoy, la de Brunen después) lo deciden tú y el dueño.
+Franco aceptó las recomendaciones el 2026-10-28 y delegó la del acceso al panel (D34); quedan abiertas las dos que dependen de Constanza.
+- [x] **Acceso al panel:** Cloudflare Access (D34; Franco delegó la elección el 2026-10-28 en "lo mejor en lo práctico, la seguridad y el largo plazo"). Entra con un código al correo y no hay código propio de inicio de sesión. Cloudflare pide registrar un método de pago aunque no cobre (D33): ese paso es de Franco o del dueño (ver "Técnicos").
 - [x] Qué es "muy urgente" para Telegram (D32). Recomendación: reclamos y fallas del sistema (token de WhatsApp vencido, Google o D1 caídos, hoja PRECIOS dañada, tope de la IA agotado). Todo lo demás, en el panel.
 - [x] Acceso al panel (D32): Cloudflare Access (código por correo, sin programar; confirmar si pide tarjeta) o inicio de sesión con Google en el propio Worker. Recomendación: probar Access primero.
 - [x] Datos del panel: D1 como fuente de verdad de pedidos, avisos y clientes, con la planilla como espejo (D32). Recomendación: sí.
@@ -28,7 +28,7 @@ Están en el documento para el dueño, numeradas igual:
 - [ ] 4. Condiciones de las ~20 empresas con plan mensual.
 - [ ] 5. Qué significan `Credito` y `bloqueado`, y qué debe hacer el bot con un cliente bloqueado.
 - [ ] 6. Facturas y boletas: ¿siempre las atiende una persona? (hoy sí)
-- [ ] 7. Número de WhatsApp: nuevo solo para el bot o el actual con coexistencia.
+- [ ] 7. Número de WhatsApp: nuevo solo para el bot o el actual con coexistencia. Ojo con el plan B: con coexistencia, si el bot cae se sigue atendiendo desde la app de siempre; con un número nuevo hay que definir otra forma de responder a mano (Etapa 7).
 - [ ] 8. Confirmación por excepción (1 mensaje por pedido, USD 0) o doble mensaje (~USD 4/mes).
 - [ ] 9. ¿Prometer en los reclamos "lo resolvemos a más tardar mañana"?
 - [ ] 10. Tono de los textos.
@@ -54,6 +54,8 @@ Están en el documento para el dueño, numeradas igual:
 - [x] Flujo de pedido conectado al Worker y guardando en D1, detrás de `FLUJO_PEDIDO` (D33). Probado con SQLite real y con Meta, Google, Telegram y Groq simulados.
 - [x] Panel, fase P1 (bandeja de pedidos y avisos): construido y probado en local (D33).
 - [ ] Salida a prueba, cada paso con aprobación de Franco: aplicar las migraciones 0003 y 0004 en la D1 remota, desplegar el bot, encender `FLUJO_PEDIDO` con un número de prueba, desplegar el panel y activar Access (pasos en `docs/ETAPAS.md`).
+- [ ] Activar Zero Trust (plan Free, hasta 50 usuarios, sin costo) en la cuenta de Cloudflare: lo hace Franco en el panel de Cloudflare, incluido el método de pago; no se pueden escribir datos de pago desde aquí. Decidir con el dueño qué tarjeta se registra (la de Franco hoy, la de Brunen al traspasar la cuenta). Después, crear la aplicación de Access y pasar el dominio del equipo y el AUD tag (pasos en `docs/ETAPAS.md`, "Panel de administración").
+- [ ] Respaldo de D1 (D35), antes de encender `FLUJO_PEDIDO` con clientes reales: hacer una exportación (`wrangler d1 export`), restaurarla en una base local y anotar quién la hace cada semana y dónde se guarda (fuera del repositorio).
 - [ ] Medir el CPU por mensaje del bot y por solicitud del panel con `wrangler tail` (D31, D33) y ajustar la espera del agrupador (D27) con mensajes reales.
 - [ ] Panel, fases P2 a P5 (reparto del día, clientes y mapa, estadísticas, configuración; ver `docs/ETAPAS.md`).
 - [ ] Acotar por fecha las listas "Cerrados" y "Todos" del panel cuando haya miles de pedidos (D1 gratis: 5 millones de filas leídas al día; D33).
@@ -74,4 +76,5 @@ Datos de Meta tomados de fuentes secundarias el 2026-10-28: confirmar todo en la
 - [ ] Monitoreo: cuenta gratuita de UptimeRobot (o similar) apuntando a `/salud`, con aviso por correo.
 - [ ] Datos personales: la Ley 21.719 (vigencia 1-dic-2026 según el documento de conocimiento; se discute postergarla) pide informar al cliente qué datos se guardan y para qué. Redactar un aviso breve de privacidad (qué se guarda, cuánto tiempo, que parte del texto pasa por Groq en EE. UU. con retención cero) y decidir cuándo se le muestra al cliente. El panel muestra datos personales: acceso solo para personas autorizadas.
 - [ ] Planilla real: copiar la de desarrollo, correr `npm run preparar-planilla` con la clave de esa planilla, compartirla con la cuenta de servicio, cambiar `GOOGLE_SHEET_ID` y revisar los permisos de quién puede editarla.
-- [ ] Copia de seguridad (el historial de versiones de la planilla sirve para lo básico; la base D1 se puede exportar con `wrangler d1 export`) y quién tiene acceso a Cloudflare, Meta, Groq y Telegram.
+- [ ] Copias de seguridad según D35 (los pedidos ya no están en la planilla) y quién tiene acceso a Cloudflare, Meta, Groq y Telegram.
+- [ ] Plan B si el bot o el panel se caen: cómo responde una persona a los clientes y desde dónde. Con coexistencia sigue la app de WhatsApp Business de siempre; con un número solo para la API habría que verificar qué bandeja de Meta permite responder a mano. Definir cuándo se usa `BOT_ACTIVO = NO` y qué se le avisa al cliente. Pesa en la decisión 7 del dueño (número).

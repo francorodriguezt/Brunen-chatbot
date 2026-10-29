@@ -8,11 +8,11 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | 1 | Esqueleto de punta a punta con el número de prueba de Meta | ✅ Lista (2026-10-28) |
 | 2 | Planilla de desarrollo + deduplicación por wamid + registro de mensajes | ✅ Lista (2026-10-28) |
 | 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | ✅ Lista (2026-10-28): reglas (54 casos) y respaldo con IA verificado con una llamada real |
-| 4 | Flujo de pedido: cotizar, fecha, registrar en PEDIDOS, responder 1 mensaje, ERRORES | 🟡 Piezas listas y probadas (2026-10-28), sin conectar: falta el visto bueno del dueño |
-| 5 | Constanza: bandeja de pedidos y avisos con Confirmar / Cambiar; Telegram solo para lo muy urgente | 🟡 Aviso de Telegram listo; la bandeja pasa al panel (D32) |
+| 4 | Flujo de pedido: cotizar, fecha, guardar el pedido en D1, responder 1 mensaje, ERRORES | 🟡 Conectada al Worker detrás de `FLUJO_PEDIDO` (D33) y probada de punta a punta con servicios simulados; apagada en producción: faltan las migraciones y el visto bueno del dueño |
+| 5 | Constanza: bandeja de pedidos y avisos con Confirmar / Cambiar; Telegram solo para lo muy urgente | 🟡 La bandeja y las acciones están en el panel (P1, probado en local); faltan el acceso, el despliegue y el bot de Telegram |
 | 6 | Imágenes (comprobantes + PAGOS), audio, fuera de zona, reclamos, RUTA_DEL_DIA | 🟡 Lista del día lista (formato provisional); comprobantes: guardarlos en D1 y verlos en el panel (D30, D32) |
 | 7 | Producción: número definitivo, verificación de empresa, piloto con 5–10 clientes | |
-| P | Panel de administración: pedidos, avisos, clientes, mapa, estadísticas | ⏳ Dirección decidida (D32); empieza al conectar el flujo |
+| P | Panel de administración: pedidos, avisos, clientes, mapa, estadísticas | 🟡 P1 (bandeja) lista y probada en local (D33); acceso decidido: Cloudflare Access (D34); P2 a P5 sin empezar |
 
 ---
 
@@ -111,7 +111,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 3. Descomentar `FLUJO_PEDIDO = "SI"` en `[vars]` de `wrangler.toml` y volver a desplegar. Opcional: `ESPERA_AGRUPADOR_MS` (7.000 por defecto, D27).
 4. Probar con los 12 casos de CONVERSACIONES.md y con 2 o 3 mensajes seguidos para el agrupador. Cada pedido y cada aviso debe aparecer en el panel.
 5. Medir el CPU de cada tipo de mensaje con `wrangler tail` (límite de 10 ms en el plan gratis, D31) y la cantidad de llamadas a Google.
-6. Recién entonces, ampliar a más números (Etapa 7).
+6. Recién entonces, ampliar a más números (Etapa 7), con el respaldo de la base ya probado (D35).
 
 **Depende del dueño** (ver `docs/PENDIENTES.md`): confirmación por excepción o doble mensaje, aprobar los textos, cómo tratar a un cliente nuevo, carga inicial, precios mayorista y especial para 12 L y 10 L, tramos entre tipos de bidón, empresas con plan mensual, cantidad inusual por pedido, boletas, clientes bloqueados y la columna `Credito`.
 
@@ -138,7 +138,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 
 ## Panel de administración (D32)
 
-**Estado (2026-10-28):** la fase P1 (bandeja) está construida y probada en local (D33); falta elegir el acceso, aplicar las migraciones y desplegar. Las demás fases, sin empezar.
+**Estado (2026-10-28):** la fase P1 (bandeja) está construida y probada en local (D33); el acceso será Cloudflare Access (D34). Falta que Franco active Zero Trust, aplicar las migraciones y desplegar. Las demás fases, sin empezar.
 
 **Qué es:** una página privada en un Worker aparte (`brunen-panel`), gratis, donde Constanza y el dueño ven los pedidos y los avisos del bot, los confirman y, más adelante, administran a los clientes por ubicación, bidones y mapa. Los datos viven en D1 (fuente de verdad); el panel no tiene ningún secreto de WhatsApp, Google ni Groq.
 
@@ -156,11 +156,11 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 
 **Cómo encenderlo en producción** (cada paso con aprobación de Franco):
 1. Aplicar las migraciones y desplegar el bot, como en la Etapa 4.
-2. Cloudflare → Zero Trust: elegir el nombre del equipo (queda `<equipo>.cloudflareaccess.com`) y el plan Free. **Cloudflare pide registrar un método de pago aunque no cobre** (D33); confirmar antes la opción de acceso (`docs/PENDIENTES.md`).
-3. `npm run deploy:panel`: el panel queda en `https://brunen-panel.<subdominio>.workers.dev` y responde 503 hasta el paso 5. No muestra nada sin acceso configurado.
-4. Zero Trust → Access controls → Applications → Create new application → "Self-hosted and private" → agregar el nombre de host del panel → política "Allow" con los correos de Constanza, Franco y el dueño → método de acceso con código por correo. Si el menú no deja elegir un `workers.dev`, la configuración del Worker permite activar Access para su dirección `workers.dev` (https://developers.cloudflare.com/workers/configuration/routing/workers-dev/). Los nombres de los menús son los de la documentación del 2026-10-28; verificarlos al hacerlo.
+2. Cloudflare → Zero Trust: elegir el nombre del equipo (queda `<equipo>.cloudflareaccess.com`) y el plan Free (hasta 50 usuarios, sin costo). **Cloudflare pide registrar un método de pago aunque no cobre** (D33): lo registra Franco o el dueño, y no se activa ningún producto de pago. El acceso con Cloudflare Access ya está decidido (D34).
+3. `npm run deploy:panel`: el panel queda en `https://brunen-panel.<subdominio>.workers.dev` (sin direcciones de versión, D34) y responde 503 hasta el paso 5. No muestra nada sin acceso configurado.
+4. Zero Trust → Access controls → Applications → Create new application → "Self-hosted and private" → agregar el nombre de host del panel → política "Allow" con los correos de Constanza, Franco y el dueño → método de acceso con código por correo. Si el menú no deja elegir un `workers.dev`, la configuración del Worker permite activar Access para su dirección `workers.dev` (https://developers.cloudflare.com/workers/configuration/routing/workers-dev/). Los nombres de los menús son los de la documentación del 2026-10-28; verificarlos al hacerlo. Duración de la sesión: dejar las 24 horas (D34).
 5. En la aplicación: Configure → Additional settings → copiar el "Application Audience (AUD) Tag". En `wrangler.panel.toml` poner `ACCESS_TEAM_DOMAIN = "<equipo>.cloudflareaccess.com"` y `ACCESS_AUD = "<el tag>"` (no son secretos) y volver a desplegar el panel.
-6. Abrir la dirección: debe pedir el correo, mandar un código y mostrar la bandeja. Probar que un correo que no está en la política no entra. Opcional: `PANEL_CORREOS` como segunda barrera.
+6. Abrir la dirección: debe pedir el correo, mandar un código y mostrar la bandeja. Probar que un correo que no está en la política no entra. Borrar la cookie `CF_Authorization` del navegador y esperar unos segundos: la pantalla debe mostrar "Se cerró tu sesión" con el botón "Volver a entrar", y el título de la pestaña debe empezar con ⚠. Opcional: `PANEL_CORREOS` como segunda barrera, cargada con `npx.cmd wrangler secret put PANEL_CORREOS -c wrangler.panel.toml` (son correos de personas: no van en `wrangler.panel.toml` porque el repositorio es público).
 7. Medir el CPU del panel con `wrangler tail` (límite de 10 ms, D31 y D33).
 
 **Cuidados:** el panel muestra datos personales (teléfonos, direcciones): acceso solo para personas autorizadas, sesión segura, registro de quién confirma qué, y ninguna dirección sale hacia servicios externos (el mapa no geocodifica con terceros).

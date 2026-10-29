@@ -20,7 +20,7 @@ Brunen vende por WhatsApp el 100 % de sus pedidos: una persona recibe cada mensa
 | 5 | Bandeja de pedidos y avisos para la operadora; Telegram solo para lo muy urgente | La bandeja está en el panel; el aviso de Telegram está listo |
 | 6 | Comprobantes, audio y lista del día para el repartidor | Lista del día lista; falta decidir dónde guardar los comprobantes |
 | 7 | Producción y piloto con clientes | Pendiente |
-| P | Panel de administración: pedidos, avisos, clientes por ubicación, mapa y estadísticas | P1 (bandeja de pedidos y avisos) lista y probada en local; falta el acceso y el despliegue |
+| P | Panel de administración: pedidos, avisos, clientes por ubicación, mapa y estadísticas | P1 (bandeja de pedidos y avisos) lista y probada en local; el acceso será Cloudflare Access; falta activarlo y desplegar |
 
 Hoy el bot responde a los números de prueba lo que entendió del mensaje ("Modo prueba. Entendí: pedido · 2 de 20 L · entrega propuesta jueves 29 de octubre"). Lo que ya está construido para el flujo real, y cómo conversará con los clientes, está en [docs/CONVERSACIONES.md](docs/CONVERSACIONES.md). Detalle y criterios de cada etapa en [docs/ETAPAS.md](docs/ETAPAS.md).
 
@@ -45,7 +45,7 @@ flowchart LR
 - **Plan gratuito de Cloudflare:** 10 ms de CPU por solicitud. Las lecturas de la planilla se guardan en memoria, el token de Google se pide una sola vez y el flujo lee solo lo que cada mensaje necesita.
 - **Panel de administración con acceso cerrado por defecto:** es un Worker aparte, detrás de Cloudflare Access, sin ningún secreto de WhatsApp ni de Google. Comprueba en cada solicitud el token de Access (firma RS256, emisor, audiencia y vencimiento) y, si falta configuración, no sirve nada. Las escrituras exigen una cabecera propia y el mismo origen, la política de contenido solo permite scripts propios y lo que escribe un cliente se muestra siempre como texto, nunca como HTML. La consulta que se repite cada pocos segundos usa solo índices, y una prueba lo vigila para no pasar el límite gratuito de lecturas de D1.
 - **Datos personales:** los teléfonos se enmascaran en los logs, los secretos viven solo en `.dev.vars` o en `wrangler secret`, la IA corre con retención de datos cero y los datos reales de clientes no entran al repositorio.
-- Las 33 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
+- Las 35 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
 
 ## Calidad
 - Más de 700 pruebas automáticas con Vitest: los casos de precios del negocio, mensajes de ejemplo para el intérprete, conversaciones completas de punta a punta y la seguridad del panel (tokens falsificados, vencidos o de otra aplicación).

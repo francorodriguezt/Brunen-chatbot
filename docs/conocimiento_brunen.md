@@ -86,8 +86,8 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 - Canal: WhatsApp Cloud API (Meta). Número: nuevo vs. coexistencia con el actual (PENDIENTE, decide el dueño).
 - Motor: código propio en **Cloudflare Workers + TypeScript** (plan gratuito). Reemplaza la idea inicial de n8n.
 - Interpretación: parser por reglas + LLM de respaldo (Groq gratis). Gemini gratis descartado (usa los datos).
-- Datos: los pedidos y los avisos viven en la base D1 de Cloudflare, junto con la memoria del bot (mensajes ya vistos, pedido a medias, último pedido); Google Sheets sigue para CLIENTES, PRECIOS, CONFIGURACION y FERIADOS (D32, D33).
-- Panel de administración propio (un Worker aparte, detrás de Cloudflare Access) para que Constanza y el dueño vean, confirmen y cambien pedidos y avisos. Telegram queda solo para lo muy urgente (reclamos y fallas del sistema).
+- Datos: los pedidos y los avisos viven en la base D1 de Cloudflare, junto con la memoria del bot (mensajes ya vistos, pedido a medias, último pedido); Google Sheets sigue para CLIENTES, PRECIOS, CONFIGURACION y FERIADOS (D32, D33). Respaldo de D1: Time Travel (7 días) y una exportación semanal guardada fuera del repositorio (D35).
+- Panel de administración propio (un Worker aparte, detrás de Cloudflare Access: D34) para que Constanza y el dueño vean, confirmen y cambien pedidos y avisos. Telegram queda solo para lo muy urgente (reclamos y fallas del sistema).
 - Comprobantes: se guardarán en D1 por 60 días y se verán en el panel (D30, D32; Drive con la cuenta de servicio no sirve). Monitoreo: UptimeRobot → `/salud`.
 - Flujo: webhook → validar firma → 200 inmediato → deduplicar → revisar `BOT_ACTIVO` → buscar cliente → según tipo:
   - Texto: juntar los mensajes seguidos → parser (→ LLM si hace falta) → pedido / pregunta frecuente / escalamiento. El pedido y su aviso quedan en D1. Lo dudoso se anota igual y se manda a revisión; al cliente no se le promete.
