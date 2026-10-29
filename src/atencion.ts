@@ -125,13 +125,14 @@ export async function atenderTextoConFlujo(
 /** Las reacciones y los stickers se tratan como un "ok": ni respuesta ni aviso. */
 const SIN_RESPUESTA_NI_AVISO: ReadonlySet<string> = new Set(['reaction', 'sticker']);
 
-/** Audios (regla 8: se pide que escriban), imágenes (posible comprobante) y el resto (los ve una persona). */
+/** Audios (regla 8: los responde Constanza, el bot no contesta), imágenes (posible comprobante) y el resto (los ve una persona). */
 export async function atenderNoTexto(mensaje: MensajeEntrante, env: EntornoAtencion, ahora: Date = new Date()): Promise<ResultadoMensaje> {
   if (SIN_RESPUESTA_NI_AVISO.has(mensaje.tipo)) return { resultado: 'sin_respuesta', intencion: mensaje.tipo };
   const aviso = (tipo: Alerta['tipo'], resumen: string): Alerta => ({ tipo, telefono: mensaje.de, resumen, motivos: [] });
   let efectos: Efectos;
   if (mensaje.tipo === 'audio') {
-    efectos = { respuesta: textos.pedirTexto(), textoDelCliente: '' };
+    // El dueño pidió que los audios los responda siempre Constanza (D36): el bot no contesta, solo deja el aviso.
+    efectos = { respuesta: null, alerta: aviso('escalamiento', 'Envió un audio: lo responde Constanza (el bot no responde audios).'), textoDelCliente: '' };
   } else if (mensaje.tipo === 'image') {
     // PENDIENTE (D30): guardar la imagen en D1 para verla en el panel; hoy solo se avisa que llegó.
     efectos = {
@@ -144,7 +145,7 @@ export async function atenderNoTexto(mensaje: MensajeEntrante, env: EntornoAtenc
   }
   const respuesta = await aplicarEfectos(env, mensaje, efectos, ahora);
   if (respuesta !== null) await enviarTexto(configWhatsApp(env), mensaje.de, respuesta);
-  return { resultado: 'respondido', intencion: mensaje.tipo };
+  return { resultado: respuesta === null ? 'sin_respuesta' : 'respondido', intencion: mensaje.tipo };
 }
 
 /**

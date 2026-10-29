@@ -204,12 +204,14 @@ describe('mensajes seguidos del mismo cliente', () => {
 });
 
 describe('lo que no es texto', () => {
-  it('un audio: se pide amablemente que escriban, sin aviso', async () => {
+  it('un audio: el bot no responde y queda un aviso para que lo responda Constanza (D36)', async () => {
     const mundo = stubMundo({ hojas: HOJAS });
-    const env = await entorno();
+    const env = await entorno({ TELEGRAM_BOT_TOKEN: '1:TOKEN', TELEGRAM_CHAT_ID: '777' });
     await enviarAviso(env, { id: 'wamid.AU1', from: CLIENTE, timestamp: '1793000000', type: 'audio' });
-    expect(mundo.enviados[0]?.texto).toBe('Por ahora no puedo escuchar audios. ¿Me lo escribes, por favor?');
-    expect(avisosEn(env)).toEqual([]);
+    expect(mundo.enviados).toEqual([]);
+    expect(avisosEn(env)).toEqual([{ tipo: 'escalamiento', telefono: CLIENTE, estado: 'abierto' }]);
+    expect(mundo.telegram).toEqual([]); // un audio no es urgente: se ve en el panel
+    expect(mundo.anotadasEnPlanilla.some((fila) => fila.includes('sin_respuesta'))).toBe(true);
   });
 
   it('una imagen: se responde y queda un aviso de posible comprobante', async () => {
