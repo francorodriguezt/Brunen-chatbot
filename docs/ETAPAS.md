@@ -145,7 +145,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 | Fase | Qué incluye |
 |---|---|
 | P1 Bandeja (lista) | Pedidos por confirmar, confirmados y cerrados, con confirmar / cambiar (fecha, comuna, dirección, notas, bidones y precios) / cancelar / en ruta / entregado, lo que escribió el cliente, observaciones del bot e historial de cambios; avisos (reclamos, facturas, comprobantes, mensajes no entendidos, fallas) con "resuelto"; se actualiza sola con sonido y notificación; funciona en el celular y con tema oscuro |
-| P2 Reparto del día | Lista del día por comuna lista para copiar (`rutaDelDia.ts`), envases por retirar |
+| P2 Reparto del día | Lista del día por comuna lista para copiar (`rutaDelDia.ts`), envases por retirar. En diseño (idea de Franco, 2026-10-28; ver `docs/PENDIENTES.md`): ruta lo más óptima posible desde y hacia la planta, carga por punto, vacíos por parada con justificación de faltantes y cierre del turno |
 | P3 Clientes y mapa | Ficha, historial y envases por cliente; importación del Excel; mapa por comuna y con punto exacto; el bot pasa a leer los clientes de D1 |
 | P4 Estadísticas | Bidones y ventas por día, semana y mes; clientes que dejaron de pedir; reclamos abiertos; comprobantes por revisar |
 | P5 Configuración | Interruptor del bot y aviso de contingencia, precios, feriados y textos editables, sin tocar la planilla |
