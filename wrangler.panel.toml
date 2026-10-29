@@ -6,13 +6,16 @@
 name = "brunen-panel"
 main = "src/panel/index.ts"
 compatibility_date = "2026-09-01"
+# Sin direcciones de versión (`<versión>-brunen-panel.<subdominio>.workers.dev`): Access protege la dirección del panel
+# y esas otras quedarían fuera de su aplicación (https://developers.cloudflare.com/workers/configuration/previews/).
+preview_urls = false
 
 [vars]
 # Se llenan al activar Access (no son secretos): el dominio del equipo de Zero Trust y el "AUD tag" de la aplicación.
 ACCESS_TEAM_DOMAIN = ""
 ACCESS_AUD = ""
-# Opcional: segunda barrera con los correos autorizados, separados por coma.
-PANEL_CORREOS = ""
+# Opcional, segunda barrera con los correos autorizados (PANEL_CORREOS, separados por coma): se carga con
+# `wrangler secret put PANEL_CORREOS -c wrangler.panel.toml`, no aquí. Son correos de personas y este repositorio es público.
 
 [assets]
 directory = "./panel"
