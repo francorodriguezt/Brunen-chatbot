@@ -319,9 +319,9 @@ describe('"lo de siempre"', () => {
 });
 
 describe('quién escribe y dónde vive', () => {
-  it('un cliente nuevo: se anota el pedido, sin precio ni fecha, y una persona coordina', async () => {
+  it('un cliente nuevo: se anota el pedido, sin precio ni fecha, y se le piden sus datos', async () => {
     const d = await conversacion({ cliente: { estado: 'nuevo' } }).decir('quiero 2 de 20');
-    expect(d.respuesta).toBe('¡Hola! Anotamos tu pedido de 2 bidones de 20 L. Como es tu primer pedido, una persona del equipo te escribirá para confirmar tu dirección y los detalles.');
+    expect(d.respuesta).toBe('¡Hola! Anotamos tu pedido de 2 bidones de 20 L. Para coordinar la entrega, ¿me dices tu nombre y tu dirección con comuna? Si es departamento, también el edificio y el número.');
     expect(d.pedido).toMatchObject({ nombre: '', direccion: '', estado: 'Pendiente_Confirmacion' });
     expect(d.pedido?.observaciones).toContain('Cliente nuevo, sin ficha');
     expect(d.alerta?.tipo).toBe('cliente_nuevo');
@@ -584,5 +584,123 @@ describe('el aviso de horario según quién tiene que contestar', () => {
   it('un cliente nuevo o un reclamo, que sí esperan a una persona, lo llevan', async () => {
     const nuevo = await conversacion({ ahora: MIERCOLES_22, cliente: { estado: 'nuevo' } }).decir('quiero 2 de 20');
     expect(nuevo.respuesta).toContain('horario de atención');
+  });
+});
+
+describe('un cliente nuevo da su nombre y su dirección (D37)', () => {
+  const NUEVO: BusquedaCliente = { estado: 'nuevo' };
+  const PREGUNTA =
+    '¡Hola! Anotamos tu pedido de 2 bidones de 20 L. Para coordinar la entrega, ¿me dices tu nombre y tu dirección con comuna? Si es departamento, también el edificio y el número.';
+  const CONFIRMA = 'Gracias, anotamos tu dirección. Una persona del equipo confirmará tu pedido.';
+
+  /** El cliente nuevo pide y el bot le pregunta; devuelve la conversación para seguir. */
+  async function yaPregunto(opciones: Opciones = {}) {
+    const c = conversacion({ cliente: NUEVO, ...opciones });
+    const pregunta = await c.decir('quiero 2 de 20');
+    return { c, pregunta, idPedido: pregunta.pedido?.idPedido as string };
+  }
+
+  it('anota el pedido y hace una sola pregunta, que queda esperando los datos', async () => {
+    const { pregunta, idPedido } = await yaPregunto();
+    expect(pregunta.respuesta).toBe(PREGUNTA);
+    expect(pregunta.pedido).toMatchObject({ nombre: '', direccion: '', estado: 'Pendiente_Confirmacion' });
+    expect(pregunta.alerta?.tipo).toBe('cliente_nuevo');
+    expect(pregunta.memoria).toEqual({ accion: 'guardar', estado: { espera: 'datos', items: [], id_pedido: idPedido, intentos: 0 } });
+  });
+
+  it('con nombre, dirección y comuna completa el pedido y confirma con un solo mensaje', async () => {
+    const { c, idPedido } = await yaPregunto();
+    const d = await c.decir('Juan Pérez, Los Leones 123, Providencia');
+    expect(d.respuesta).toBe(CONFIRMA);
+    expect(d.completarPedido).toEqual({
+      idPedido,
+      nombre: 'Juan Pérez',
+      direccion: 'Los Leones 123, Providencia',
+      comuna: 'Providencia',
+      observacion: 'Datos que escribió el cliente: «Juan Pérez, Los Leones 123, Providencia»',
+    });
+    expect(d.alerta).toMatchObject({ tipo: 'cliente_nuevo', idPedido });
+    expect(d.memoria).toEqual({ accion: 'borrar' });
+    expect(d.pedido).toBeUndefined();
+  });
+
+  it('esa respuesta no pasa por el intérprete ni por la IA: son justo el nombre y la dirección', async () => {
+    const interpretarEspia = vi.fn(async (texto: string) => ({ interpretacion: interpretar(texto), conIa: false }));
+    const { c } = await yaPregunto({ puertos: { interpretar: interpretarEspia } });
+    await c.decir('Juan Pérez, Los Leones 123, Providencia');
+    expect(interpretarEspia).toHaveBeenCalledTimes(1); // solo el primer mensaje, el pedido
+  });
+
+  it('si es departamento y no dice el edificio, lo pregunta una vez y lo anota sin volver a responder', async () => {
+    const { c, idPedido } = await yaPregunto();
+    const d = await c.decir('Ana Torres, Av. Irarrázaval 2345 depto 502, Ñuñoa');
+    expect(d.respuesta).toBe('Gracias, anotamos tu dirección. ¿Cómo se llama el edificio? Una persona del equipo confirmará tu pedido.');
+    expect(d.completarPedido?.observacion).toContain('Es departamento y no dijo el edificio: se le preguntó.');
+    expect(d.memoria).toEqual({ accion: 'guardar', estado: { espera: 'edificio', items: [], id_pedido: idPedido } });
+
+    const e = await c.decir('Torre Norte');
+    expect(e.respuesta).toBeNull();
+    expect(e.completarPedido).toEqual({ idPedido, notasRepartidor: 'Edificio: Torre Norte' });
+    expect(e.memoria).toEqual({ accion: 'borrar' });
+  });
+
+  it('si dice el departamento con su edificio, no pregunta nada más', async () => {
+    const { c } = await yaPregunto();
+    const d = await c.decir('Ana Torres, Av. Irarrázaval 2345, Edificio Mirador depto 502, Ñuñoa');
+    expect(d.respuesta).toBe(CONFIRMA);
+    expect(d.memoria).toEqual({ accion: 'borrar' });
+  });
+
+  it('una comuna fuera de zona deja el pedido como Fuera_de_zona y se le informa', async () => {
+    const { c, idPedido } = await yaPregunto();
+    const d = await c.decir('Sofía Rojas, Camino Real 456, Maipú');
+    expect(d.respuesta).toContain('Por ahora no despachamos a Maipú.');
+    expect(d.completarPedido).toMatchObject({ idPedido, comuna: 'Maipú', estado: 'Fuera_de_zona' });
+    expect(d.alerta?.tipo).toBe('fuera_de_zona');
+    expect(d.memoria).toEqual({ accion: 'borrar' });
+  });
+
+  it('si lo que contesta no parece una dirección, repite la pregunta una vez', async () => {
+    const { c, idPedido } = await yaPregunto();
+    const d = await c.decir('asdf qwer');
+    expect(d.respuesta).toBe('No alcancé a entender tu dirección. ¿Me la escribes con calle, número y comuna?');
+    expect(d.memoria).toEqual({ accion: 'guardar', estado: { espera: 'datos', items: [], id_pedido: idPedido, intentos: 1 } });
+    expect(d.completarPedido).toBeUndefined();
+  });
+
+  it('si tampoco entonces, lo deja a una persona y deja de preguntar', async () => {
+    const { c } = await yaPregunto();
+    await c.decir('asdf qwer');
+    const d = await c.decir('asdf qwer');
+    expect(d.alerta?.tipo).toBe('no_entendido');
+    expect(d.respuesta).toBe('Recibimos tu mensaje. Una persona del equipo te responderá en breve.');
+    expect(d.memoria).toEqual({ accion: 'borrar' });
+  });
+
+  it('un "no" no cancela el pedido que ya quedó anotado: se repite la pregunta una vez', async () => {
+    const { c, idPedido } = await yaPregunto();
+    const d = await c.decir('no');
+    expect(d.intencion).not.toBe('cancelar');
+    expect(d.respuesta).toBe('No alcancé a entender tu dirección. ¿Me la escribes con calle, número y comuna?');
+    expect(d.memoria).toEqual({ accion: 'guardar', estado: { espera: 'datos', items: [], id_pedido: idPedido, intentos: 1 } });
+  });
+
+  it('un "gracias" no se responde y el bot sigue esperando los datos', async () => {
+    const { c } = await yaPregunto();
+    const d = await c.decir('gracias');
+    expect(d.respuesta).toBeNull();
+    expect(d.memoria).toEqual({ accion: 'mantener' });
+  });
+
+  it('fuera del horario de atención, la confirmación de los datos también lo avisa', async () => {
+    const { c } = await yaPregunto({ ahora: MIERCOLES_22 });
+    const d = await c.decir('Juan Pérez, Los Leones 123, Providencia');
+    expect(d.respuesta).toContain('horario de atención');
+  });
+
+  it('un cliente que ya tiene ficha no recibe la pregunta', async () => {
+    const d = await conversacion().decir('quiero 2 de 20');
+    expect(d.respuesta).not.toContain('tu nombre');
+    expect(d.memoria).toEqual({ accion: 'borrar' });
   });
 });

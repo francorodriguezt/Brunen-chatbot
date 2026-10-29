@@ -8,13 +8,18 @@
  */
 
 import type { EstadoConversacion } from './conversacion';
+import { leerDatosDelCliente, leerEdificio, type DatosDelCliente } from './datos';
 import { accionDePedido, enteroValido, validarItems, type Interpretacion, type ItemInterpretado } from './interprete';
 import { preparar } from './texto';
 
 export type RespuestaContextual =
   /** El cliente desistió: hay que borrar el pedido a medias. */
   | { tipo: 'cancelar' }
-  | { tipo: 'interpretacion'; interpretacion: Interpretacion };
+  | { tipo: 'interpretacion'; interpretacion: Interpretacion }
+  /** Contestó con su nombre y su dirección (D37). */
+  | { tipo: 'datos'; datos: DatosDelCliente }
+  /** Contestó con el nombre de su edificio (D37). */
+  | { tipo: 'edificio'; edificio: string };
 
 const RELLENO = /\b(?:por favor|porfa|porfis|gracias|dale|ok|okey|si)\b/g;
 const CANCELAR = /^(?:no|nada|nada mas|ya no|no gracias|no quiero|no necesito|mejor no|cancela|cancelar|cancelalo|olvidalo|olvida|dejalo|dejalo asi|no importa)$/;
@@ -35,6 +40,17 @@ function comoPedido(estado: EstadoConversacion, items: ItemInterpretado[]): Inte
 }
 
 export function responderEnContexto(texto: string, estado: EstadoConversacion): RespuestaContextual | null {
+  // Con estas dos preguntas el pedido ya está anotado: un "no" no lo cancela, y la respuesta (el nombre y la dirección)
+  // no pasa por el intérprete ni por la IA.
+  if (estado.espera === 'datos') {
+    const datos = leerDatosDelCliente(texto);
+    return datos ? { tipo: 'datos', datos } : null;
+  }
+  if (estado.espera === 'edificio') {
+    const edificio = leerEdificio(texto);
+    return edificio ? { tipo: 'edificio', edificio } : null;
+  }
+
   const t = preparar(texto).replace(RELLENO, ' ').replace(/[?/]/g, ' ').replace(/\s+/g, ' ').trim();
   if (CANCELAR.test(t)) return { tipo: 'cancelar' };
 

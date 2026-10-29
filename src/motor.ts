@@ -20,10 +20,11 @@ import type { Alerta, TipoAlerta } from './alertas';
 import type { BusquedaCliente } from './clientes';
 import { detectarComuna, esComunaAtendida } from './comunas';
 import type { EstadoConversacion } from './conversacion';
+import type { DatosDelCliente } from './datos';
 import { fechaHoraLocal, textoFechaHora } from './despacho';
 import type { PropuestaEntrega } from './entrega';
 import { accionDePedido, type AccionSugerida, type Intencion, type Interpretacion, type ItemInterpretado } from './interprete';
-import { generarIdPedido, type LineaPedido, type PedidoARegistrar } from './pedidos';
+import { generarIdPedido, type CompletarPedido, type LineaPedido, type PedidoARegistrar } from './pedidos';
 import { cotizarPedido, ErrorPrecio, type Cotizacion, type TipoBidon } from './precios';
 import type { TablaPrecios } from './preciosHoja';
 import * as textos from './textos';
@@ -55,6 +56,8 @@ export interface EntradaMotor {
   /** Entrega propuesta (entrega.ts), calculada para el día que pidió el cliente. */
   entrega: PropuestaEntrega;
   servicio: { reducido: boolean; mensajeExcepcion: string };
+  /** El bot le pidió al cliente su nombre y su dirección y espera la respuesta (D37). */
+  pendienteDeDatos?: { idPedido: string; intentos: number };
 }
 
 export type AccionMemoria =
@@ -64,12 +67,14 @@ export type AccionMemoria =
 
 export interface Decision {
   /** Para la columna Intencion de la hoja de mensajes. */
-  intencion: Intencion | 'cancelar';
+  intencion: Intencion | 'cancelar' | 'datos_cliente' | 'edificio';
   /** Lo que se le responde al cliente. null = no responder (por ejemplo, ante un "gracias"). */
   respuesta: string | null;
   memoria: AccionMemoria;
   /** Pedido para anotar en PEDIDOS. */
   pedido?: PedidoARegistrar;
+  /** Datos que completan un pedido ya anotado (D37). */
+  completarPedido?: CompletarPedido;
   /** Aviso para la operadora. */
   alerta?: Alerta;
   /** Pedido completo para recordar como "lo de siempre". */
@@ -239,12 +244,15 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
   const resumen = `${textos.resumenLineas(lineas)}${comuna ? ` · ${comuna}` : ''}`;
   let avisoTipo: TipoAlerta = motivos.length > 0 ? 'pedido_revision' : 'pedido';
   let respuesta: string;
+  let memoria: AccionMemoria = BORRAR;
   if (fueraDeZona) {
     avisoTipo = 'fuera_de_zona';
     respuesta = textos.fueraDeZona(comuna);
   } else if (!cliente) {
     avisoTipo = 'cliente_nuevo';
-    respuesta = textos.clienteNuevo(lineas);
+    respuesta = textos.pedirDatos(lineas);
+    // El pedido ya queda anotado; lo que conteste el cliente lo completa (D37).
+    memoria = { accion: 'guardar', estado: { espera: 'datos', items: [], id_pedido: idPedido, intentos: 0 } };
   } else {
     respuesta = textos.pedidoAnotado({ lineas, total: precioSeguro && cotizacion ? cotizacion.total : null, entrega: e.entrega, fechaSegura });
   }
@@ -252,7 +260,7 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
   return {
     intencion: e.interpretacion.intencion,
     respuesta,
-    memoria: BORRAR,
+    memoria,
     pedido,
     alerta: alerta(e, avisoTipo, resumen, { motivos, idPedido }),
     ...(!fueraDeZona && { ultimoPedido: completos }),
@@ -294,12 +302,12 @@ function decidirBase(e: EntradaMotor): Decision {
     case 'pedido':
       return decidirPedido(e, i.items, false);
     case 'desconocido':
-      return escalar(e, 'no_entendido', 'El bot no entendió el mensaje');
+      return e.pendienteDeDatos ? repreguntarDatos(e, e.pendienteDeDatos) : escalar(e, 'no_entendido', 'El bot no entendió el mensaje');
   }
 }
 
 /** Agrega lo que va al final de cualquier respuesta: el aviso de horario y la excepción de servicio. */
-function adornar(decision: Decision, e: EntradaMotor): Decision {
+function adornar(decision: Decision, e: Pick<EntradaMotor, 'ahora' | 'servicio'>): Decision {
   if (decision.respuesta === null) return decision;
   let respuesta = decision.respuesta;
   // Lo que ya está resuelto (un pedido normal, envases anotados, fuera de zona) no espera nada de la operadora:
@@ -314,4 +322,65 @@ function adornar(decision: Decision, e: EntradaMotor): Decision {
 
 export function decidir(entrada: EntradaMotor): Decision {
   return adornar(decidirBase(entrada), entrada);
+}
+
+/** Se repite la pregunta una sola vez; si tampoco, queda para una persona y el bot deja de preguntar (D37). */
+function repreguntarDatos(e: EntradaMotor, pendiente: NonNullable<EntradaMotor['pendienteDeDatos']>): Decision {
+  if (pendiente.intentos >= 1) {
+    return escalar(e, 'no_entendido', 'No entendió la dirección que se le pidió, dos veces', textos.recibidoEscalar(), BORRAR);
+  }
+  return {
+    intencion: 'desconocido',
+    respuesta: textos.pedirDatosDeNuevo(),
+    memoria: { accion: 'guardar', estado: { espera: 'datos', items: [], id_pedido: pendiente.idPedido, intentos: pendiente.intentos + 1 } },
+  };
+}
+
+export interface EntradaDatos {
+  idPedido: string;
+  datos: DatosDelCliente;
+  /** Lo que escribió el cliente (si mandó varios mensajes seguidos, ya juntos). */
+  texto: string;
+  telefono: string;
+  ahora: Date;
+  servicio: { reducido: boolean; mensajeExcepcion: string };
+}
+
+/**
+ * El cliente nuevo contestó con su nombre y su dirección (D37): se completa el pedido que ya estaba anotado y se
+ * confirma en un solo mensaje. Si es departamento y no dijo el edificio, ese mismo mensaje se lo pregunta; si la comuna
+ * no se atiende, el pedido pasa a Fuera_de_zona.
+ */
+export function decidirDatos(e: EntradaDatos): Decision {
+  const { datos } = e;
+  const comuna = datos.comuna;
+  const fueraDeZona = comuna !== null && !comuna.atendida;
+  const faltaEdificio = datos.esDepartamento && !datos.tieneEdificio && !fueraDeZona;
+  const escrito = e.texto.replace(/\s+/g, ' ').trim().slice(0, 300);
+
+  const completarPedido: CompletarPedido = {
+    idPedido: e.idPedido,
+    ...(datos.nombre && { nombre: datos.nombre }),
+    ...(datos.direccion && { direccion: datos.direccion }),
+    ...(comuna && { comuna: comuna.nombre }),
+    observacion: [`Datos que escribió el cliente: «${escrito}»`, faltaEdificio ? 'Es departamento y no dijo el edificio: se le preguntó.' : ''].filter(Boolean).join('. '),
+    ...(fueraDeZona && { estado: 'Fuera_de_zona' as const }),
+  };
+  const aviso = (tipo: TipoAlerta, resumen: string): Alerta => ({ tipo, telefono: e.telefono, resumen, motivos: [], texto: e.texto, idPedido: e.idPedido });
+
+  if (comuna && fueraDeZona) {
+    const alertaFuera = aviso('fuera_de_zona', `Dio su dirección en ${comuna.nombre}, que está fuera de zona`);
+    return adornar({ intencion: 'datos_cliente', respuesta: textos.fueraDeZona(comuna.nombre), memoria: BORRAR, completarPedido, alerta: alertaFuera }, e);
+  }
+  const alertaDatos = aviso('cliente_nuevo', `Dio su nombre y su dirección${comuna ? ` · ${comuna.nombre}` : ''}`);
+  if (faltaEdificio) {
+    const memoria: AccionMemoria = { accion: 'guardar', estado: { espera: 'edificio', items: [], id_pedido: e.idPedido } };
+    return adornar({ intencion: 'datos_cliente', respuesta: textos.datosRecibidosPedirEdificio(), memoria, completarPedido, alerta: alertaDatos }, e);
+  }
+  return adornar({ intencion: 'datos_cliente', respuesta: textos.datosRecibidos(), memoria: BORRAR, completarPedido, alerta: alertaDatos }, e);
+}
+
+/** El cliente contestó el nombre de su edificio: se anota para el repartidor, sin volver a responderle (D37). */
+export function decidirEdificio(e: { idPedido: string; edificio: string }): Decision {
+  return { intencion: 'edificio', respuesta: null, memoria: BORRAR, completarPedido: { idPedido: e.idPedido, notasRepartidor: `Edificio: ${e.edificio}` } };
 }

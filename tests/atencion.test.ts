@@ -153,11 +153,11 @@ describe('el flujo de pedido conectado al Worker', () => {
     expect(pedidosEn(env)[0]).toMatchObject({ estado: 'Pendiente_Confirmacion' });
   });
 
-  it('un cliente que no está en la hoja: se anota el pedido y una persona coordina', async () => {
+  it('un cliente que no está en la hoja: se anota el pedido y se le piden sus datos', async () => {
     const mundo = stubMundo({ hojas: { ...HOJAS, CLIENTES: [HOJAS.CLIENTES[0] as string[]] } });
     const env = await entorno();
     await enviarAviso(env, texto('quiero 2 de 20'));
-    expect(mundo.enviados[0]?.texto).toContain('Como es tu primer pedido');
+    expect(mundo.enviados[0]?.texto).toContain('¿me dices tu nombre y tu dirección con comuna?');
     expect(avisosEn(env)[0]?.tipo).toBe('cliente_nuevo');
     expect(pedidosEn(env)[0]).toMatchObject({ nombre: '', estado: 'Pendiente_Confirmacion' });
   });
@@ -200,6 +200,49 @@ describe('mensajes seguidos del mismo cliente', () => {
     await enviarAviso(env, texto('20'));
     expect(mundo.enviados[1]?.texto).toContain('- 4 bidones de 20 L: $11.000');
     expect(pedidosEn(env)).toHaveLength(1);
+  });
+});
+
+describe('un cliente nuevo da su nombre y su dirección (D37)', () => {
+  const NUEVO = '56900000002'; // no está en la hoja CLIENTES
+
+  it('de punta a punta: pregunta, completa el pedido en D1 y confirma, con 2 mensajes y sin IA', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno({ NUMEROS_PERMITIDOS: `${CLIENTE},${NUEVO}`, GROQ_API_KEY: 'k' });
+    await enviarAviso(env, texto('quiero 2 de 20', NUEVO));
+    await enviarAviso(env, texto('Juan Pérez, Los Leones 123, Providencia', NUEVO));
+
+    expect(mundo.enviados.map((m) => m.texto)).toEqual([
+      '¡Hola! Anotamos tu pedido de 2 bidones de 20 L. Para coordinar la entrega, ¿me dices tu nombre y tu dirección con comuna? Si es departamento, también el edificio y el número.',
+      'Gracias, anotamos tu dirección. Una persona del equipo confirmará tu pedido.',
+    ]);
+    expect(pedidosEn(env)).toEqual([expect.objectContaining({ telefono: NUEVO, nombre: 'Juan Pérez', estado: 'Pendiente_Confirmacion' })]);
+    const [pedido] = env.DB.sql('SELECT comuna, direccion, observaciones FROM pedidos') as Fila[];
+    expect(pedido).toMatchObject({ comuna: 'Providencia', direccion: 'Los Leones 123, Providencia' });
+    expect(String(pedido?.observaciones)).toContain('Datos que escribió el cliente');
+    expect(avisosEn(env).map((a) => a.tipo)).toEqual(['cliente_nuevo', 'cliente_nuevo']);
+    expect(env.DB.sql('SELECT * FROM conversaciones')).toEqual([]); // ya no espera nada
+    expect(mundo.llamadas.some((url) => url.startsWith('https://api.groq.com'))).toBe(false);
+  });
+
+  it('el nombre y la dirección en mensajes seguidos se juntan en una sola respuesta', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno({ NUMEROS_PERMITIDOS: `${CLIENTE},${NUEVO}` });
+    await enviarAviso(env, texto('quiero 2 de 20', NUEVO));
+    await enviarAviso(env, texto('Juan Pérez', NUEVO), texto('Los Leones 123, Providencia', NUEVO));
+    expect(mundo.enviados).toHaveLength(2);
+    expect(pedidosEn(env)[0]).toMatchObject({ nombre: 'Juan Pérez' });
+  });
+
+  it('si el pedido ya no existe cuando llegan los datos, no se le promete nada al cliente', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno({ NUMEROS_PERMITIDOS: `${CLIENTE},${NUEVO}`, TELEGRAM_BOT_TOKEN: '1:TOKEN', TELEGRAM_CHAT_ID: '777' });
+    await enviarAviso(env, texto('quiero 2 de 20', NUEVO));
+    env.DB.sql('DELETE FROM pedidos');
+    await enviarAviso(env, texto('Juan Pérez, Los Leones 123, Providencia', NUEVO));
+    expect(mundo.enviados[1]?.texto).toBe('Recibimos tu mensaje. Una persona del equipo te responderá en breve.');
+    expect(mundo.telegram).toHaveLength(1); // la falla sale por Telegram, como cuando D1 no responde
   });
 });
 

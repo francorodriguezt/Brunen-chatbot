@@ -12,7 +12,7 @@
 
 import { TIPOS_DE_AVISO_DE_PEDIDO, type Alerta, type TipoAlerta } from './alertas';
 import type { BaseDatos } from './almacen';
-import type { LineaPedido, PedidoARegistrar } from './pedidos';
+import type { CompletarPedido, LineaPedido, PedidoARegistrar } from './pedidos';
 import type { TipoBidon } from './precios';
 
 export type EstadoDePedido = 'Pendiente_Confirmacion' | 'Fuera_de_zona' | 'Confirmado' | 'En_Ruta' | 'Entregado' | 'Cancelado';
@@ -258,6 +258,44 @@ export class RepositorioD1 {
         ahoraSegundos, a.tipo, a.telefono, a.nombre ?? '', a.resumen.slice(0, MAX_TEXTO), JSON.stringify(a.motivos), (a.texto ?? '').slice(0, MAX_TEXTO), a.idPedido ?? null, origen,
       )) > 0
     );
+  }
+
+  /**
+   * El cliente nuevo dio sus datos (D37). Llena solo lo que está vacío (nunca pisa lo que escribió una persona), suma a
+   * las notas y a las observaciones y, si la comuna no se atiende, pasa el pedido a Fuera_de_zona, pero solo si seguía
+   * pendiente de confirmar. false si el pedido no existe o ya se entregó o se canceló.
+   */
+  async completarDatos(c: CompletarPedido, ahoraSegundos: number): Promise<boolean> {
+    const hecho = await this.cambios(
+      `UPDATE pedidos SET
+         nombre = CASE WHEN nombre = '' THEN ?1 ELSE nombre END,
+         direccion = CASE WHEN direccion = '' THEN ?2 ELSE direccion END,
+         comuna = CASE WHEN comuna = '' THEN ?3 ELSE comuna END,
+         notas_repartidor = CASE WHEN ?4 = '' THEN notas_repartidor WHEN notas_repartidor = '' THEN ?4 ELSE substr(notas_repartidor || '. ' || ?4, 1, ${MAX_TEXTO}) END,
+         observaciones = CASE WHEN ?5 = '' THEN observaciones WHEN observaciones = '' THEN ?5 ELSE substr(observaciones || ' | ' || ?5, 1, ${MAX_TEXTO}) END,
+         estado = CASE WHEN ?6 = 'Fuera_de_zona' AND estado = 'Pendiente_Confirmacion' THEN 'Fuera_de_zona' ELSE estado END,
+         actualizado_en = ?7
+       WHERE id = ?8 AND estado NOT IN ('Entregado', 'Cancelado')`,
+      (c.nombre ?? '').slice(0, 80),
+      (c.direccion ?? '').slice(0, 200),
+      (c.comuna ?? '').slice(0, 80),
+      (c.notasRepartidor ?? '').slice(0, MAX_TEXTO),
+      (c.observacion ?? '').slice(0, MAX_TEXTO),
+      c.estado ?? '',
+      ahoraSegundos,
+      c.idPedido,
+    );
+    if (hecho === 0) return false;
+    const partes = [
+      c.nombre ? 'nombre' : '',
+      c.direccion ? 'dirección' : '',
+      c.comuna ? 'comuna' : '',
+      c.notasRepartidor ? 'notas' : '',
+      c.observacion ? 'observaciones' : '',
+      c.estado ? 'zona' : '',
+    ].filter(Boolean);
+    await this.anotarHistorial(c.idPedido, ahoraSegundos, 'bot', 'datos del cliente', partes.join(', '));
+    return true;
   }
 
   // ---- Lo que lee y cambia el panel ----

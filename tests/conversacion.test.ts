@@ -156,3 +156,30 @@ describe('MemoriaConversaciones: si D1 falla', () => {
     expect(JSON.stringify(error.mock.calls)).not.toContain('viernes');
   });
 });
+
+describe('conversación a medias: los datos del cliente (D37)', () => {
+  const PIDE_DATOS = { espera: 'datos', items: [], id_pedido: 'P261028-3K7Q9', intentos: 1 };
+  const PIDE_EDIFICIO = { espera: 'edificio', items: [], id_pedido: 'P261028-3K7Q9' };
+
+  it('acepta lo que se guarda al pedir los datos y al pedir el edificio', () => {
+    expect(validarEstado(PIDE_DATOS)).toEqual(PIDE_DATOS);
+    expect(validarEstado(PIDE_EDIFICIO)).toEqual(PIDE_EDIFICIO);
+  });
+
+  it.each([
+    ['sin el pedido que se completa', { espera: 'datos', items: [] }],
+    ['con un id de pedido inventado', { espera: 'edificio', items: [], id_pedido: 'cualquier cosa' }],
+  ])('descarta un estado %s', (_nombre, crudo) => {
+    expect(validarEstado(crudo)).toBeNull();
+  });
+
+  it('ignora una cantidad de intentos absurda en vez de guardarla', () => {
+    expect(validarEstado({ ...PIDE_DATOS, intentos: 99 })).toEqual({ espera: 'datos', items: [], id_pedido: 'P261028-3K7Q9' });
+  });
+
+  it('se guarda y se recupera de D1', async () => {
+    const memoria = new MemoriaConversaciones(crearBaseSqlite());
+    await memoria.guardar(TEL, PIDE_DATOS as EstadoConversacion, AHORA);
+    expect(await memoria.obtener(TEL, AHORA + 60)).toEqual(PIDE_DATOS);
+  });
+});

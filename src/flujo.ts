@@ -20,7 +20,7 @@ import type { EstadoConversacion } from './conversacion';
 import type { PropuestaEntrega } from './entrega';
 import type { Intencion, Interpretacion, ItemInterpretado } from './interprete';
 import type { ResultadoInterpretacion } from './llm';
-import { decidir, type Decision, type EntradaMotor } from './motor';
+import { decidir, decidirDatos, decidirEdificio, type Decision, type EntradaMotor } from './motor';
 import type { TablaPrecios } from './preciosHoja';
 import * as textos from './textos';
 
@@ -64,6 +64,14 @@ const INTENCIONES_CON_ENTREGA: ReadonlySet<Intencion> = new Set<Intencion>(['ped
 
 const SIN_PRECIOS: TablaPrecios = { tabla: [], origen: 'respaldo', problemas: [] };
 
+/** Guarda o borra lo que el bot debe recordar de la conversación (conversacion.ts). */
+async function recordar(p: Puertos, telefono: string, decision: Decision, ahoraSegundos: number): Promise<void> {
+  if (!p.memoria) return;
+  if (decision.memoria.accion === 'guardar') await p.memoria.guardar(telefono, decision.memoria.estado, ahoraSegundos);
+  else if (decision.memoria.accion === 'borrar') await p.memoria.borrar(telefono);
+  if (decision.ultimoPedido) await p.memoria.guardarUltimoPedido(telefono, decision.ultimoPedido, ahoraSegundos);
+}
+
 async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFlujo> {
   const ahoraSegundos = Math.floor(entrada.ahora.getTime() / 1000);
   const estado = p.memoria ? await p.memoria.obtener(entrada.telefono, ahoraSegundos) : null;
@@ -73,6 +81,20 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
   let cancelo = false;
   let conIa = false;
   const contextual = estado ? responderEnContexto(entrada.texto, estado) : null;
+
+  // El cliente contestó con su nombre y su dirección (o con su edificio): se completa el pedido que ya estaba anotado (D37).
+  if (estado && (contextual?.tipo === 'datos' || contextual?.tipo === 'edificio')) {
+    const idPedido = estado.id_pedido as string; // `validarEstado` lo exige con estas dos esperas
+    const decision =
+      contextual.tipo === 'edificio'
+        ? decidirEdificio({ idPedido, edificio: contextual.edificio })
+        : decidirDatos({ idPedido, datos: contextual.datos, texto: entrada.texto, telefono: entrada.telefono, ahora: entrada.ahora, servicio: await p.servicio() });
+    await recordar(p, entrada.telefono, decision, ahoraSegundos);
+    return { decision, conIa: false };
+  }
+  // El edificio se pregunta una sola vez: si lo que llega no es un edificio, se deja de esperarlo.
+  if (estado?.espera === 'edificio' && p.memoria) await p.memoria.borrar(entrada.telefono);
+
   if (contextual?.tipo === 'cancelar') {
     cancelo = true;
     interpretacion = { intencion: 'cierre', items: [] };
@@ -108,14 +130,11 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
     precios,
     entrega: entrega ?? { fecha: '', mismoDia: false, feriadosAlDia: true },
     servicio,
+    ...(estado?.espera === 'datos' && estado.id_pedido ? { pendienteDeDatos: { idPedido: estado.id_pedido, intentos: estado.intentos ?? 0 } } : {}),
   });
 
   // 4. Recordar lo que corresponda.
-  if (p.memoria) {
-    if (decision.memoria.accion === 'guardar') await p.memoria.guardar(entrada.telefono, decision.memoria.estado, ahoraSegundos);
-    else if (decision.memoria.accion === 'borrar') await p.memoria.borrar(entrada.telefono);
-    if (decision.ultimoPedido) await p.memoria.guardarUltimoPedido(entrada.telefono, decision.ultimoPedido, ahoraSegundos);
-  }
+  await recordar(p, entrada.telefono, decision, ahoraSegundos);
   return { decision, conIa };
 }
 
