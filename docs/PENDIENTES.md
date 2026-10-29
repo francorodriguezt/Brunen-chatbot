@@ -21,19 +21,19 @@ Franco aceptó las recomendaciones el 2026-10-28 y delegó la del acceso al pane
 - [ ] Preguntar a Constanza si acepta que su nombre y horario figuren en el repo público (`docs/conocimiento_brunen.md`, sección 8) y si acepta recibir los avisos urgentes por Telegram.
 
 ## Decide el dueño (solo lo muy importante)
-Están en el documento para el dueño, numeradas igual:
-- [ ] 1. Carga inicial: ¿solo 20 L? ¿Precio para 3 o más envases?
-- [ ] 2. Precios mayorista y especiales para 12 L y 10 L.
-- [ ] 3. ¿Los descuentos por cantidad se suman entre tamaños de bidón? (hoy se asume que no)
-- [ ] 4. Condiciones de las ~20 empresas con plan mensual.
-- [ ] 5. Qué significan `Credito` y `bloqueado`, y qué debe hacer el bot con un cliente bloqueado.
-- [ ] 6. Facturas y boletas: ¿siempre las atiende una persona? (hoy sí)
-- [ ] 7. Número de WhatsApp: nuevo solo para el bot o el actual con coexistencia. Ojo con el plan B: con coexistencia, si el bot cae se sigue atendiendo desde la app de siempre; con un número nuevo hay que definir otra forma de responder a mano (Etapa 7).
-- [ ] 8. Confirmación por excepción (1 mensaje por pedido, USD 0) o doble mensaje (~USD 4/mes).
-- [ ] 9. ¿Prometer en los reclamos "lo resolvemos a más tardar mañana"?
-- [ ] 10. Tono de los textos.
-- [ ] 11. Quién usará el panel y qué quiere ver.
-- [ ] 12. ¿Quiere recibir también los avisos urgentes por Telegram?
+Respondió el cuestionario el 2026-10-29 (D36). Marcadas las que quedaron resueltas; en las demás, lo que falta:
+- [ ] 1. Carga inicial: respondido (D36). Falta el precio de 3 o más envases en 12 L y 10 L.
+- [ ] 2. Mayorista: respondido (D36; confirmar que $3.250 y $2.000 son por envase). Faltan los precios especiales ($3.500 y $3.000) para 12 L y 10 L.
+- [x] 3. Los descuentos por cantidad son por tamaño (D36).
+- [x] 4. Empresas con plan mensual: cada una tiene su condición y siempre se derivan a Constanza (D36).
+- [ ] 5. Cliente bloqueado: lo atiende una persona y no se anota el pedido (D36). Falta qué significa `Credito` en su Excel y si al bloqueado se le contesta algo (hoy el bot le dice que una persona lo revisará).
+- [x] 6. Facturas y boletas: siempre las atiende una persona (D36).
+- [ ] 7. Número de WhatsApp: eligió el actual con coexistencia (D36). Falta confirmar que se pueda hacer (Meta exige un Tech Provider o Solution Partner) y qué prefiere si no se puede: un número nuevo solo para el bot u otra vía. Con coexistencia, si el bot cae se sigue atendiendo desde la app de siempre.
+- [x] 8. Un solo mensaje del bot por pedido, opción A (D36).
+- [x] 9. Sí, en los reclamos se promete "lo resolvemos a más tardar mañana" (D36).
+- [x] 10. Tono de los textos: sin cambios (D36).
+- [ ] 11. Qué quiere ver: respondido (D36). Usarán el panel Constanza, el dueño y Franco; falta el repartidor, que aparece en sus audios.
+- [x] 12. Sí, quiere los avisos urgentes por Telegram (D36). Falta crear el bot y que abra el chat.
 
 ## Acciones del dueño
 - [ ] Registrar un método de pago en Meta (lo exige aunque no se cobre dentro del cupo gratis).
@@ -58,7 +58,10 @@ Están en el documento para el dueño, numeradas igual:
 - [ ] Respaldo de D1 (D35), antes de encender `FLUJO_PEDIDO` con clientes reales: hacer una exportación (`wrangler d1 export`), restaurarla en una base local y anotar quién la hace cada semana y dónde se guarda (fuera del repositorio).
 - [ ] Medir el CPU por mensaje del bot y por solicitud del panel con `wrangler tail` (D31, D33) y ajustar la espera del agrupador (D27) con mensajes reales.
 - [ ] Panel, fases P2 a P5 (reparto del día, clientes y mapa, estadísticas, configuración; ver `docs/ETAPAS.md`).
-- [ ] Ruta y turno de reparto (idea de Franco, 2026-10-28; el proceso está en `docs/conocimiento_brunen.md`, sección 15): al empezar el día, generar la ruta de direcciones lo más óptima posible desde y hacia la planta, con la carga por punto, los vacíos por parada (avisando y justificando los faltantes) y el cierre del turno (vacíos en la planta o en el furgón). Está en diseño: falta que Franco cuente cómo se arma hoy el turno; después se escribe el diseño y se decide cómo conseguir las coordenadas sin enviar direcciones a terceros, quién anota en la calle y dónde queda la planta. Amplía la fase P2 del panel.
+- [ ] Precios nuevos del dueño (D36) en `src/precios.ts`, con pruebas primero: carga inicial por tipo y desde 3 envases, mayorista de 12 L y 10 L y carga inicial mayorista. Lo que sigue sin respuesta queda marcado como pendiente y va a revisión.
+- [ ] Audios (D36): el bot deja de responder y avisa a Constanza. Cambia `atencion.ts`, sus pruebas y el ejemplo de `docs/CONVERSACIONES.md`.
+- [ ] Coexistencia (D36): confirmar con Meta o con un Tech Provider si Franco puede hacer el alta de la línea actual, y acordar el plan B con el dueño. Con coexistencia, el bot debería ignorar los ecos de lo que Constanza escribe desde la app y no responder una conversación que ella ya tomó.
+- [ ] Ruta y turno de reparto (idea de Franco, 2026-10-28; el proceso está en `docs/conocimiento_brunen.md`, sección 15): al empezar el día, generar la ruta de direcciones lo más óptima posible desde y hacia la planta, con la carga por punto, los vacíos por parada (avisando y justificando los faltantes) y el cierre del turno (vacíos en la planta o en el furgón). Con los audios del dueño (D36) cambió el foco: primero importar el Excel del día, la vista del repartidor punto por punto, el seguimiento y los sobrantes de cada turno; la ruta óptima pasa a segundo lugar. Está en diseño: faltan las respuestas de la segunda ronda (abajo) y no se construye nada antes de aprobar el diseño. Amplía la fase P2 del panel y no depende de Meta.
 - [ ] Acotar por fecha las listas "Cerrados" y "Todos" del panel cuando haya miles de pedidos (D1 gratis: 5 millones de filas leídas al día; D33).
 - [ ] Crear el bot de Telegram (@BotFather) solo para lo muy urgente y cargar `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y el secreto del webhook (D29, D32). Lo hace Franco: no se pueden crear cuentas desde aquí.
 - [ ] Clientes: importar el Excel desde el panel cuando exista esa pantalla; mientras tanto, 2 o 3 clientes de prueba en la hoja CLIENTES (tu número, un mayorista, uno fuera de zona) para probar el flujo. Sin fichas, todos los clientes son "nuevos".
@@ -80,20 +83,37 @@ Datos de Meta tomados de fuentes secundarias el 2026-10-28: confirmar todo en la
 - [ ] Copias de seguridad según D35 (los pedidos ya no están en la planilla) y quién tiene acceso a Cloudflare, Meta, Groq y Telegram.
 - [ ] Plan B si el bot o el panel se caen: cómo responde una persona a los clientes y desde dónde. Con coexistencia sigue la app de WhatsApp Business de siempre; con un número solo para la API habría que verificar qué bandeja de Meta permite responder a mano. Definir cuándo se usa `BOT_ACTIVO = NO` y qué se le avisa al cliente. Pesa en la decisión 7 del dueño (número).
 
-## Información que falta o es ambigua (2026-10-28)
-Además de las 12 preguntas del dueño. Entre paréntesis, quién la tiene o decide.
-- [ ] Turno de reparto (Franco, Constanza, repartidor): cómo se arman hoy la carga y la ruta, quién lo hace, cuánto tarda y qué se complica; quién anotará en la calle las entregas y los vacíos; si la ruta propia reemplaza a la app de rutas o la complementa.
-- [ ] Vacíos que faltan en una entrega (dueño, Constanza): después de justificar el faltante, ¿se retira al día siguiente, queda como saldo del cliente o se cobra? ¿Se espera un vacío por cada bidón entregado?
-- [ ] Planta (dueño): dirección o coordenadas para calcular la ruta desde y hacia ella, capacidad del furgón en bidones y si alguna vez se hacen dos cargas en un día.
-- [ ] Coordenadas de los clientes (Franco): D32 dice que las direcciones no salen de Brunen. Propuesta: guardar el punto exacto con el GPS del celular del repartidor al entregar o con la ubicación que comparta el cliente, y mientras tanto ordenar por comuna. Confirmar eso o permitir un servicio externo de geocodificación.
-- [ ] Quién entra al panel y con qué permisos (Franco, dueño): operadora, dueño, repartidor y repartidor de emergencia. Hoy todos los que pasan por Access ven y cambian todo.
-- [ ] Qué se le dice al cliente cuando la operadora cambia o cancela un pedido en el panel (Franco): hoy no se le escribe, y cada mensaje cuenta en el cupo gratis.
-- [ ] `Aviso_Hora` (dueño): algunos clientes piden aviso de la hora aproximada. Un mensaje extra gasta el cupo y, fuera de las 24 horas, exige plantilla aprobada. ¿Basta una llamada del repartidor?
-- [ ] Costo sobre el cupo gratis (dueño): pasado el límite de 1.000 mensajes al mes, el peor caso ronda USD 6 al mes (`docs/conocimiento_brunen.md`, sección 14). Confirmar que es aceptable.
-- [ ] Comprobantes (Franco): a qué pedido se asocia la imagen cuando el cliente tiene varios sin pagar.
-- [ ] Excel de clientes y de pedidos anteriores (dueño): su formato, para importar las fichas y para que el bot entienda "lo de siempre".
-- [ ] Cuánto tiempo se guardan los pedidos y las fichas (dueño, Franco): lo pide el aviso de privacidad de la Ley 21.719. Hoy: texto de los avisos 90 días y comprobantes 60 días (por construir).
-- [ ] Datos de Meta tomados de fuentes secundarias (coexistencia en Chile, límite de unos 250 contactos nuevos al día, costos): confirmarlos en la documentación oficial antes de elegir el número.
+## Información que falta o es ambigua (2026-10-29)
+Segunda ronda: lo que falta después del cuestionario respondido y de los audios del dueño. Entre paréntesis, quién la tiene o decide.
+
+**Dueño**
+- [ ] Excel de los pedidos del día: un ejemplo de un día real (sin datos de clientes) con sus columnas, cómo se anotan los bidones de cada punto, los envases por retirar y cómo se ordena; quién lo arma, a qué hora queda listo y si lo ordena la app de rutas.
+- [ ] Seguimiento del repartidor: ¿basta ver qué puntos van entregados y cuáles faltan, o también su ubicación en vivo o una foto de la entrega? Recomendación: lo primero.
+- [ ] Repartidor: quién es, si tiene celular con internet y un correo (Gmail) para entrar, y lo mismo para el repartidor de emergencia.
+- [ ] Sobrantes: confirmar que los bidones que sobran quedan en el furgón de un día para otro, si se cuentan por tamaño y si la carga de cada día lleva un margen "por si acaso".
+- [ ] Furgón: si el lugar donde se estaciona es la planta, qué pasa con los vacíos cuando el repartidor termina tarde y si alguna vez se lleva el furgón a su casa.
+- [ ] Vacíos que faltan en una entrega: después de justificar el faltante, ¿se retira al día siguiente, queda como saldo del cliente o se cobra? ¿Se espera un vacío por cada bidón entregado?
+- [ ] Número: si la línea actual está en la app WhatsApp Business o en WhatsApp normal, quién la administra y en qué teléfono; qué prefiere si la coexistencia no se puede hacer; si usa listas de difusión o grupos con clientes (la coexistencia desactiva las listas y no sincroniza los grupos).
+- [ ] Gestiones en Meta (método de pago y verificación de empresa) y las otras acciones del dueño: en qué estado están.
+- [ ] Precios que faltan: carga inicial de 12 L y 10 L desde 3 envases; precios especiales para 12 L y 10 L; confirmar que la carga inicial mayorista ($3.250 y $2.000) es por envase.
+- [ ] `Credito`: qué significa en su Excel; y si a un cliente bloqueado se le contesta algo.
+- [ ] `Aviso_Hora`: ¿basta una llamada del repartidor? Un mensaje extra gasta el cupo gratis y, fuera de las 24 horas, exige plantilla aprobada.
+- [ ] Costo: si un mes se pasan de 1.000 mensajes, el peor caso ronda USD 6 al mes. Confirmar que es aceptable.
+- [ ] Excel de clientes y de pedidos anteriores: su formato, para importar las fichas y para "lo de siempre".
+- [ ] Cuánto tiempo se guardan los pedidos y las fichas (lo pide el aviso de privacidad de la Ley 21.719).
+
+**Constanza**
+- [ ] Si acepta que su nombre y horario figuren en el repositorio público y recibir los avisos urgentes por Telegram.
+- [ ] Cómo arma hoy el Excel del día (desde los chats, a mano), a qué hora, con qué columnas, y cómo anota los envases pendientes de cada cliente.
+- [ ] Qué hace cuando un cliente no está o no tiene los vacíos, y cómo reagenda.
+- [ ] Desde qué aparato usará el panel (computador o celular) y con qué correo entrará.
+
+**Franco**
+- [ ] Coordenadas de los clientes (D32: las direcciones no salen de Brunen). Propuesta: guardar el punto exacto con el GPS del celular del repartidor al entregar o con la ubicación que comparta el cliente, y mientras tanto ordenar por comuna; o permitir un servicio externo.
+- [ ] Permisos del panel: el repartidor no debería ver precios ni todos los clientes; hoy todos los que pasan por Access ven y cambian todo.
+- [ ] Qué se le dice al cliente cuando la operadora cambia o cancela un pedido en el panel (hoy no se le escribe y cada mensaje cuenta en el cupo gratis).
+- [ ] Comprobantes: a qué pedido se asocia la imagen cuando el cliente tiene varios sin pagar.
+- [ ] Datos de Meta que vienen de fuentes secundarias (límite de unos 250 contactos nuevos al día, costos, países de la coexistencia): confirmarlos en la documentación oficial.
 
 ## Mejoras posibles
 Ninguna bloquea la salida a prueba; van de más a menos útiles para el piloto.

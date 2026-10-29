@@ -113,7 +113,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 5. Medir el CPU de cada tipo de mensaje con `wrangler tail` (límite de 10 ms en el plan gratis, D31) y la cantidad de llamadas a Google.
 6. Recién entonces, ampliar a más números (Etapa 7), con el respaldo de la base ya probado (D35).
 
-**Depende del dueño** (ver `docs/PENDIENTES.md`): confirmación por excepción o doble mensaje, aprobar los textos, cómo tratar a un cliente nuevo, carga inicial, precios mayorista y especial para 12 L y 10 L, tramos entre tipos de bidón, empresas con plan mensual, cantidad inusual por pedido, boletas, clientes bloqueados y la columna `Credito`.
+**Lo que respondió el dueño (2026-10-29, D36):** precios de carga inicial y mayorista, descuento por tamaño, empresas y facturas a una persona, un solo mensaje por pedido, textos sin cambios y los audios para Constanza. **Falta de su parte** (ver `docs/PENDIENTES.md`): carga inicial de 12 L y 10 L desde 3 envases, precios especiales de 12 L y 10 L, qué significa `Credito` y las gestiones en Meta. **Falta construir por sus respuestas:** los precios nuevos y que el bot no responda los audios.
 
 **Qué falta construir aunque el dueño ya haya respondido:** la ficha de los clientes reales en la hoja CLIENTES (Constanza), y las lecturas de PEDIDOS para "lo de siempre" de clientes antiguos (hoy el bot recuerda solo lo que pidió a través de él).
 
@@ -145,9 +145,9 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 | Fase | Qué incluye |
 |---|---|
 | P1 Bandeja (lista) | Pedidos por confirmar, confirmados y cerrados, con confirmar / cambiar (fecha, comuna, dirección, notas, bidones y precios) / cancelar / en ruta / entregado, lo que escribió el cliente, observaciones del bot e historial de cambios; avisos (reclamos, facturas, comprobantes, mensajes no entendidos, fallas) con "resuelto"; se actualiza sola con sonido y notificación; funciona en el celular y con tema oscuro |
-| P2 Reparto del día | Lista del día por comuna lista para copiar (`rutaDelDia.ts`), envases por retirar. En diseño (idea de Franco, 2026-10-28; ver `docs/PENDIENTES.md`): ruta lo más óptima posible desde y hacia la planta, carga por punto, vacíos por parada con justificación de faltantes y cierre del turno |
+| P2 Reparto del día | Lista del día por comuna lista para copiar (`rutaDelDia.ts`), envases por retirar. En diseño (D36; ver `docs/PENDIENTES.md`): importar el Excel del día, vista del repartidor punto por punto, seguimiento para el dueño y Constanza, sobrantes de cada turno, vacíos por parada con justificación de faltantes y cierre del turno. La ruta óptima desde la planta (idea de Franco) queda en segundo lugar. No depende de Meta |
 | P3 Clientes y mapa | Ficha, historial y envases por cliente; importación del Excel; mapa por comuna y con punto exacto; el bot pasa a leer los clientes de D1 |
-| P4 Estadísticas | Bidones y ventas por día, semana y mes; clientes que dejaron de pedir; reclamos abiertos; comprobantes por revisar |
+| P4 Estadísticas | Bidones entregados por día, semana y mes; envases pendientes por cliente; comprobantes por revisar. El dueño no pidió ventas en pesos, clientes que dejaron de pedir ni reclamos abiertos (D36) |
 | P5 Configuración | Interruptor del bot y aviso de contingencia, precios, feriados y textos editables, sin tocar la planilla |
 
 **Probarlo en tu computador** (sin tocar producción: todo es local):
@@ -174,5 +174,5 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 **Falta:**
 1. Lista del día: leer los pedidos confirmados del día, escribir la hoja RUTA_DEL_DIA y dar el texto copiable (por ejemplo, con un comando en Telegram o una tarea programada). Ajustar el formato al archivo de importación de la app de rutas (confirmar si es OptimoRoute).
 2. Imágenes: el dueño elige dónde guardar los comprobantes (D30). Bajar la imagen apenas llega (la dirección dura 5 minutos), avisar a la operadora y anotar en PAGOS; el bot no verifica pagos solo.
-3. Audio: pedir amablemente que escriba (regla 8). Transcribirlo con Groq (Whisper, gratis hasta 2.000 solicitudes por día según la consola, D23) es una decisión del dueño por privacidad.
+3. Audio: el bot no responde y deja un aviso, porque los audios los responde siempre Constanza (D36). Transcribirlos con Groq (Whisper, gratis hasta 2.000 solicitudes por día según la consola, D23) sería una decisión del dueño por privacidad.
 4. Fuera de zona y reclamos ya están en el motor de la Etapa 4.

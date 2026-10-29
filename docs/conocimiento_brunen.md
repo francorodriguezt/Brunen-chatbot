@@ -1,6 +1,6 @@
 # Conocimiento del proyecto — Chatbot Brunen SpA
 Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
-Última actualización: 2026-10-28
+Última actualización: 2026-10-29
 
 > Datos sensibles (cuenta bancaria, teléfono de Constanza, teléfonos de clientes) NO se guardan en este repo:
 > viven en la hoja CONFIGURACION / CLIENTES de la planilla. Aquí solo se indica dónde están.
@@ -29,17 +29,19 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 | Mayorista (minimarket) | por bidón | $1.250 |
 
 - Despacho gratis e incluido. Los precios no cambian por zona ni temporada.
-- PENDIENTE: ¿la carga inicial aplica solo a 20 L? ¿Precio para 3+ envases?
-- PENDIENTE: ¿el precio mayorista y los precios especiales aplican a 12 L y 10 L?
+- Respuestas del dueño (2026-10-29): carga inicial de 20 L, desde 3 envases a $5.000 cada uno (precio promocional vigente). Carga inicial de 12 L y 10 L: 1 envase $4.500, 2 envases $8.000.
+- Mayorista (respuesta del dueño, 2026-10-29): recarga de 12 L y 10 L a $1.100 cada una; carga inicial mayorista de 20 L a $3.250 y de 12 L y 10 L a $2.000. Es nuestra lectura de su respuesta: confirmar que $3.250 y $2.000 son por envase.
+- PENDIENTE: carga inicial de 12 L y 10 L desde 3 envases.
+- PENDIENTE: ¿los precios especiales ($3.500 y $3.000 por 20 L) valen para 12 L y 10 L? El dueño no lo respondió.
 
 ## 3. Orden de cálculo del precio (lo hace `src/precios.ts`, no el LLM)
-1. Cliente con precio especial en CLIENTES → ese precio por bidón (hoy solo definido para 20 L).
-2. Mayorista → $1.250 por bidón (hoy solo definido para 20 L).
+1. Cliente con precio especial en CLIENTES → ese precio por bidón (hoy solo definido para 20 L; PENDIENTE si vale para 12 L y 10 L).
+2. Mayorista → recarga a $1.250 por bidón de 20 L y a $1.100 por bidón de 12 L o 10 L; carga inicial a $3.250 (20 L) o $2.000 (12 L y 10 L).
 3. Si no, tramos por tipo y cantidad.
 4. Si el cliente no indicó el tipo de bidón, el bot pregunta.
 5. Cliente nuevo sin envase → ofrecer carga inicial.
-6. Pedidos mezclados: cada tipo por separado; se asume que los tramos NO se suman entre tipos (PENDIENTE confirmar).
-7. Empresa con plan mensual → se cotiza con tramos y siempre va a revisión de Constanza.
+6. Pedidos mezclados: cada tipo por separado; los tramos NO se suman entre tipos (confirmado por el dueño el 2026-10-29: 1 de 20 L y 1 de 12 L se cobran $4.500 y $2.500).
+7. Empresa con plan mensual → cada empresa tiene su propia condición: siempre se deriva a Constanza; el bot cotiza con tramos solo como referencia (confirmado por el dueño el 2026-10-29).
 
 ## 4. Clientes con condiciones especiales
 - Dos clientes con precio especial por bidón de 20 L ($3.500 y $3.000). Teléfonos PENDIENTES (se cargan en CLIENTES, no aquí).
@@ -75,15 +77,16 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 5. Cliente con envases pendientes: anotar para el repartidor.
 6. Fuera de zona: informar comunas y registrar con estado `Fuera_de_zona`.
 7. Festivo o pedido posterior a las 9:00: proponer el siguiente día de despacho.
-8. Audio: pedir amablemente que escriba.
+8. Audio: el bot no responde. Los audios los responde siempre Constanza (dueño, 2026-10-29); el bot solo deja un aviso en el panel.
 9. Imagen: posible comprobante → Drive, asociar al pedido pendiente, alertar.
 10. Fuera del horario de Constanza: registrar y avisar que se responderá en horario de atención.
 11. Contingencia: `ESTADO_SERVICIO = reducido` agrega `MENSAJE_EXCEPCION`; `BOT_ACTIVO = NO` apaga el bot.
 12. Mensajes que inicia el negocio fuera de la ventana de 24 h requieren plantillas aprobadas por Meta.
-13. **Un solo mensaje saliente por pedido** (presupuesto de mensajes gratis). Diseño de confirmación por excepción PENDIENTE de aprobación del dueño.
+13. **Un solo mensaje saliente por pedido** (presupuesto de mensajes gratis). Aprobado por el dueño el 2026-10-29 (opción A: Constanza escribe solo si algo cambia).
+14. Cliente bloqueado: lo atiende una persona y el pedido no se anota (dueño, 2026-10-29). Facturas, boletas y empresas con plan mensual: siempre una persona.
 
 ## 10. Arquitectura (actualizada 2026-10-28)
-- Canal: WhatsApp Cloud API (Meta). Número: nuevo vs. coexistencia con el actual (PENDIENTE, decide el dueño).
+- Canal: WhatsApp Cloud API (Meta). Número: el dueño eligió el actual con coexistencia (2026-10-29). Según la documentación oficial de Meta (revisada el 2026-10-29), el alta de coexistencia pasa por un Tech Provider o Solution Partner y exige la app WhatsApp Business 2.24.17 o superior; falta confirmar que podamos hacerla directo. Plan B: un número nuevo solo para el bot.
 - Motor: código propio en **Cloudflare Workers + TypeScript** (plan gratuito). Reemplaza la idea inicial de n8n.
 - Interpretación: parser por reglas + LLM de respaldo (Groq gratis). Gemini gratis descartado (usa los datos).
 - Datos: los pedidos y los avisos viven en la base D1 de Cloudflare, junto con la memoria del bot (mensajes ya vistos, pedido a medias, último pedido); Google Sheets sigue para CLIENTES, PRECIOS, CONFIGURACION y FERIADOS (D32, D33). Respaldo de D1: Time Travel (7 días) y una exportación semanal guardada fuera del repositorio (D35).
@@ -106,12 +109,14 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 - Estados de pedido: Pendiente_Confirmacion → Confirmado → En_Ruta → Entregado. Alternos: Reprogramado, Cancelado, Fuera_de_zona. Pago aparte: Sin_Pago, Pago_Recibido, Pago_Verificado, Pagara_Contra_Entrega.
 
 ## 12. Textos del bot
-Ver borradores en la sección 12 del documento del proyecto. Regla: una sola respuesta por mensaje del cliente, cercana y breve.
+Ver borradores en la sección 12 del documento del proyecto. Regla: una sola respuesta por mensaje del cliente, cercana y breve. Textos y tono aprobados por el dueño el 2026-10-29, sin cambios.
 
 ## 13. Prioridades (dolores del dueño)
 1. Dejar de cargar a mano los clientes en la base del día siguiente.
 2. Entregar al repartidor la lista del día en formato copiable a la app de rutas.
 3. Responder rápido cuando un cliente hace un pedido.
+
+Lo que el dueño quiere ver en el panel (2026-10-29): pedidos por confirmar (confirmarlos o cambiarlos con un toque), lista del día para el repartidor ordenada por comuna y lista para copiar, clientes por comuna y en un mapa, bidones entregados por día, semana y mes, envases pendientes de retiro por cliente y comprobantes de pago por revisar. No pidió ventas en pesos, clientes que dejaron de pedir ni reclamos abiertos. Usarán el panel Constanza y el dueño, más Franco para mantenerlo; el dueño también quiere los avisos urgentes por Telegram.
 
 ## 14. Costos verificados (2026-10-27; fuentes en DECISIONES.md)
 - WhatsApp: 1.000 mensajes de servicio gratis por número al mes; luego USD 0,02 c/u en Chile. Marketing USD 0,0889. Exige método de pago registrado en Meta.
@@ -127,4 +132,6 @@ Ver borradores en la sección 12 del documento del proyecto. Regla: una sola res
 4. Al terminar de entregar, pasa una de dos cosas: le piden que vaya a dejar los vacíos y deje el furgón en la planta, o que se lleve el furgón y vaya al día siguiente a dejar los vacíos que quedaron en él.
 - Idea de Franco: al empezar el día, generar la ruta de direcciones lo más óptima posible, "de más cerca a más lejos de la planta de agua y de vuelta".
 - Hoy `src/rutaDelDia.ts` solo ordena por comuna y dirección y deja la optimización a la app de rutas (formato provisional).
-- PENDIENTE: cómo se arman hoy la carga y la ruta (Excel + app "Optiroute"), quién lo hace y qué se complica; quién anotará en la calle las entregas y los vacíos (¿el repartidor desde el celular o Constanza?); dirección o coordenadas de la planta (las da el dueño); cómo conseguir las coordenadas de las direcciones sin enviarlas a servicios externos (D32).
+- El dueño (audios que le mandó a Franco, 2026-10-29): si el repartidor termina temprano, deja el furgón estacionado en el lugar del dueño (confirmar si es la planta); si termina cerca de las 18:00, carga al día siguiente. El dueño lleva el control de los bidones que sobran del turno y al día siguiente le dice cuántos sacar (ejemplo: saca 60, sobran 5, al día siguiente saca 55). Eso debería poder hacerse en el panel.
+- Lo que más le interesa al dueño: tener el Excel de los pedidos listo y ordenado, subirlo a la plataforma, que el repartidor use la plataforma, que él y Constanza le hagan seguimiento desde ahí y que la plataforma le entregue punto por punto lo que debe repartir.
+- PENDIENTE: formato y origen de ese Excel (quién lo arma, a qué hora, si lo ordena la app de rutas); qué seguimiento quiere (estado por punto, ubicación en vivo, foto); correo y celular del repartidor y del de emergencia; si los sobrantes siempre quedan en el furgón y si la carga lleva margen; qué pasa con un vacío que falta después de justificarlo; dirección de la planta (solo si se calcula la ruta); cómo conseguir las coordenadas de las direcciones sin enviarlas a servicios externos (D32).
