@@ -107,3 +107,30 @@ describe('fusionarConEstado', () => {
     expect(fusionarConEstado(pedido, null)).toBe(pedido);
   });
 });
+
+describe('responderEnContexto: el bot pidió los datos del cliente (D37)', () => {
+  const PIDE_DATOS: EstadoConversacion = { espera: 'datos', items: [], id_pedido: 'P261028-AAAAA', intentos: 0 };
+  const PIDE_EDIFICIO: EstadoConversacion = { espera: 'edificio', items: [], id_pedido: 'P261028-AAAAA' };
+
+  it('una dirección con nombre y comuna se lee como datos, sin pasar por el intérprete', () => {
+    expect(responderEnContexto('Juan Pérez, Los Leones 123, Providencia', PIDE_DATOS)).toMatchObject({
+      tipo: 'datos',
+      datos: { nombre: 'Juan Pérez', comuna: { nombre: 'Providencia' } },
+    });
+  });
+
+  it.each(['no', 'nada', 'gracias', 'quiero 2 bidones de 20', 'hola'])(
+    '"%s" no son datos: sigue el camino normal, y un "no" no cancela un pedido que ya está anotado',
+    (texto) => {
+      expect(responderEnContexto(texto, PIDE_DATOS)).toBeNull();
+    },
+  );
+
+  it('el nombre del edificio se lee como edificio', () => {
+    expect(responderEnContexto('Torre Norte', PIDE_EDIFICIO)).toEqual({ tipo: 'edificio', edificio: 'Torre Norte' });
+  });
+
+  it.each(['no', 'no sé', 'quiero 2 bidones de 20'])('"%s" no es un edificio', (texto) => {
+    expect(responderEnContexto(texto, PIDE_EDIFICIO)).toBeNull();
+  });
+});

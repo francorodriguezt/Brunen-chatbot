@@ -123,11 +123,18 @@ export function pedidoAnotado(datos: {
   return partes.join('\n');
 }
 
-/** Cliente sin ficha: se anota el pedido y una persona termina de coordinar dirección y envases. */
-export function clienteNuevo(lineas: readonly Pick<LineaTexto, 'tipo' | 'cantidad'>[]): string {
+/** Cliente sin ficha: se anota el pedido y, en un solo mensaje, se le pide lo que falta para coordinar la entrega (D37). */
+export function pedirDatos(lineas: readonly Pick<LineaTexto, 'tipo' | 'cantidad'>[]): string {
   const pedido = lineas.map(itemTexto).join(' y ');
-  return `¡Hola! Anotamos tu pedido de ${pedido}. Como es tu primer pedido, una persona del equipo te escribirá para confirmar tu dirección y los detalles.`;
+  return `¡Hola! Anotamos tu pedido de ${pedido}. Para coordinar la entrega, ¿me dices tu nombre y tu dirección con comuna? Si es departamento, también el edificio y el número.`;
 }
+
+export const pedirDatosDeNuevo = (): string => 'No alcancé a entender tu dirección. ¿Me la escribes con calle, número y comuna?';
+
+export const datosRecibidos = (): string => 'Gracias, anotamos tu dirección. Una persona del equipo confirmará tu pedido.';
+
+export const datosRecibidosPedirEdificio = (): string =>
+  'Gracias, anotamos tu dirección. ¿Cómo se llama el edificio? Una persona del equipo confirmará tu pedido.';
 
 /** Resumen de las líneas para las alertas internas: "2 bidones de 20 L y 1 bidón de 12 L". */
 export const resumenLineas = (lineas: readonly Pick<LineaTexto, 'tipo' | 'cantidad'>[]): string => lineas.map(itemTexto).join(' y ');

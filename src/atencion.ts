@@ -22,7 +22,7 @@ import { proponerEntrega } from './entrega';
 import { atenderTexto, type Puertos } from './flujo';
 import type { EntornoHojas } from './hojas';
 import { interpretarConRespaldo, type EntornoLlm } from './llm';
-import type { PedidoARegistrar } from './pedidos';
+import type { CompletarPedido, PedidoARegistrar } from './pedidos';
 import type { Resultado } from './planilla';
 import { cargarTablaPrecios } from './preciosHoja';
 import { RepositorioD1 } from './repositorio';
@@ -77,6 +77,8 @@ function puertosReales(env: EntornoAtencion, ahora: Date): Puertos {
 interface Efectos {
   respuesta: string | null;
   pedido?: PedidoARegistrar;
+  /** Los datos del cliente que completan un pedido ya anotado (D37). */
+  completarPedido?: CompletarPedido;
   alerta?: Alerta;
   /** Lo que escribió el cliente: contexto para el aviso de error si D1 falla. */
   textoDelCliente: string;
@@ -90,6 +92,9 @@ async function aplicarEfectos(env: EntornoAtencion, mensaje: MensajeEntrante, ef
     const repositorio = new RepositorioD1(env.DB);
     try {
       if (efectos.pedido) await repositorio.guardarPedido(efectos.pedido, ahoraSegundos);
+      if (efectos.completarPedido && !(await repositorio.completarDatos(efectos.completarPedido, ahoraSegundos))) {
+        throw new Error('El pedido que se estaba completando ya no existe o está cerrado');
+      }
       if (alerta) await repositorio.guardarAviso(alerta, mensaje.id, ahoraSegundos);
     } catch (error) {
       const detalle = error instanceof Error ? error.message : String(error);
@@ -115,9 +120,15 @@ export async function atenderTextoConFlujo(
   env: EntornoAtencion,
   ahora: Date = new Date(),
 ): Promise<ResultadoMensaje> {
-  const texto = textosDelGrupo.join(' ');
+  // Un mensaje por renglón: así el nombre y la dirección que llegan en mensajes seguidos se pueden separar (D37).
+  const texto = textosDelGrupo.join('\n');
   const { decision } = await atenderTexto({ texto, telefono: mensaje.de, wamid: mensaje.id, ahora }, puertosReales(env, ahora));
-  const respuesta = await aplicarEfectos(env, mensaje, { respuesta: decision.respuesta, pedido: decision.pedido, alerta: decision.alerta, textoDelCliente: texto }, ahora);
+  const respuesta = await aplicarEfectos(
+    env,
+    mensaje,
+    { respuesta: decision.respuesta, pedido: decision.pedido, completarPedido: decision.completarPedido, alerta: decision.alerta, textoDelCliente: texto },
+    ahora,
+  );
   if (respuesta !== null) await enviarTexto(configWhatsApp(env), mensaje.de, respuesta);
   return { resultado: respuesta === null ? 'sin_respuesta' : 'respondido', intencion: decision.intencion };
 }

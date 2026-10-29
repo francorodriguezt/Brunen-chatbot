@@ -13,21 +13,27 @@ import type { BaseDatos } from './almacen';
 import { enteroValido, validarItems, type ItemInterpretado } from './interprete';
 
 /** Qué le preguntó el bot al cliente y espera que responda. */
-export type Espera = 'tipo' | 'cantidad' | 'pedido';
+export type Espera = 'tipo' | 'cantidad' | 'pedido' | 'datos' | 'edificio';
 
 export interface EstadoConversacion {
   espera: Espera;
-  /** El pedido a medias (por ejemplo "4 bidones" sin tamaño). */
+  /** El pedido a medias (por ejemplo "4 bidones" sin tamaño). Con `datos` y `edificio` el pedido ya está anotado: va vacío. */
   items: ItemInterpretado[];
   fecha_texto?: string;
   comuna_mencionada?: string;
+  /** Solo con `datos` y `edificio`: el pedido ya anotado que se está completando. */
+  id_pedido?: string;
+  /** Solo con `datos`: cuántas veces ya se repitió la pregunta. */
+  intentos?: number;
 }
 
 export const VIGENCIA_CONVERSACION_SEGUNDOS = 12 * 3600;
 const VIGENCIA_ULTIMO_PEDIDO_SEGUNDOS = 180 * 24 * 3600;
 const PROBABILIDAD_LIMPIEZA = 0.02; // limpia en 1 de cada ~50 mensajes
 const MAX_TEXTO = 40;
-const ESPERAS: ReadonlySet<string> = new Set<Espera>(['tipo', 'cantidad', 'pedido']);
+const ESPERAS: ReadonlySet<string> = new Set<Espera>(['tipo', 'cantidad', 'pedido', 'datos', 'edificio']);
+const ID_DE_PEDIDO = /^P\d{6}-[0-9A-Z]{5}$/; // el formato de `generarIdPedido`
+const MAX_INTENTOS = 3;
 
 function textoCorto(valor: unknown): string | undefined {
   return typeof valor === 'string' && valor.trim() !== '' && valor.length <= MAX_TEXTO ? valor : undefined;
@@ -42,7 +48,18 @@ export function validarEstado(crudo: unknown): EstadoConversacion | null {
   if (!items) return null;
   const fecha = textoCorto(e.fecha_texto);
   const comuna = textoCorto(e.comuna_mencionada);
-  return { espera: e.espera as Espera, items, ...(fecha && { fecha_texto: fecha }), ...(comuna && { comuna_mencionada: comuna }) };
+  const idPedido = typeof e.id_pedido === 'string' && ID_DE_PEDIDO.test(e.id_pedido) ? e.id_pedido : undefined;
+  // Con estas dos esperas el bot está completando un pedido: sin saber cuál, el estado no sirve.
+  if ((e.espera === 'datos' || e.espera === 'edificio') && !idPedido) return null;
+  const intentos = typeof e.intentos === 'number' && Number.isInteger(e.intentos) && e.intentos >= 0 && e.intentos <= MAX_INTENTOS ? e.intentos : undefined;
+  return {
+    espera: e.espera as Espera,
+    items,
+    ...(fecha && { fecha_texto: fecha }),
+    ...(comuna && { comuna_mencionada: comuna }),
+    ...(idPedido && { id_pedido: idPedido }),
+    ...(intentos !== undefined && { intentos }),
+  };
 }
 
 /** Un pedido "de siempre" solo sirve si está completo: tipo y cantidad conocidos. */

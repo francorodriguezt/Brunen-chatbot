@@ -423,3 +423,65 @@ describe('limpieza', () => {
     expect((await r.listarAvisos())[0]?.texto).toBe('el bidón venía roto');
   });
 });
+
+describe('completar los datos de un pedido ya anotado (D37)', () => {
+  const ID = 'P261028-AAAAA';
+  const sinDatos = (cambios: Partial<PedidoARegistrar> = {}) =>
+    pedido({ nombre: '', comuna: '', direccion: '', notasRepartidor: '', observaciones: 'Cliente nuevo, sin ficha', ...cambios });
+
+  it('llena lo que está vacío, suma a las notas y a las observaciones, y deja el historial', async () => {
+    const { r } = repo();
+    await r.guardarPedido(sinDatos(), AHORA);
+    const hecho = await r.completarDatos(
+      { idPedido: ID, nombre: 'Juan Pérez', direccion: 'Los Leones 123', comuna: 'Providencia', notasRepartidor: 'Depto 45', observacion: 'Dijo sus datos' },
+      AHORA + 60,
+    );
+    expect(hecho).toBe(true);
+    expect(await r.obtenerPedido(ID)).toMatchObject({
+      nombre: 'Juan Pérez',
+      direccion: 'Los Leones 123',
+      comuna: 'Providencia',
+      notasRepartidor: 'Depto 45',
+      observaciones: 'Cliente nuevo, sin ficha | Dijo sus datos',
+      actualizadoEn: AHORA + 60,
+    });
+    expect(await r.historialDe(ID)).toContainEqual({
+      en: AHORA + 60,
+      quien: 'bot',
+      accion: 'datos del cliente',
+      detalle: 'nombre, dirección, comuna, notas, observaciones',
+    });
+  });
+
+  it('nunca pisa lo que una persona ya escribió, pero sí suma a las notas', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ notasRepartidor: 'Tocar el timbre' }), AHORA);
+    await r.completarDatos({ idPedido: ID, nombre: 'Otro', direccion: 'Otra 1', comuna: 'Macul', notasRepartidor: 'Edificio: Mirador' }, AHORA + 60);
+    expect(await r.obtenerPedido(ID)).toMatchObject({
+      nombre: 'Ana Prueba',
+      direccion: 'Calle Falsa 123',
+      comuna: 'Ñuñoa',
+      notasRepartidor: 'Tocar el timbre. Edificio: Mirador',
+    });
+  });
+
+  it('pasa a Fuera_de_zona solo si el pedido seguía pendiente de confirmar', async () => {
+    const { r } = repo();
+    await r.guardarPedido(sinDatos(), AHORA);
+    await r.guardarPedido(sinDatos({ idPedido: 'P261028-BBBBB' }), AHORA);
+    await r.cambiarEstado('P261028-BBBBB', 'Confirmado', OPERADORA, AHORA + 30);
+    await r.completarDatos({ idPedido: ID, comuna: 'Maipú', estado: 'Fuera_de_zona' }, AHORA + 60);
+    await r.completarDatos({ idPedido: 'P261028-BBBBB', comuna: 'Maipú', estado: 'Fuera_de_zona' }, AHORA + 60);
+    expect((await r.obtenerPedido(ID))?.estado).toBe('Fuera_de_zona');
+    expect((await r.obtenerPedido('P261028-BBBBB'))?.estado).toBe('Confirmado');
+  });
+
+  it('un pedido que no existe, o que ya se canceló, no se toca y devuelve false', async () => {
+    const { r } = repo();
+    expect(await r.completarDatos({ idPedido: 'P261028-ZZZZZ', nombre: 'X' }, AHORA)).toBe(false);
+    await r.guardarPedido(sinDatos(), AHORA);
+    await r.cambiarEstado(ID, 'Cancelado', OPERADORA, AHORA + 10);
+    expect(await r.completarDatos({ idPedido: ID, nombre: 'X' }, AHORA + 20)).toBe(false);
+    expect((await r.obtenerPedido(ID))?.nombre).toBe('');
+  });
+});
