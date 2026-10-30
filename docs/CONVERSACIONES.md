@@ -136,6 +136,8 @@ Si es un departamento y no dice el edificio, el mismo mensaje de confirmación s
 
 **Cliente:** Torre Norte
 
+Si contesta que el edificio no tiene nombre (por ejemplo, "No tiene nombre, gracias"), queda anotado para Constanza y no se le responde.
+
 Si lo que contesta no parece una dirección, el bot se lo pide una vez más ("No alcancé a entender tu dirección. ¿Me la escribes con calle, número y comuna?") y, si tampoco, lo deja a una persona.
 
 ### 7. Una comuna que no se atiende
