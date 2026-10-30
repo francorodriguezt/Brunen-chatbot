@@ -219,7 +219,7 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
   }
 
   if (repite) notas.push('Pidió repetir su último pedido.');
-  if (!cliente) notas.push('Cliente nuevo, sin ficha: pedir dirección y comuna, y ofrecer la carga inicial si no tiene envases.');
+  if (!cliente) notas.push('Cliente nuevo, sin ficha: el bot le pidió el nombre y la dirección; ofrecer la carga inicial si no tiene envases.');
 
   const lineas: LineaPedido[] = cotizacion
     ? cotizacion.lineas.map((l) => ({ tipo: l.tipo, cantidad: l.cantidad, precioUnitario: l.precioUnitario, subtotal: l.subtotal }))
@@ -383,4 +383,13 @@ export function decidirDatos(e: EntradaDatos): Decision {
 /** El cliente contestó el nombre de su edificio: se anota para el repartidor, sin volver a responderle (D37). */
 export function decidirEdificio(e: { idPedido: string; edificio: string }): Decision {
   return { intencion: 'edificio', respuesta: null, memoria: BORRAR, completarPedido: { idPedido: e.idPedido, notasRepartidor: `Edificio: ${e.edificio}` } };
+}
+
+/**
+ * El cliente contestó que el edificio no tiene nombre (o que no sabe): se deja anotado para Constanza, sin responderle y
+ * sin avisar "no entendido", porque era una respuesta válida (D37).
+ */
+export function decidirSinEdificio(e: { idPedido: string; texto: string }): Decision {
+  const escrito = e.texto.replace(/\s+/g, ' ').trim().slice(0, 300);
+  return { intencion: 'edificio', respuesta: null, memoria: BORRAR, completarPedido: { idPedido: e.idPedido, observacion: `Sobre el edificio dijo: «${escrito}»` } };
 }

@@ -20,7 +20,7 @@ import type { EstadoConversacion } from './conversacion';
 import type { PropuestaEntrega } from './entrega';
 import type { Intencion, Interpretacion, ItemInterpretado } from './interprete';
 import type { ResultadoInterpretacion } from './llm';
-import { decidir, decidirDatos, decidirEdificio, type Decision, type EntradaMotor } from './motor';
+import { decidir, decidirDatos, decidirEdificio, decidirSinEdificio, type Decision, type EntradaMotor } from './motor';
 import type { TablaPrecios } from './preciosHoja';
 import * as textos from './textos';
 
@@ -83,12 +83,16 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
   const contextual = estado ? responderEnContexto(entrada.texto, estado) : null;
 
   // El cliente contestó con su nombre y su dirección (o con su edificio): se completa el pedido que ya estaba anotado (D37).
-  if (estado && (contextual?.tipo === 'datos' || contextual?.tipo === 'edificio')) {
-    const idPedido = estado.id_pedido as string; // `validarEstado` lo exige con estas dos esperas
-    const decision =
-      contextual.tipo === 'edificio'
-        ? decidirEdificio({ idPedido, edificio: contextual.edificio })
-        : decidirDatos({ idPedido, datos: contextual.datos, texto: entrada.texto, telefono: entrada.telefono, ahora: entrada.ahora, servicio: await p.servicio() });
+  if (estado && (contextual?.tipo === 'datos' || contextual?.tipo === 'edificio' || contextual?.tipo === 'sin_edificio')) {
+    const idPedido = estado.id_pedido as string; // `validarEstado` lo exige con estas esperas
+    let decision: Decision;
+    if (contextual.tipo === 'datos') {
+      decision = decidirDatos({ idPedido, datos: contextual.datos, texto: entrada.texto, telefono: entrada.telefono, ahora: entrada.ahora, servicio: await p.servicio() });
+    } else if (contextual.tipo === 'edificio') {
+      decision = decidirEdificio({ idPedido, edificio: contextual.edificio });
+    } else {
+      decision = decidirSinEdificio({ idPedido, texto: entrada.texto });
+    }
     await recordar(p, entrada.telefono, decision, ahoraSegundos);
     return { decision, conIa: false };
   }

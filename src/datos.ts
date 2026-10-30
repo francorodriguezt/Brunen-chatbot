@@ -28,8 +28,11 @@ const MAX_LARGO_DEL_EDIFICIO = 40;
 // Palabras de un pedido, una pregunta o un reclamo: si están, el texto no es la respuesta a "tu nombre y tu dirección".
 const DE_OTRO_TEMA =
   /\b(?:bidon|bidones|botellon|botellones|litro|litros|lts|lt|quiero|necesito|necesitamos|pedir|pedido|precio|cuanto|cuesta|reclamo|factura|boleta)\b/;
-// "no sé", "no tengo edificio", "es una casa": no es un edificio.
-const NEGATIVA = /^(?:no(?: .*)?|nada|ninguno|ninguna|sin edificio|(?:es )?(?:una )?casa)$/;
+// "no sé", "no tiene nombre", "sin nombre", "es una casa": contestó, pero no es el nombre de un edificio.
+const NEGATIVA = /^(?:no(?: .*)?|nada|ninguno|ninguna|sin edificio|sin nombre|(?:es )?(?:una )?casa)$/;
+// Cortesías y confirmaciones sueltas que acompañan a una respuesta ("Torre Norte, gracias") o la reemplazan ("ok").
+const CORTESIAS = /\b(?:muchas|gracias|por favor|porfa|porfavor|ok|okey|listo|dale|perfecto|vale)\b/g;
+const GRACIAS_AL_FINAL = /[\s,.;-]*(?:muchas\s+)?gracias[\s.!]*$/i;
 const DEPARTAMENTO = /\b(?:depto|dpto|departamento|dept)\b/;
 const EDIFICIO = /\b(?:edificio|edif|torre|condominio|cond)\b/;
 
@@ -119,9 +122,26 @@ export function leerDatosDelCliente(texto: string): DatosDelCliente | null {
 
 /** La respuesta a "¿Cómo se llama el edificio?": un nombre corto. null = no lo es ("no sé", un pedido...). */
 export function leerEdificio(texto: string): string | null {
-  const limpio = texto.replace(/\s+/g, ' ').trim().replace(PREFIJO_DE_EDIFICIO, '').trim();
+  const limpio = texto.replace(/\s+/g, ' ').trim().replace(PREFIJO_DE_EDIFICIO, '').replace(GRACIAS_AL_FINAL, '').trim();
   const normalizado = normalizar(limpio);
   if (limpio === '' || limpio.length > MAX_LARGO_DEL_EDIFICIO || limpio.split(' ').length > MAX_PALABRAS_DEL_EDIFICIO) return null;
   if (!/[a-z]/.test(normalizado) || NEGATIVA.test(normalizado) || DE_OTRO_TEMA.test(normalizado)) return null;
+  // "ok", "listo": una confirmación, no un nombre.
+  if (normalizado.replace(CORTESIAS, ' ').trim() === '') return null;
   return limpio;
+}
+
+/** Lo que queda de la respuesta sobre el edificio, sin cortesías ni el "el edificio" del principio. */
+function sinAdornos(texto: string): string {
+  return normalizar(texto)
+    .replace(CORTESIAS, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^(?:(?:el|la) )?(?:edificio|edif)\b ?/, '')
+    .trim();
+}
+
+/** "No tiene nombre, gracias", "no sé", "es una casa": contestó, pero no hay un nombre que anotar. */
+export function diceQueNoHayEdificio(texto: string): boolean {
+  return NEGATIVA.test(sinAdornos(texto)) && !DE_OTRO_TEMA.test(normalizar(texto));
 }

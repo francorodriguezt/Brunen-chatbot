@@ -644,6 +644,24 @@ describe('un cliente nuevo da su nombre y su dirección (D37)', () => {
     expect(e.memoria).toEqual({ accion: 'borrar' });
   });
 
+  it('si dice que el edificio no tiene nombre, se anota para Constanza: sin responderle y sin avisar "no entendido"', async () => {
+    const { c, idPedido } = await yaPregunto();
+    await c.decir('Ana Torres, Av. Irarrázaval 2345 depto 502, Ñuñoa');
+    const d = await c.decir('No tiene nombre, gracias');
+    expect(d.respuesta).toBeNull();
+    expect(d.alerta).toBeUndefined();
+    expect(d.completarPedido).toEqual({ idPedido, observacion: 'Sobre el edificio dijo: «No tiene nombre, gracias»' });
+    expect(d.memoria).toEqual({ accion: 'borrar' });
+  });
+
+  it('un "gracias" a la pregunta del edificio no se toma por el nombre del edificio', async () => {
+    const { c } = await yaPregunto();
+    await c.decir('Ana Torres, Av. Irarrázaval 2345 depto 502, Ñuñoa');
+    const d = await c.decir('gracias');
+    expect(d.respuesta).toBeNull();
+    expect(d.completarPedido).toBeUndefined();
+  });
+
   it('si dice el departamento con su edificio, no pregunta nada más', async () => {
     const { c } = await yaPregunto();
     const d = await c.decir('Ana Torres, Av. Irarrázaval 2345, Edificio Mirador depto 502, Ñuñoa');

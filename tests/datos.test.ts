@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { leerDatosDelCliente, leerEdificio } from '../src/datos';
+import { diceQueNoHayEdificio, leerDatosDelCliente, leerEdificio } from '../src/datos';
 
 // Todo ficticio. Casos de lo que un cliente nuevo contesta cuando el bot le pide su nombre y su dirección (D37).
 
@@ -122,14 +122,37 @@ describe('leerEdificio', () => {
     ['el edificio se llama Mirador del Sol', 'Mirador del Sol'],
     ['Condominio Los Robles', 'Condominio Los Robles'],
     ['Torre 3', 'Torre 3'],
+    ['Torre Norte, gracias', 'Torre Norte'],
   ])('"%s" -> "%s"', (texto, edificio) => {
     expect(leerEdificio(texto)).toBe(edificio);
   });
 
-  it.each(['no', 'no sé', 'no tiene', 'no tengo edificio', 'es una casa', 'casa', 'nada', '', '   ', 'quiero 2 bidones de 20', 'un edificio muy muy muy muy largo de verdad', 'x'.repeat(41)])(
+  it.each(['gracias', 'ok', 'listo', 'no', 'no sé', 'no tiene', 'no tiene nombre, gracias', 'no tengo edificio', 'es una casa', 'casa', 'nada', '', '   ', 'quiero 2 bidones de 20', 'un edificio muy muy muy muy largo de verdad', 'x'.repeat(41)])(
     '"%s" no es el nombre de un edificio',
     (texto) => {
       expect(leerEdificio(texto)).toBeNull();
+    },
+  );
+});
+
+describe('diceQueNoHayEdificio: una respuesta válida a "¿cómo se llama el edificio?"', () => {
+  it.each([
+    'No tiene nombre, gracias',
+    'El edificio no tiene nombre',
+    'gracias, no tiene',
+    'no sé',
+    'sin nombre',
+    'No hay',
+    'es una casa',
+    'nada',
+  ])('"%s" dice que no hay nombre', (texto) => {
+    expect(diceQueNoHayEdificio(texto)).toBe(true);
+  });
+
+  it.each(['Torre Norte', 'Edificio Mirador', 'gracias', 'ok', 'quiero 2 bidones de 20', 'no quiero 2 bidones', ''])(
+    '"%s" no lo dice',
+    (texto) => {
+      expect(diceQueNoHayEdificio(texto)).toBe(false);
     },
   );
 });

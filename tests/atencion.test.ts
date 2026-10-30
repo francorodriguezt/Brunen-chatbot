@@ -225,6 +225,19 @@ describe('un cliente nuevo da su nombre y su dirección (D37)', () => {
     expect(mundo.llamadas.some((url) => url.startsWith('https://api.groq.com'))).toBe(false);
   });
 
+  it('si contesta que el edificio no tiene nombre: queda anotado, sin respuesta y sin aviso de "no entendido"', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno({ NUMEROS_PERMITIDOS: `${CLIENTE},${NUEVO}` });
+    await enviarAviso(env, texto('quiero 2 de 20', NUEVO));
+    await enviarAviso(env, texto('Ana Torres, Av. Irarrázaval 2345 depto 502, Ñuñoa', NUEVO));
+    await enviarAviso(env, texto('No tiene nombre, gracias', NUEVO));
+    expect(mundo.enviados).toHaveLength(2); // la pregunta y la confirmación: nada más
+    expect(avisosEn(env).map((a) => a.tipo)).toEqual(['cliente_nuevo', 'cliente_nuevo']);
+    const [pedido] = env.DB.sql('SELECT observaciones FROM pedidos') as Fila[];
+    expect(String(pedido?.observaciones)).toContain('Sobre el edificio dijo: «No tiene nombre, gracias»');
+    expect(env.DB.sql('SELECT * FROM conversaciones')).toEqual([]);
+  });
+
   it('el nombre y la dirección en mensajes seguidos se juntan en una sola respuesta', async () => {
     const mundo = stubMundo({ hojas: HOJAS });
     const env = await entorno({ NUMEROS_PERMITIDOS: `${CLIENTE},${NUEVO}` });
