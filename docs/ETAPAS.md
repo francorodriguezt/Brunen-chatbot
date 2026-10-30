@@ -89,7 +89,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 ## Etapa 4 — Flujo de pedido
 
-**Estado (2026-10-28):** conectada al Worker detrás del interruptor `FLUJO_PEDIDO` (D33), guardando pedidos y avisos en D1 y probada de punta a punta con Meta, Google, Telegram y Groq simulados. **En producción sigue apagada**: el bot responde en modo prueba. Las migraciones 0003 y 0004 ya están aplicadas en la D1 real y el bot desplegado con esta versión (2026-10-29). Falta el visto bueno del dueño sobre los textos y las decisiones pendientes, y encenderla (más abajo).
+**Estado (2026-10-28):** conectada al Worker detrás del interruptor `FLUJO_PEDIDO` (D33), guardando pedidos y avisos en D1 y probada de punta a punta con Meta, Google, Telegram y Groq simulados. **Encendida el 2026-10-30 solo para los números de prueba** (`NUMEROS_PERMITIDOS`): los demás números siguen ignorados. Las migraciones 0003 y 0004 están aplicadas en la D1 real desde el 2026-10-29. Falta probarla con un mensaje real y medir el CPU, el visto bueno del dueño sobre los textos y las decisiones pendientes, y abrirla a más números (más abajo).
 
 **Qué hay** (todo en `src/`, con sus pruebas en `tests/`):
 
@@ -108,7 +108,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 **Cómo encenderlo** (cada paso con aprobación de Franco; se verifica con `npm run check` y un mensaje de prueba desde un número de `NUMEROS_PERMITIDOS`):
 1. Aplicar las migraciones: `npx.cmd wrangler d1 migrations apply brunen-chatbot --remote` (crea `conversaciones`, `ultimos_pedidos`, `mensajes_pendientes`, `pedidos`, `avisos` e `historial_pedidos`). Hecho el 2026-10-29; antes conviene anotar el punto de restauración con `wrangler d1 time-travel info brunen-chatbot`.
 2. Desplegar el bot (`npm run deploy`): el flujo sigue apagado. Hecho el 2026-10-29 (versión `55bb523b`).
-3. Descomentar `FLUJO_PEDIDO = "SI"` en `[vars]` de `wrangler.toml` y volver a desplegar. Opcional: `ESPERA_AGRUPADOR_MS` (7.000 por defecto, D27).
+3. Descomentar `FLUJO_PEDIDO = "SI"` en `[vars]` de `wrangler.toml` y volver a desplegar. Opcional: `ESPERA_AGRUPADOR_MS` (7.000 por defecto, D27). Hecho el 2026-10-30 (versión `b6713f21`).
 4. Probar con los 12 casos de CONVERSACIONES.md y con 2 o 3 mensajes seguidos para el agrupador. Cada pedido y cada aviso debe aparecer en el panel.
 5. Medir el CPU de cada tipo de mensaje con `wrangler tail` (límite de 10 ms en el plan gratis, D31) y la cantidad de llamadas a Google.
 6. Recién entonces, ampliar a más números (Etapa 7), con el respaldo de la base ya probado (D35).
