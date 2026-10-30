@@ -8,7 +8,7 @@
  */
 
 import type { EstadoConversacion } from './conversacion';
-import { leerDatosDelCliente, leerEdificio, type DatosDelCliente } from './datos';
+import { diceQueNoHayEdificio, leerDatosDelCliente, leerEdificio, type DatosDelCliente } from './datos';
 import { accionDePedido, enteroValido, validarItems, type Interpretacion, type ItemInterpretado } from './interprete';
 import { preparar } from './texto';
 
@@ -19,7 +19,9 @@ export type RespuestaContextual =
   /** Contestó con su nombre y su dirección (D37). */
   | { tipo: 'datos'; datos: DatosDelCliente }
   /** Contestó con el nombre de su edificio (D37). */
-  | { tipo: 'edificio'; edificio: string };
+  | { tipo: 'edificio'; edificio: string }
+  /** Contestó que el edificio no tiene nombre, o que no sabe: es una respuesta, aunque no haya nada que anotar como nombre. */
+  | { tipo: 'sin_edificio' };
 
 const RELLENO = /\b(?:por favor|porfa|porfis|gracias|dale|ok|okey|si)\b/g;
 const CANCELAR = /^(?:no|nada|nada mas|ya no|no gracias|no quiero|no necesito|mejor no|cancela|cancelar|cancelalo|olvidalo|olvida|dejalo|dejalo asi|no importa)$/;
@@ -48,7 +50,8 @@ export function responderEnContexto(texto: string, estado: EstadoConversacion): 
   }
   if (estado.espera === 'edificio') {
     const edificio = leerEdificio(texto);
-    return edificio ? { tipo: 'edificio', edificio } : null;
+    if (edificio) return { tipo: 'edificio', edificio };
+    return diceQueNoHayEdificio(texto) ? { tipo: 'sin_edificio' } : null;
   }
 
   const t = preparar(texto).replace(RELLENO, ' ').replace(/[?/]/g, ' ').replace(/\s+/g, ' ').trim();

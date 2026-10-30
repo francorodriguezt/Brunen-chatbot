@@ -130,7 +130,11 @@ describe('responderEnContexto: el bot pidió los datos del cliente (D37)', () =>
     expect(responderEnContexto('Torre Norte', PIDE_EDIFICIO)).toEqual({ tipo: 'edificio', edificio: 'Torre Norte' });
   });
 
-  it.each(['no', 'no sé', 'quiero 2 bidones de 20'])('"%s" no es un edificio', (texto) => {
+  it.each(['No tiene nombre, gracias', 'no sé', 'no', 'es una casa'])('"%s" dice que el edificio no tiene nombre', (texto) => {
+    expect(responderEnContexto(texto, PIDE_EDIFICIO)).toEqual({ tipo: 'sin_edificio' });
+  });
+
+  it.each(['gracias', 'ok', 'quiero 2 bidones de 20'])('"%s" no es un edificio ni una respuesta sobre él: sigue el camino normal', (texto) => {
     expect(responderEnContexto(texto, PIDE_EDIFICIO)).toBeNull();
   });
 });
