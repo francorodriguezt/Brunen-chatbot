@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { olvidarFallas } from '../src/atencion';
+import { limpiezasDelLote, olvidarFallas } from '../src/atencion';
 import type { BaseDatos } from '../src/almacen';
 import { firmarHmacSha256 } from '../src/firma';
 import { olvidarTokens } from '../src/google';
@@ -348,8 +348,47 @@ describe('cuando algo falla por dentro', () => {
     const mundo = stubMundo({ hojas: HOJAS });
     await enviarAviso(env, mensaje);
     expect(pedidosEn(env)).toHaveLength(1);
-    expect(avisosEn(env)).toHaveLength(1);
+    expect(avisosEn(env).filter((a) => a.tipo === 'pedido')).toHaveLength(1); // el aviso de la falla del envío es aparte
     expect(mundo.enviados).toHaveLength(1);
+  });
+
+  it('si WhatsApp falla por otra razón, no se calla: queda un aviso de falla con el teléfono del cliente para una persona', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mundo = stubMundo({ hojas: HOJAS, whatsapp: 500 });
+    const env = await entorno({ TELEGRAM_BOT_TOKEN: '1:TOKEN', TELEGRAM_CHAT_ID: '777' });
+    await enviarAviso(env, texto('quiero 2 de 20'));
+    const fallas = avisosEn(env).filter((a) => a.tipo === 'error');
+    expect(fallas).toEqual([{ tipo: 'error', telefono: CLIENTE, estado: 'abierto' }]);
+    expect(mundo.telegram.some((t) => String(t.cuerpo.text).includes('No se pudo responder'))).toBe(true);
+  });
+});
+
+describe('limpieza al terminar un lote', () => {
+  it('borra también la memoria vencida: conversaciones de más de 12 horas y últimos pedidos de más de 180 días', async () => {
+    const db = crearBaseSqlite();
+    const ahora = Math.floor(HORA.getTime() / 1000);
+    const dia = 24 * 3600;
+    await db.prepare('INSERT INTO conversaciones (telefono, estado, actualizado_en) VALUES (?1, ?2, ?3)').bind('56911111111', '{}', ahora - 13 * 3600).run();
+    await db.prepare('INSERT INTO conversaciones (telefono, estado, actualizado_en) VALUES (?1, ?2, ?3)').bind('56922222222', '{}', ahora - 3600).run();
+    await db.prepare('INSERT INTO ultimos_pedidos (telefono, items, actualizado_en) VALUES (?1, ?2, ?3)').bind('56911111111', '[]', ahora - 181 * dia).run();
+    await db.prepare('INSERT INTO ultimos_pedidos (telefono, items, actualizado_en) VALUES (?1, ?2, ?3)').bind('56922222222', '[]', ahora - 10 * dia).run();
+    await limpiezasDelLote({ DB: db }, () => 0);
+    expect(db.sql('SELECT telefono FROM conversaciones')).toEqual([{ telefono: '56922222222' }]);
+    expect(db.sql('SELECT telefono FROM ultimos_pedidos')).toEqual([{ telefono: '56922222222' }]);
+  });
+});
+
+describe('registro de mensajes en la planilla', () => {
+  it('con REGISTRO_PLANILLA = NO no se escribe en la planilla (ahorra CPU); por defecto sí', async () => {
+    const sinRegistro = stubMundo({ hojas: HOJAS });
+    await enviarAviso(await entorno({ REGISTRO_PLANILLA: 'NO' }), texto('quiero 2 de 20'));
+    expect(sinRegistro.anotadasEnPlanilla).toEqual([]);
+
+    olvidarHojas();
+    olvidarTokens();
+    const conRegistro = stubMundo({ hojas: HOJAS });
+    await enviarAviso(await entorno(), texto('quiero 2 de 20'));
+    expect(conRegistro.anotadasEnPlanilla.length).toBeGreaterThan(0);
   });
 });
 

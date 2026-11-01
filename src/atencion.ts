@@ -180,9 +180,14 @@ export async function atenderConFlujo(
   return atenderTextoConFlujo(mensaje, textosDelGrupo, env, ahora);
 }
 
-/** Casi nunca limpia: los mensajes pendientes que quedaron huérfanos duran, como mucho, una hora. */
+/**
+ * Casi nunca limpia: los mensajes pendientes que quedaron huérfanos duran, como mucho, una hora, y la memoria de
+ * conversaciones vencida (12 horas) y los últimos pedidos de más de 180 días se borran con su propia probabilidad.
+ */
 export async function limpiezasDelLote(env: Pick<EntornoAtencion, 'DB'>, azar: () => number = Math.random): Promise<void> {
-  if (env.DB && azar() < 0.02) await limpiarPendientes(env.DB);
+  if (!env.DB) return;
+  if (azar() < 0.02) await limpiarPendientes(env.DB);
+  await new MemoriaConversaciones(env.DB, azar).limpiar(Math.floor(Date.now() / 1000));
 }
 
 const ultimosAvisos = new Map<string, number>();
@@ -195,13 +200,14 @@ export function olvidarFallas(): void {
 
 /**
  * Falla del sistema (el token de WhatsApp venció, por ejemplo): se guarda como aviso y sale por Telegram, pero no más
- * de una vez por hora por tipo de falla, para no llenar el chat si cada mensaje falla igual.
+ * de una vez por hora por tipo de falla, para no llenar el chat si cada mensaje falla igual. `telefono` es el del cliente
+ * afectado, si lo hay, para que una persona le escriba.
  */
-export async function avisarFalla(env: EntornoAtencion, clave: string, resumen: string, ahora: Date = new Date()): Promise<void> {
+export async function avisarFalla(env: EntornoAtencion, clave: string, resumen: string, ahora: Date = new Date(), telefono = ''): Promise<void> {
   const t = ahora.getTime();
   if (t - (ultimosAvisos.get(clave) ?? Number.NEGATIVE_INFINITY) < UNA_HORA_MS) return;
   ultimosAvisos.set(clave, t);
-  const alerta: Alerta = { tipo: 'error', telefono: '', resumen, motivos: [] };
+  const alerta: Alerta = { tipo: 'error', telefono, resumen, motivos: [] };
   if (flujoActivo(env) && env.DB) {
     try {
       await new RepositorioD1(env.DB).guardarAviso(alerta, null, Math.floor(t / 1000));
