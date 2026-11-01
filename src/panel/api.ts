@@ -104,7 +104,7 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
 
     if (ruta === '/api/pedidos' && metodo === 'GET') {
       const grupo = url.searchParams.get('grupo') ?? 'por_confirmar';
-      if (!(grupo in GRUPOS)) return error(400, 'Grupo de pedidos no válido.');
+      if (!Object.hasOwn(GRUPOS, grupo)) return error(400, 'Grupo de pedidos no válido.'); // `in` también acepta "constructor" y "__proto__"
       const fecha = url.searchParams.get('fecha') ?? undefined;
       if (fecha !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return error(400, 'Fecha no válida.');
       return json({ pedidos: await repositorio.listarPedidos({ estados: GRUPOS[grupo], fecha }) });
