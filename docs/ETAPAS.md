@@ -130,7 +130,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 **Estado (2026-10-28):** la bandeja y las acciones Confirmar / Cambiar / Cancelar viven en el **panel** (fase P1, D33), no en Telegram: el flujo ya guarda lo que decide el motor en D1 y el panel lo muestra, guardando quién hizo cada cambio. Telegram queda solo para lo muy urgente (reclamos y fallas del sistema): `telegram.ts` y el filtro ya están listos (D29).
 
 **Falta:**
-1. Crear el bot de Telegram con @BotFather y cargar `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y el secreto del webhook. Sin ellos no sale ningún aviso por ahí, pero el panel los muestra igual. Si más adelante se quiere confirmar desde Telegram, la ruta `/telegram` y el resto de las piezas ya están construidas.
+1. Crear el bot de Telegram con @BotFather y cargar `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y el secreto del webhook. Sin ellos no sale ningún aviso por ahí, pero el panel los muestra igual. Hoy Telegram solo recibe los avisos urgentes. Confirmar pedidos desde Telegram necesitaría una ruta `/telegram` que todavía no existe: `telegram.ts` tiene las piezas sueltas (leer el botón, validar el chat y el secreto), sin conectar.
 2. Que el panel esté desplegado con su acceso (ver "Panel de administración").
 3. Decidir qué pasa con el cliente al cambiar un pedido en el panel (cada mensaje al cliente cuenta en el cupo gratis). Hoy el panel no escribe al cliente.
 
