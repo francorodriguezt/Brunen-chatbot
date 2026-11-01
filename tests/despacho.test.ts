@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { calcularFechaEntrega, diaSemana, fechaHoraLocal, siguienteDiaDespacho } from '../src/despacho';
 
 // Feriados de PRUEBA (ficticios). Los reales se leen de la hoja FERIADOS.
@@ -7,6 +7,16 @@ const SIN_FERIADOS = new Set<string>();
 function entrega(isoConZona: string, feriados: ReadonlySet<string> = SIN_FERIADOS) {
   return calcularFechaEntrega(new Date(isoConZona), { feriados });
 }
+
+describe('rendimiento', () => {
+  it('reutiliza el formateador de fechas: crear uno es caro y cada mensaje lo usa varias veces', () => {
+    const crear = vi.spyOn(Intl, 'DateTimeFormat');
+    for (let i = 0; i < 5; i++) fechaHoraLocal(new Date('2026-10-28T10:00:00-03:00'));
+    const creados = crear.mock.calls.length;
+    crear.mockRestore();
+    expect(creados).toBeLessThanOrEqual(1);
+  });
+});
 
 describe('calendario base', () => {
   it('2026-10-27 es martes y 2026-11-01 es domingo', () => {

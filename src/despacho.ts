@@ -37,17 +37,29 @@ export interface FechaEntrega {
   mismoDia: boolean;
 }
 
+const formateadores = new Map<string, Intl.DateTimeFormat>();
+
+/** Crear un formateador cuesta bastante CPU y cada mensaje lo usa varias veces: se guarda uno por zona. */
+function formateadorDe(zona: string): Intl.DateTimeFormat {
+  let formateador = formateadores.get(zona);
+  if (!formateador) {
+    formateador = new Intl.DateTimeFormat('en-CA', {
+      timeZone: zona,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+    formateadores.set(zona, formateador);
+  }
+  return formateador;
+}
+
 /** Convierte un instante a fecha y hora locales de la zona indicada. */
 export function fechaHoraLocal(instante: Date, zona: string = ZONA_HORARIA): FechaHoraLocal {
-  const partes = new Intl.DateTimeFormat('en-CA', {
-    timeZone: zona,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(instante);
+  const partes = formateadorDe(zona).formatToParts(instante);
   const valor = (tipo: string): string => {
     const parte = partes.find((p) => p.type === tipo);
     if (!parte) throw new Error(`No se pudo obtener ${tipo} de la fecha`);
