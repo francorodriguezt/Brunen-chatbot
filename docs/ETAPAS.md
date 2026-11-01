@@ -8,7 +8,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | 1 | Esqueleto de punta a punta con el número de prueba de Meta | ✅ Lista (2026-10-28) |
 | 2 | Planilla de desarrollo + deduplicación por wamid + registro de mensajes | ✅ Lista (2026-10-28) |
 | 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | ✅ Lista (2026-10-28): reglas (54 casos) y respaldo con IA verificado con una llamada real |
-| 4 | Flujo de pedido: cotizar, fecha, guardar el pedido en D1, responder 1 mensaje, ERRORES | 🟡 Conectada al Worker detrás de `FLUJO_PEDIDO` (D33) y probada de punta a punta con servicios simulados; apagada en producción: faltan las migraciones y el visto bueno del dueño |
+| 4 | Flujo de pedido: cotizar, fecha, guardar el pedido en D1, responder 1 mensaje, ERRORES | 🟡 Conectada al Worker detrás de `FLUJO_PEDIDO` (D33) y probada de punta a punta con servicios simulados y, desde el 2026-10-30, con mensajes reales (encendida solo para los números de prueba); faltan repetir la prueba tras la última corrección, bajar el CPU (D31), el visto bueno del dueño y abrirla a más números |
 | 5 | Constanza: bandeja de pedidos y avisos con Confirmar / Cambiar; Telegram solo para lo muy urgente | 🟡 La bandeja y las acciones están en el panel (P1, probado en local); faltan el acceso, el despliegue y el bot de Telegram |
 | 6 | Imágenes (comprobantes + PAGOS), audio, fuera de zona, reclamos, RUTA_DEL_DIA | 🟡 Lista del día lista (formato provisional); comprobantes: guardarlos en D1 y verlos en el panel (D30, D32) |
 | 7 | Producción: número definitivo, verificación de empresa, piloto con 5–10 clientes | |
@@ -89,7 +89,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 ## Etapa 4 — Flujo de pedido
 
-**Estado (2026-10-28):** conectada al Worker detrás del interruptor `FLUJO_PEDIDO` (D33), guardando pedidos y avisos en D1 y probada de punta a punta con Meta, Google, Telegram y Groq simulados. **Encendida el 2026-10-30 solo para los números de prueba** (`NUMEROS_PERMITIDOS`): los demás números siguen ignorados. Las migraciones 0003 y 0004 están aplicadas en la D1 real desde el 2026-10-29. Falta probarla con un mensaje real y medir el CPU, el visto bueno del dueño sobre los textos y las decisiones pendientes, y abrirla a más números (más abajo).
+**Estado (2026-10-28):** conectada al Worker detrás del interruptor `FLUJO_PEDIDO` (D33), guardando pedidos y avisos en D1 y probada de punta a punta con Meta, Google, Telegram y Groq simulados. **Encendida el 2026-10-30 solo para los números de prueba** (`NUMEROS_PERMITIDOS`): los demás números siguen ignorados. Las migraciones 0003 y 0004 están aplicadas en la D1 real desde el 2026-10-29. Primera prueba real el 2026-10-30: el pedido, los datos y el edificio funcionaron; la respuesta «No tiene nombre, gracias» se corrigió y se desplegó el 2026-10-31 (versión `4c934673`). CPU medido con 3 mensajes reales: 62, 25 y 34 ms, sobre los 10 ms del plan gratis (D31). Falta repetir la prueba, bajar el CPU, el visto bueno del dueño sobre los textos y las decisiones pendientes, y abrirla a más números (más abajo).
 
 **Qué hay** (todo en `src/`, con sus pruebas en `tests/`):
 
@@ -108,7 +108,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 **Cómo encenderlo** (cada paso con aprobación de Franco; se verifica con `npm run check` y un mensaje de prueba desde un número de `NUMEROS_PERMITIDOS`):
 1. Aplicar las migraciones: `npx.cmd wrangler d1 migrations apply brunen-chatbot --remote` (crea `conversaciones`, `ultimos_pedidos`, `mensajes_pendientes`, `pedidos`, `avisos` e `historial_pedidos`). Hecho el 2026-10-29; antes conviene anotar el punto de restauración con `wrangler d1 time-travel info brunen-chatbot`.
 2. Desplegar el bot (`npm run deploy`): el flujo sigue apagado. Hecho el 2026-10-29 (versión `55bb523b`).
-3. Descomentar `FLUJO_PEDIDO = "SI"` en `[vars]` de `wrangler.toml` y volver a desplegar. Opcional: `ESPERA_AGRUPADOR_MS` (7.000 por defecto, D27). Hecho el 2026-10-30 (versión `b6713f21`).
+3. Descomentar `FLUJO_PEDIDO = "SI"` en `[vars]` de `wrangler.toml` y volver a desplegar. Opcional: `ESPERA_AGRUPADOR_MS` (7.000 por defecto, D27). Hecho el 2026-10-30 (versión `b6713f21`); la corrección de la respuesta sobre el edificio se desplegó el 2026-10-31 (versión `4c934673`).
 4. Probar con los 12 casos de CONVERSACIONES.md y con 2 o 3 mensajes seguidos para el agrupador. Cada pedido y cada aviso debe aparecer en el panel.
 5. Medir el CPU de cada tipo de mensaje con `wrangler tail` (límite de 10 ms en el plan gratis, D31) y la cantidad de llamadas a Google.
 6. Recién entonces, ampliar a más números (Etapa 7), con el respaldo de la base ya probado (D35).
@@ -138,7 +138,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 
 ## Panel de administración (D32)
 
-**Estado (2026-10-28):** la fase P1 (bandeja) está construida y probada en local (D33); el acceso será Cloudflare Access (D34). Falta que Franco active Zero Trust, aplicar las migraciones y desplegar. Las demás fases, sin empezar.
+**Estado (2026-10-28):** la fase P1 (bandeja) está construida y probada en local (D33); el acceso será Cloudflare Access (D34). Falta que Franco active Zero Trust y desplegar el panel (las migraciones ya están aplicadas desde el 2026-10-29). Las demás fases, sin empezar.
 
 **Qué es:** una página privada en un Worker aparte (`brunen-panel`), gratis, donde Constanza y el dueño ven los pedidos y los avisos del bot, los confirman y, más adelante, administran a los clientes por ubicación, bidones y mapa. Los datos viven en D1 (fuente de verdad); el panel no tiene ningún secreto de WhatsApp, Google ni Groq.
 
