@@ -219,7 +219,10 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
   }
 
   if (repite) notas.push('Pidió repetir su último pedido.');
-  if (!cliente) notas.push('Cliente nuevo, sin ficha: el bot le pidió el nombre y la dirección; ofrecer la carga inicial si no tiene envases.');
+  if (!cliente) {
+    // Fuera de zona no se le pide nada: la nota no debe decir que sí.
+    notas.push(fueraDeZona ? 'Cliente nuevo, sin ficha.' : 'Cliente nuevo, sin ficha: el bot le pidió el nombre y la dirección; ofrecer la carga inicial si no tiene envases.');
+  }
 
   const lineas: LineaPedido[] = cotizacion
     ? cotizacion.lineas.map((l) => ({ tipo: l.tipo, cantidad: l.cantidad, precioUnitario: l.precioUnitario, subtotal: l.subtotal }))
