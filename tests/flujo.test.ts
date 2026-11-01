@@ -4,6 +4,7 @@ import { MemoriaConversaciones } from '../src/conversacion';
 import { proponerEntrega } from '../src/entrega';
 import { atenderTexto, type Puertos } from '../src/flujo';
 import { interpretar, type ItemInterpretado } from '../src/interprete';
+import type { DatosPrevios } from '../src/pedidos';
 import { TABLA_PRECIOS } from '../src/precios';
 import type { TablaPrecios } from '../src/preciosHoja';
 import { FERIADOS_2026_2027, crearBaseSqlite } from './ayudas';
@@ -338,6 +339,72 @@ describe('quién escribe y dónde vive', () => {
     expect(d.pedido?.observaciones).toContain('Cliente nuevo, sin ficha');
     expect(d.pedido?.observaciones).not.toContain('le pidió el nombre');
     expect(d.memoria).toEqual({ accion: 'borrar' });
+  });
+
+  describe('un cliente sin ficha que ya hizo pedidos (D40)', () => {
+    const previo: DatosPrevios = {
+      idPedido: 'P261020-AAAAA',
+      nombre: 'Ana Torres',
+      direccion: 'Av. Irarrázaval 2345 depto 502, Ñuñoa',
+      comuna: 'Ñuñoa',
+      notasRepartidor: 'Edificio: Torre Norte',
+    };
+    const conPrevio = (cambios: Partial<DatosPrevios> = {}) =>
+      conversacion({ cliente: { estado: 'nuevo' }, puertos: { buscarPedidoAnterior: async () => ({ ...previo, ...cambios }) } });
+
+    it('se anota con los datos del pedido anterior, sin volver a pedirlos y sin prometer el precio', async () => {
+      const d = await conPrevio().decir('quiero 2 de 20');
+      expect(d.respuesta).toBe(
+        'Anotamos tu pedido:\n- 2 bidones de 20 L\nEl valor te lo confirmamos a la brevedad.\nEntrega estimada: jueves 29 de octubre.\nSi algo cambia, te avisamos por aquí.',
+      );
+      expect(d.pedido).toMatchObject({
+        nombre: 'Ana Torres',
+        direccion: 'Av. Irarrázaval 2345 depto 502, Ñuñoa',
+        comuna: 'Ñuñoa',
+        notasRepartidor: 'Edificio: Torre Norte',
+        estado: 'Pendiente_Confirmacion',
+        lineas: [{ tipo: '20L', cantidad: 2, precioUnitario: 3300, subtotal: 6600 }], // el precio sugerido queda para que la operadora lo confirme
+      });
+      expect(d.pedido?.observaciones).toContain('P261020-AAAAA');
+      expect(d.alerta?.tipo).toBe('pedido_revision');
+      expect(d.alerta?.motivos.join(' ')).toContain('Sin ficha en CLIENTES');
+      expect(d.memoria).toEqual({ accion: 'borrar' });
+      expect(d.ultimoPedido).toEqual([{ tipo: '20L', cantidad: 2 }]);
+    });
+
+    it('si el pedido anterior era de una comuna fuera de zona, este también queda fuera de zona', async () => {
+      const d = await conPrevio({ comuna: 'Maipú' }).decir('quiero 2 de 20');
+      expect(d.respuesta).toContain('Por ahora no despachamos a Maipú.');
+      expect(d.pedido?.estado).toBe('Fuera_de_zona');
+    });
+
+    it('si pide entrega en otra comuna, queda para revisar', async () => {
+      const d = await conPrevio().decir('quiero 2 de 20 para Macul');
+      expect(d.alerta?.motivos.join(' ')).toContain('distinta de la comuna de su pedido anterior (Ñuñoa)');
+    });
+
+    it('la ficha de la hoja manda sobre los pedidos anteriores, y ni se buscan', async () => {
+      const buscar = vi.fn(async () => previo);
+      const d = await conversacion({ cliente: conocido(), puertos: { buscarPedidoAnterior: buscar } }).decir('quiero 2 de 20');
+      expect(d.pedido).toMatchObject({ nombre: 'Ana Prueba', direccion: 'Calle Falsa 123' });
+      expect(buscar).not.toHaveBeenCalled();
+    });
+
+    it('solo se buscan cuando va a anotar un pedido', async () => {
+      const buscar = vi.fn(async () => previo);
+      await conversacion({ cliente: { estado: 'nuevo' }, puertos: { buscarPedidoAnterior: buscar } }).decir('cuánto sale el bidón');
+      expect(buscar).not.toHaveBeenCalled();
+    });
+
+    it('si no se pueden buscar, se trata como cliente nuevo y se le piden los datos', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const d = await conversacion({
+        cliente: { estado: 'nuevo' },
+        puertos: { buscarPedidoAnterior: async () => { throw new Error('D1 no responde'); } },
+      }).decir('quiero 2 de 20');
+      expect(d.respuesta).toContain('¿me dices tu nombre y tu dirección con comuna?');
+      expect(d.pedido).toMatchObject({ nombre: '', direccion: '' });
+    });
   });
 
   it('un cliente bloqueado no hace pedidos: lo ve una persona', async () => {

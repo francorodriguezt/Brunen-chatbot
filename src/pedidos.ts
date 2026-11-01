@@ -43,6 +43,19 @@ export interface PedidoARegistrar {
   observaciones: string;
 }
 
+/**
+ * Lo que se sabe de un cliente sin ficha en CLIENTES por su último pedido con dirección (D40): con esto el bot lo
+ * reconoce y no le vuelve a preguntar su nombre y su dirección.
+ */
+export interface DatosPrevios {
+  /** El pedido del que salen los datos. */
+  idPedido: string;
+  nombre: string;
+  direccion: string;
+  comuna: string;
+  notasRepartidor: string;
+}
+
 /** Lo que el bot agrega a un pedido ya anotado cuando el cliente le da sus datos (D37). */
 export interface CompletarPedido {
   idPedido: string;

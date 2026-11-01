@@ -64,9 +64,11 @@ const configWhatsApp = (env: EntornoAtencion): ConfigWhatsApp => ({
 });
 
 function puertosReales(env: EntornoAtencion, ahora: Date): Puertos {
+  const db = env.DB;
   return {
-    memoria: env.DB ? new MemoriaConversaciones(env.DB) : null,
+    memoria: db ? new MemoriaConversaciones(db) : null,
     buscarCliente: (telefono) => buscarCliente(env, telefono),
+    ...(db && { buscarPedidoAnterior: (telefono: string) => new RepositorioD1(db).datosDelUltimoPedido(telefono) }),
     cargarPrecios: () => cargarTablaPrecios(env),
     proponerEntrega: (solicitada) => proponerEntrega(env, ahora, { solicitada }),
     servicio: () => leerServicio(env),

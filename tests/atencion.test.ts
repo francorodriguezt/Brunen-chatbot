@@ -247,6 +247,20 @@ describe('un cliente nuevo da su nombre y su dirección (D37)', () => {
     expect(pedidosEn(env)[0]).toMatchObject({ nombre: 'Juan Pérez' });
   });
 
+  it('un cliente sin ficha que ya hizo un pedido no vuelve a recibir la pregunta de datos (D40)', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno({ NUMEROS_PERMITIDOS: `${CLIENTE},${NUEVO}` });
+    await enviarAviso(env, texto('quiero 2 de 20', NUEVO));
+    await enviarAviso(env, texto('Ana Torres, Av. Independencia 1500, Recoleta', NUEVO));
+    await enviarAviso(env, texto('quiero 3 de 20', NUEVO));
+    expect(mundo.enviados).toHaveLength(3);
+    expect(mundo.enviados[2]?.texto).toContain('Anotamos tu pedido:');
+    expect(mundo.enviados[2]?.texto).not.toContain('tu nombre y tu dirección');
+    const datos = { nombre: 'Ana Torres', direccion: 'Av. Independencia 1500, Recoleta', comuna: 'Recoleta' };
+    expect(env.DB.sql('SELECT nombre, direccion, comuna FROM pedidos')).toEqual([datos, datos]);
+    expect(avisosEn(env).map((a) => a.tipo)).toEqual(['cliente_nuevo', 'cliente_nuevo', 'pedido_revision']);
+  });
+
   it('si el pedido ya no existe cuando llegan los datos, no se le promete nada al cliente', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const mundo = stubMundo({ hojas: HOJAS });
