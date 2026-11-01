@@ -485,3 +485,33 @@ describe('completar los datos de un pedido ya anotado (D37)', () => {
     expect((await r.obtenerPedido(ID))?.nombre).toBe('');
   });
 });
+
+describe('datos de un cliente por sus pedidos anteriores (D40)', () => {
+  it('devuelve nombre, dirección, comuna y notas del último pedido de ese teléfono que tiene dirección', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ idPedido: 'P261020-AAAAA', nombre: 'Ana Vieja', direccion: 'Calle Vieja 1', comuna: 'Macul', notasRepartidor: '' }), AHORA - 1000);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-AAAAA', nombre: 'Ana Prueba', direccion: 'Calle Falsa 123', comuna: 'Ñuñoa', notasRepartidor: 'Edificio: Mirador' }), AHORA);
+    expect(await r.datosDelUltimoPedido('56911111111')).toEqual({
+      idPedido: 'P261028-AAAAA',
+      nombre: 'Ana Prueba',
+      direccion: 'Calle Falsa 123',
+      comuna: 'Ñuñoa',
+      notasRepartidor: 'Edificio: Mirador',
+    });
+  });
+
+  it('salta los pedidos cancelados y los que nunca tuvieron dirección', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ idPedido: 'P261020-AAAAA', direccion: 'Calle Buena 5' }), AHORA - 2000);
+    await r.guardarPedido(pedido({ idPedido: 'P261027-AAAAA', direccion: 'Calle Mala 9' }), AHORA - 1000);
+    await r.cambiarEstado('P261027-AAAAA', 'Cancelado', OPERADORA, AHORA - 500);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-AAAAA', nombre: '', comuna: '', direccion: '', notasRepartidor: '' }), AHORA);
+    expect((await r.datosDelUltimoPedido('56911111111'))?.idPedido).toBe('P261020-AAAAA');
+  });
+
+  it('es null si ese teléfono no tiene pedidos con dirección, y no mezcla a otros clientes', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ telefono: '56922222222' }), AHORA);
+    expect(await r.datosDelUltimoPedido('56911111111')).toBeNull();
+  });
+});

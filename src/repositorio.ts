@@ -12,7 +12,7 @@
 
 import { TIPOS_DE_AVISO_DE_PEDIDO, type Alerta, type TipoAlerta } from './alertas';
 import type { BaseDatos } from './almacen';
-import type { CompletarPedido, LineaPedido, PedidoARegistrar } from './pedidos';
+import type { CompletarPedido, DatosPrevios, LineaPedido, PedidoARegistrar } from './pedidos';
 import type { TipoBidon } from './precios';
 
 export type EstadoDePedido = 'Pendiente_Confirmacion' | 'Fuera_de_zona' | 'Confirmado' | 'En_Ruta' | 'Entregado' | 'Cancelado';
@@ -296,6 +296,21 @@ export class RepositorioD1 {
     ].filter(Boolean);
     await this.anotarHistorial(c.idPedido, ahoraSegundos, 'bot', 'datos del cliente', partes.join(', '));
     return true;
+  }
+
+  /**
+   * Los datos del último pedido de este teléfono que tiene dirección y no se canceló (D40). Sirve para reconocer a un
+   * cliente que ya pidió por el bot aunque todavía no esté en la hoja CLIENTES: no se le vuelve a preguntar su dirección.
+   */
+  async datosDelUltimoPedido(telefono: string): Promise<DatosPrevios | null> {
+    const [fila] = await this.filas(
+      `SELECT id, nombre, direccion, comuna, notas_repartidor FROM pedidos
+       WHERE telefono = ?1 AND direccion != '' AND estado != 'Cancelado' ORDER BY creado_en DESC, rowid DESC LIMIT 1`,
+      telefono,
+    );
+    return fila
+      ? { idPedido: texto(fila.id), nombre: texto(fila.nombre), direccion: texto(fila.direccion), comuna: texto(fila.comuna), notasRepartidor: texto(fila.notas_repartidor) }
+      : null;
   }
 
   // ---- Lo que lee y cambia el panel ----

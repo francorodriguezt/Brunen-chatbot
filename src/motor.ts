@@ -24,7 +24,7 @@ import type { DatosDelCliente } from './datos';
 import { fechaHoraLocal, textoFechaHora } from './despacho';
 import type { PropuestaEntrega } from './entrega';
 import { accionDePedido, type AccionSugerida, type Intencion, type Interpretacion, type ItemInterpretado } from './interprete';
-import { generarIdPedido, type CompletarPedido, type LineaPedido, type PedidoARegistrar } from './pedidos';
+import { generarIdPedido, type CompletarPedido, type DatosPrevios, type LineaPedido, type PedidoARegistrar } from './pedidos';
 import { cotizarPedido, ErrorPrecio, type Cotizacion, type TipoBidon } from './precios';
 import type { TablaPrecios } from './preciosHoja';
 import * as textos from './textos';
@@ -58,6 +58,8 @@ export interface EntradaMotor {
   servicio: { reducido: boolean; mensajeExcepcion: string };
   /** El bot le pidió al cliente su nombre y su dirección y espera la respuesta (D37). */
   pendienteDeDatos?: { idPedido: string; intentos: number };
+  /** Un cliente sin ficha en CLIENTES que ya pidió por el bot: sus datos salen de ese pedido y no se le vuelven a preguntar (D40). */
+  pedidoAnterior?: DatosPrevios;
 }
 
 export type AccionMemoria =
@@ -168,6 +170,8 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
   const motivos: string[] = [];
   const notas: string[] = [];
   let precioSeguro = cliente !== null;
+  // Sin ficha pero con un pedido anterior: se usan sus datos en vez de volver a preguntarlos, y el precio lo confirma una persona.
+  const previo = cliente === null ? e.pedidoAnterior : undefined;
 
   let cotizacion: Cotizacion | null = null;
   try {
@@ -189,26 +193,28 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
     precioSeguro = false;
     motivos.push(...cliente.avisos.map((aviso) => `Ficha del cliente: ${aviso}`));
   }
+  if (previo) motivos.push(`Sin ficha en CLIENTES (se conoce por su pedido ${previo.idPedido}): confirmar el precio y el tipo de cliente.`);
   const grandes = completos.filter((item) => item.cantidad > POLITICAS.cantidadInusual);
   if (grandes.length > 0) {
     precioSeguro = false;
     motivos.push(`Cantidad inusual (${textos.resumenLineas(grandes)}): confirmar que no es un error.`);
   }
 
-  // Comuna: la de la ficha; si es un cliente nuevo, la que mencionó.
+  // Comuna: la de la ficha o la del pedido anterior; si es un cliente nuevo, la que mencionó.
   const mencionada = e.interpretacion.comuna_mencionada;
-  const detectada = cliente ? detectarComuna(cliente.comuna) : null;
+  const conocido = cliente ?? previo;
+  const detectada = conocido ? detectarComuna(conocido.comuna) : null;
   let fueraDeZona = false;
-  if (cliente) {
-    if (!detectada) motivos.push('La ficha del cliente no tiene una comuna reconocible: confirmar la dirección.');
+  if (conocido) {
+    if (!detectada) motivos.push(`${cliente ? 'La ficha del cliente' : 'El pedido anterior'} no tiene una comuna reconocible: confirmar la dirección.`);
     else if (!detectada.atendida) fueraDeZona = true;
     else if (mencionada && mencionada !== detectada.nombre) {
-      motivos.push(`Pidió entrega en ${mencionada}, distinta de la comuna de su ficha (${detectada.nombre}): confirmar la dirección.`);
+      motivos.push(`Pidió entrega en ${mencionada}, distinta de la comuna de ${cliente ? 'su ficha' : 'su pedido anterior'} (${detectada.nombre}): confirmar la dirección.`);
     }
   } else if (mencionada) {
     fueraDeZona = !esComunaAtendida(mencionada);
   }
-  const comuna = detectada?.nombre ?? cliente?.comuna ?? mencionada ?? '';
+  const comuna = detectada?.nombre ?? conocido?.comuna ?? mencionada ?? '';
 
   // Fecha de entrega.
   const fechaSegura = e.entrega.feriadosAlDia && e.entrega.motivoAjuste !== 'no_entendida';
@@ -219,7 +225,9 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
   }
 
   if (repite) notas.push('Pidió repetir su último pedido.');
-  if (!cliente) {
+  if (previo) {
+    notas.push(`Cliente sin ficha en CLIENTES, conocido por su pedido ${previo.idPedido}: se usaron sus datos.`);
+  } else if (!cliente) {
     // Fuera de zona no se le pide nada: la nota no debe decir que sí.
     notas.push(fueraDeZona ? 'Cliente nuevo, sin ficha.' : 'Cliente nuevo, sin ficha: el bot le pidió el nombre y la dirección; ofrecer la carga inicial si no tiene envases.');
   }
@@ -233,13 +241,13 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
     idPedido,
     fechaHora: textoFechaHora(e.ahora),
     telefono: e.telefono,
-    nombre: cliente?.nombre ?? '',
+    nombre: cliente?.nombre ?? previo?.nombre ?? '',
     lineas,
     fechaEntrega: e.entrega.fecha,
     estado: fueraDeZona ? 'Fuera_de_zona' : 'Pendiente_Confirmacion',
     comuna,
-    direccion: cliente?.direccion ?? '',
-    notasRepartidor: [cliente?.notas, cliente?.avisoHora ? 'Avisar hora aproximada de entrega' : ''].filter(Boolean).join('. '),
+    direccion: cliente?.direccion ?? previo?.direccion ?? '',
+    notasRepartidor: cliente ? [cliente.notas, cliente.avisoHora ? 'Avisar hora aproximada de entrega' : ''].filter(Boolean).join('. ') : (previo?.notasRepartidor ?? ''),
     envasesARetirar: cliente?.envasesPendientes ?? 0,
     observaciones: [...notas, ...motivos].join(' | '),
   };
@@ -251,7 +259,7 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
   if (fueraDeZona) {
     avisoTipo = 'fuera_de_zona';
     respuesta = textos.fueraDeZona(comuna);
-  } else if (!cliente) {
+  } else if (!cliente && !previo) {
     avisoTipo = 'cliente_nuevo';
     respuesta = textos.pedirDatos(lineas);
     // El pedido ya queda anotado; lo que conteste el cliente lo completa (D37).

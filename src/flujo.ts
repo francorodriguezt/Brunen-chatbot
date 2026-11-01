@@ -21,6 +21,7 @@ import type { PropuestaEntrega } from './entrega';
 import type { Intencion, Interpretacion, ItemInterpretado } from './interprete';
 import type { ResultadoInterpretacion } from './llm';
 import { decidir, decidirDatos, decidirEdificio, decidirSinEdificio, type Decision, type EntradaMotor } from './motor';
+import type { DatosPrevios } from './pedidos';
 import type { TablaPrecios } from './preciosHoja';
 import * as textos from './textos';
 
@@ -37,6 +38,11 @@ export interface Puertos {
   /** null si no hay base D1: sin memoria, el bot vuelve a preguntar lo que falte. */
   memoria: Memoria | null;
   buscarCliente(telefono: string): Promise<BusquedaCliente>;
+  /**
+   * El último pedido con dirección de este teléfono (D40). Se consulta solo para un cliente sin ficha que va a anotar un
+   * pedido; sin este puerto, o si falla, el cliente se trata como nuevo.
+   */
+  buscarPedidoAnterior?(telefono: string): Promise<DatosPrevios | null>;
   cargarPrecios(): Promise<TablaPrecios>;
   proponerEntrega(solicitada: string | undefined): Promise<PropuestaEntrega>;
   servicio(): Promise<EntradaMotor['servicio']>;
@@ -63,6 +69,16 @@ const INTENCIONES_CON_PRECIOS: ReadonlySet<Intencion> = new Set<Intencion>(['pre
 const INTENCIONES_CON_ENTREGA: ReadonlySet<Intencion> = new Set<Intencion>(['pedido', 'repetir_pedido']);
 
 const SIN_PRECIOS: TablaPrecios = { tabla: [], origen: 'respaldo', problemas: [] };
+
+/** Es una ayuda: si no se puede buscar, el cliente se trata como nuevo y la respuesta sale igual. */
+async function pedidoAnteriorDe(p: Puertos, telefono: string): Promise<DatosPrevios | undefined> {
+  try {
+    return (await p.buscarPedidoAnterior?.(telefono)) ?? undefined;
+  } catch (error) {
+    console.error('No se pudo buscar el pedido anterior del cliente:', error instanceof Error ? error.message : error);
+    return undefined;
+  }
+}
 
 /** Guarda o borra lo que el bot debe recordar de la conversación (conversacion.ts). */
 async function recordar(p: Puertos, telefono: string, decision: Decision, ahoraSegundos: number): Promise<void> {
@@ -121,6 +137,9 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
     repite && p.memoria ? p.memoria.ultimoPedido(entrada.telefono) : null,
   ]);
 
+  // Un cliente sin ficha que ya pidió por el bot no vuelve a recibir la pregunta de datos (D40): se busca solo cuando va a anotar un pedido.
+  const pedidoAnterior = cliente.estado === 'nuevo' && INTENCIONES_CON_ENTREGA.has(intencion) ? await pedidoAnteriorDe(p, entrada.telefono) : undefined;
+
   // 3. Decidir.
   const decision = decidir({
     interpretacion,
@@ -134,6 +153,7 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
     precios,
     entrega: entrega ?? { fecha: '', mismoDia: false, feriadosAlDia: true },
     servicio,
+    ...(pedidoAnterior ? { pedidoAnterior } : {}),
     ...(estado?.espera === 'datos' && estado.id_pedido ? { pendienteDeDatos: { idPedido: estado.id_pedido, intentos: estado.intentos ?? 0 } } : {}),
   });
 
