@@ -79,6 +79,21 @@ describe('parsearClientes', () => {
     expect(raro?.avisos.join(' ')).toContain('suspendido');
   });
 
+  it('avisa si tiene precio especial pero su tipo no es "especial": ese precio no se aplicaría', () => {
+    const hoja = [
+      ['Telefono', 'Nombre', 'Tipo', 'Precio_Especial_20L'],
+      ['56911111111', 'Ana', 'normal', '3000'],
+      ['56922222222', 'Beto', '', '$3.000'],
+      ['56933333333', 'Cami', 'especial', '3000'],
+      ['56944444444', 'Dani', 'normal', ''],
+    ];
+    const lista = parsearClientes(hoja);
+    expect(lista.get('56911111111')?.avisos.join(' ')).toContain('Precio_Especial_20L');
+    expect(lista.get('56922222222')?.avisos.join(' ')).toContain('Precio_Especial_20L');
+    expect(lista.get('56933333333')?.avisos).toEqual([]);
+    expect(lista.get('56944444444')?.avisos).toEqual([]);
+  });
+
   it('descarta las filas sin teléfono válido', () => {
     expect(clientes.size).toBe(5);
   });

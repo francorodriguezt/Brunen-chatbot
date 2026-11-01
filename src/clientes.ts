@@ -47,13 +47,20 @@ function aCliente(fila: Record<string, string>, telefono: string): Cliente {
   if (estadoTexto.includes('bloque')) estado = 'bloqueado';
   else if (estadoTexto !== '' && estadoTexto !== 'activo') avisos.push(`Estado "${fila.estado}" no reconocido; se trató como activo.`);
 
+  // El precio especial solo se aplica a un cliente de tipo "especial" (precios.ts): si la fila lo tiene con otro tipo, el
+  // bot cotizaría con tramos sin que nadie lo note, así que se anota para que una persona revise el pedido.
+  const precioEspecial20L = aEnteroCLP(fila.precio_especial_20l);
+  if (precioEspecial20L !== null && tipo !== 'especial') {
+    avisos.push(`Tiene Precio_Especial_20L (${precioEspecial20L}) pero su tipo es "${tipo}": ese precio no se aplica; confirmar cuál corresponde.`);
+  }
+
   return {
     telefono,
     nombre: fila.nombre ?? '',
     direccion: fila.direccion ?? '',
     comuna: fila.comuna ?? '',
     tipo,
-    precioEspecial20L: aEnteroCLP(fila.precio_especial_20l),
+    precioEspecial20L,
     envasesPendientes: aEnteroCLP(fila.envases_pendientes) ?? 0,
     avisoHora: AFIRMATIVO.has(normalizar(fila.aviso_hora ?? '')),
     credito: fila.credito ?? '',
