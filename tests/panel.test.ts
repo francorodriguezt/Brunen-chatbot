@@ -107,7 +107,23 @@ describe('autenticar: el token de Cloudflare Access', () => {
   it('si Cloudflare rota las claves, el panel las vuelve a pedir y sigue funcionando', async () => {
     await autenticar(conCabecera(await acceso.token()), ENTORNO_ACCESS, AHORA);
     await acceso.rotarClaves();
-    expect((await autenticar(conCabecera(await acceso.token()), ENTORNO_ACCESS, AHORA + 5)).ok).toBe(true);
+    // Pasaron más de 30 s desde la última descarga: una clave desconocida ya puede volver a pedirlas.
+    expect((await autenticar(conCabecera(await acceso.token()), ENTORNO_ACCESS, AHORA + 40)).ok).toBe(true);
+    expect(acceso.pedidosDeClaves()).toBe(2);
+  });
+
+  it('una firma con caracteres inválidos es un 401, no una excepción', async () => {
+    const [cabeza, cuerpo] = (await acceso.token()).split('.');
+    expect(await autenticar(conCabecera(`${cabeza}.${cuerpo}.@@@`), ENTORNO_ACCESS, AHORA)).toMatchObject({ ok: false, estado: 401 });
+  });
+
+  it('las claves desconocidas no hacen pedir las claves a Access a cada solicitud: como máximo una vez cada 30 s', async () => {
+    await autenticar(conCabecera(await acceso.token()), ENTORNO_ACCESS, AHORA);
+    for (const kid of ['a', 'b', 'c', 'd']) {
+      expect(await autenticar(conCabecera(await acceso.token({}, { kid })), ENTORNO_ACCESS, AHORA + 1)).toMatchObject({ ok: false, estado: 401 });
+    }
+    expect(acceso.pedidosDeClaves()).toBe(1);
+    await autenticar(conCabecera(await acceso.token({}, { kid: 'e' })), ENTORNO_ACCESS, AHORA + 40);
     expect(acceso.pedidosDeClaves()).toBe(2);
   });
 
@@ -275,6 +291,10 @@ describe('la API: lectura', () => {
     const { env } = await entornoPanel();
     expect((await pedir(env, '/api/pedidos?grupo=inventado')).status).toBe(400);
     expect((await pedir(env, '/api/pedidos?fecha=ayer')).status).toBe(400);
+    // Los nombres heredados de todo objeto de JavaScript tampoco son grupos.
+    for (const grupo of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+      expect((await pedir(env, `/api/pedidos?grupo=${grupo}`)).status).toBe(400);
+    }
   });
 
   it('un pedido trae su historial', async () => {

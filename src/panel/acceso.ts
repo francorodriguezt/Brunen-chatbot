@@ -36,10 +36,13 @@ interface ClavePublica {
 
 interface ClavesEnMemoria {
   vigenteHasta: number;
+  /** Cuándo se descargaron: una clave desconocida no hace volver a pedirlas antes de `ESPERA_ENTRE_DESCARGAS_SEGUNDOS`. */
+  obtenidoEn: number;
   claves: Map<string, CryptoKey>;
 }
 
 const DURACION_CLAVES_SEGUNDOS = 3600;
+const ESPERA_ENTRE_DESCARGAS_SEGUNDOS = 30;
 const MARGEN_RELOJ_SEGUNDOS = 30;
 const cache = new Map<string, ClavesEnMemoria>();
 
@@ -81,16 +84,21 @@ async function cargarClaves(dominio: string, ahoraSegundos: number): Promise<Map
       await crypto.subtle.importKey('jwk', { kty: 'RSA', n: clave.n, e: clave.e, alg: 'RS256', ext: true }, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']),
     );
   }
-  cache.set(dominio, { vigenteHasta: ahoraSegundos + DURACION_CLAVES_SEGUNDOS, claves });
+  cache.set(dominio, { vigenteHasta: ahoraSegundos + DURACION_CLAVES_SEGUNDOS, obtenidoEn: ahoraSegundos, claves });
   return claves;
 }
 
-/** Las claves se guardan una hora; si llega un token con una clave desconocida (Cloudflare las rota), se vuelven a pedir una vez. */
+/**
+ * Las claves se guardan una hora. Si llega un token con una clave desconocida puede ser que Cloudflare las haya rotado y
+ * se vuelven a pedir, pero no más de una vez cada 30 s: sin ese tope, quien mande tokens con claves inventadas haría
+ * una descarga a Access por cada solicitud.
+ */
 async function clavePara(dominio: string, kid: string, ahoraSegundos: number): Promise<CryptoKey | undefined> {
   const guardadas = cache.get(dominio);
   const vigente = guardadas && guardadas.vigenteHasta > ahoraSegundos ? guardadas.claves : undefined;
   const clave = vigente?.get(kid);
   if (clave) return clave;
+  if (guardadas && vigente && ahoraSegundos - guardadas.obtenidoEn < ESPERA_ENTRE_DESCARGAS_SEGUNDOS) return undefined;
   return (await cargarClaves(dominio, ahoraSegundos)).get(kid);
 }
 
@@ -133,7 +141,13 @@ export async function autenticar(
   }
   if (!clave) return { ok: false, estado: 401, motivo: 'Acceso no válido.' };
 
-  const firmaValida = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', clave, base64UrlABytes(firma), new TextEncoder().encode(`${cabeza}.${cuerpo}`));
+  let bytesDeLaFirma: Uint8Array<ArrayBuffer>;
+  try {
+    bytesDeLaFirma = base64UrlABytes(firma);
+  } catch {
+    return { ok: false, estado: 401, motivo: 'Acceso no válido.' }; // una firma con caracteres que no son base64
+  }
+  const firmaValida = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', clave, bytesDeLaFirma, new TextEncoder().encode(`${cabeza}.${cuerpo}`));
   const audiencias = Array.isArray(datos.aud) ? datos.aud : [datos.aud];
   const vence = typeof datos.exp === 'number' ? datos.exp : 0;
   const desde = typeof datos.nbf === 'number' ? datos.nbf : 0;
