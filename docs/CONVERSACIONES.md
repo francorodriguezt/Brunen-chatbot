@@ -140,6 +140,19 @@ Si contesta que el edificio no tiene nombre (por ejemplo, "No tiene nombre, grac
 
 Si lo que contesta no parece una dirección, el bot se lo pide una vez más ("No alcancé a entender tu dirección. ¿Me la escribes con calle, número y comuna?") y, si tampoco, lo deja a una persona.
 
+Cuando ese cliente vuelve a pedir, el bot lo reconoce por su pedido anterior y no le pregunta otra vez (D40). Mientras no esté en la hoja CLIENTES no se le promete el precio:
+
+**Cliente:** quiero 3 de 20
+
+**Bot:**
+> Anotamos tu pedido:
+> - 3 bidones de 20 L
+> El valor te lo confirmamos a la brevedad.
+> Entrega estimada: jueves 29 de octubre.
+> Si algo cambia, te avisamos por aquí.
+
+**En el panel de la operadora:** el pedido llega "Para revisar", con la dirección y las notas del pedido anterior (por ejemplo el edificio), el precio sugerido y la nota de que se conoce por su pedido anterior.
+
 ### 7. Una comuna que no se atiende
 
 Se informa y se anota como "Fuera_de_zona".
