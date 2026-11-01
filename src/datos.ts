@@ -25,9 +25,11 @@ const MAX_PALABRAS_DEL_NOMBRE = 4;
 const MAX_PALABRAS_DEL_EDIFICIO = 5;
 const MAX_LARGO_DEL_EDIFICIO = 40;
 
-// Palabras de un pedido, una pregunta o un reclamo: si están, el texto no es la respuesta a "tu nombre y tu dirección".
+// Palabras de un pedido, una pregunta, un reclamo o una fecha: si están, el texto no es la respuesta a "tu nombre y tu
+// dirección". "lt" y "lts" solo cuentan sin número detrás ("20 lts"): con número es el lote de una parcela ("lt 3").
+// "domingo" no está porque es parte de calles como Santo Domingo.
 const DE_OTRO_TEMA =
-  /\b(?:bidon|bidones|botellon|botellones|litro|litros|lts|lt|quiero|necesito|necesitamos|pedir|pedido|precio|cuanto|cuesta|reclamo|factura|boleta)\b/;
+  /\b(?:bidon|bidones|botellon|botellones|litro|litros|lts?(?!\s*\d)|quiero|necesito|necesitamos|pedir|pedido|precio|cuanto|cuesta|reclamo|factura|boleta|hoy|manana|lunes|martes|miercoles|jueves|viernes|sabado|para el|a las \d+)\b/;
 // "no sé", "no tiene nombre", "sin nombre", "es una casa": contestó, pero no es el nombre de un edificio.
 const NEGATIVA = /^(?:no(?: .*)?|nada|ninguno|ninguna|sin edificio|sin nombre|(?:es )?(?:una )?casa)$/;
 // Cortesías y confirmaciones sueltas que acompañan a una respuesta ("Torre Norte, gracias") o la reemplazan ("ok").

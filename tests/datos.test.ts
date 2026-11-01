@@ -60,6 +60,21 @@ describe('leerDatosDelCliente: nombre, dirección y comuna', () => {
     expect(leerDatosDelCliente('Sofía Rojas, Camino Real 456, Maipú')?.comuna).toEqual({ nombre: 'Maipú', atendida: false });
   });
 
+  it('una calle con nombre de comuna no cambia la comuna de la dirección (D39)', () => {
+    expect(leerDatosDelCliente('Ana Torres, Av. Independencia 1500, Recoleta')).toMatchObject({
+      nombre: 'Ana Torres',
+      direccion: 'Av. Independencia 1500, Recoleta',
+      comuna: { nombre: 'Recoleta', atendida: true },
+    });
+  });
+
+  it('acepta el lote ("lt 3") en la dirección, como en las parcelas y condominios', () => {
+    expect(leerDatosDelCliente('Camino El Alba 1234, Lo Barnechea, lt 3')).toMatchObject({
+      direccion: 'Camino El Alba 1234, Lo Barnechea, lt 3',
+      comuna: { nombre: 'Lo Barnechea', atendida: true },
+    });
+  });
+
   it('ordena los espacios', () => {
     expect(leerDatosDelCliente('  Juan   Pérez ,  Los Leones   123 ,Providencia ')).toMatchObject({
       nombre: 'Juan Pérez',
@@ -110,6 +125,10 @@ describe('leerDatosDelCliente: nombre, dirección y comuna', () => {
     'quiero 3 bidones de 20 litros',
     'cuánto cuesta el bidón de 12 L en Ñuñoa',
     'necesito 2 bidones para Providencia',
+    '20 lts',
+    'hoy',
+    'mañana a las 10 por favor',
+    'para el viernes 30',
   ])('"%s" no es una dirección', (texto) => {
     expect(leerDatosDelCliente(texto)).toBeNull();
   });

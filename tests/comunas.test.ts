@@ -44,8 +44,21 @@ describe('detectarComuna', () => {
     expect(detectarComuna('santiago centro')).toEqual({ nombre: 'Santiago Centro', atendida: true });
   });
 
-  it('con varias comunas gana la primera que aparece', () => {
-    expect(detectarComuna('de Maipú a Ñuñoa')?.nombre).toBe('Maipú');
+  it('con varias comunas gana una atendida: una calle con nombre de comuna no la reemplaza (D39)', () => {
+    expect(detectarComuna('de Maipú a Ñuñoa')?.nombre).toBe('Ñuñoa');
+    expect(detectarComuna('Av. Independencia 1500, Recoleta')).toEqual({ nombre: 'Recoleta', atendida: true });
+    expect(detectarComuna('Pasaje San Pedro 123, Ñuñoa')).toEqual({ nombre: 'Ñuñoa', atendida: true });
+    expect(detectarComuna('Ñuñoa, calle San Pedro 12')).toEqual({ nombre: 'Ñuñoa', atendida: true });
+  });
+
+  it('entre varias atendidas gana la última, que es donde se escribe la comuna de una dirección (D39)', () => {
+    expect(detectarComuna('Av. Las Condes 12000, Lo Barnechea')?.nombre).toBe('Lo Barnechea');
+    expect(detectarComuna('Av. Vitacura 5000, Las Condes')?.nombre).toBe('Las Condes');
+    expect(detectarComuna('Calle Santiago Apóstol 123, Macul')?.nombre).toBe('Macul');
+  });
+
+  it('si ninguna es atendida, gana la última', () => {
+    expect(detectarComuna('Av. Independencia 1500, Maipú')).toEqual({ nombre: 'Maipú', atendida: false });
   });
 
   it('solo reconoce palabras completas', () => {

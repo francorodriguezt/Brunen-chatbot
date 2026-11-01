@@ -58,19 +58,23 @@ const BUSCABLES: ReadonlyArray<readonly [string, string]> = [
 ];
 
 /**
- * Devuelve la primera comuna mencionada en el texto (palabras completas, sin importar tildes
- * ni mayúsculas), o null si no hay ninguna. Si coincide más de una en el mismo lugar gana la
- * más larga: "santiago centro" antes que "santiago".
+ * Devuelve la comuna mencionada en el texto (palabras completas, sin importar tildes ni mayúsculas), o null si no hay
+ * ninguna. Con más de una gana una comuna atendida y, entre las del mismo tipo, la última: en una dirección la comuna va
+ * al final y muchas calles se llaman como una comuna ("Av. Independencia 1500, Recoleta"), así que la primera mención
+ * dejaba como fuera de zona a un vecino de una comuna atendida (D39). Si coinciden en el mismo lugar gana la más larga:
+ * "santiago centro" antes que "santiago".
  */
 export function detectarComuna(texto: string): ComunaDetectada | null {
   const hayTexto = ` ${normalizar(texto).replace(/[?/]/g, ' ')} `;
-  let mejor: { posicion: number; largo: number; nombre: string } | null = null;
+  let mejor: { posicion: number; largo: number; nombre: string; atendida: boolean } | null = null;
   for (const [forma, nombre] of BUSCABLES) {
-    const posicion = hayTexto.indexOf(` ${forma} `);
+    const posicion = hayTexto.lastIndexOf(` ${forma} `);
     if (posicion === -1) continue;
-    if (mejor === null || posicion < mejor.posicion || (posicion === mejor.posicion && forma.length > mejor.largo)) {
-      mejor = { posicion, largo: forma.length, nombre };
-    }
+    const atendida = esComunaAtendida(nombre);
+    const gana =
+      mejor === null ||
+      (atendida !== mejor.atendida ? atendida : posicion > mejor.posicion || (posicion === mejor.posicion && forma.length > mejor.largo));
+    if (gana) mejor = { posicion, largo: forma.length, nombre, atendida };
   }
-  return mejor === null ? null : { nombre: mejor.nombre, atendida: esComunaAtendida(mejor.nombre) };
+  return mejor === null ? null : { nombre: mejor.nombre, atendida: mejor.atendida };
 }
