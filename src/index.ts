@@ -30,6 +30,7 @@ import { interpretarConRespaldo } from './llm';
 import { planillaDe, type RegistroMensaje } from './planilla';
 import { describirInterpretacion } from './resumen';
 import {
+  ErrorWhatsApp,
   enmascararTelefono,
   enviarTexto,
   esErrorDeToken,
@@ -48,6 +49,8 @@ export interface Env extends EntornoAtencion {
   NUMEROS_PERMITIDOS?: string;
   /** "NO" apaga el bot (regla 11). */
   BOT_ACTIVO?: string;
+  /** "NO" deja de anotar cada lote en las hojas MENSAJES_PROCESADOS y ERRORES: ahorra una llamada a Google por mensaje (D31). */
+  REGISTRO_PLANILLA?: string;
 }
 
 /** Subconjunto de ExecutionContext que usamos; facilita las pruebas. */
@@ -166,13 +169,17 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
     } catch (error) {
       // Si falló, se suelta el mensaje para que un reintento de Meta sí lo procese.
       if (almacen) await liberarMensaje(almacen, mensaje.id);
+      const detalle = error instanceof Error ? error.message : String(error);
       if (esErrorDeToken(error)) {
         console.error(
           'TOKEN DE WHATSAPP VENCIDO O INVÁLIDO: genera uno nuevo en API Setup y cárgalo con "npx wrangler secret put WHATSAPP_TOKEN".',
         );
         await avisarFalla(env, 'token-whatsapp', 'El token de WhatsApp venció o no es válido: el bot no puede responder. Genera uno nuevo y cárgalo con "npx wrangler secret put WHATSAPP_TOKEN".');
+      } else {
+        // Sin este aviso, un cliente a quien no se le pudo responder solo quedaría en el log y en la hoja ERRORES.
+        const queFallo = error instanceof ErrorWhatsApp ? 'No se pudo responder al cliente por WhatsApp' : 'Falló la atención de un mensaje';
+        await avisarFalla(env, `atencion-${mensaje.de}`, `${queFallo}: ${detalle.slice(0, 200)}. Revisa su pedido y escríbele desde la app.`, new Date(), mensaje.de);
       }
-      const detalle = error instanceof Error ? error.message : String(error);
       console.error(`Error procesando ${mensaje.id}:`, detalle);
       registros.push({ ...base(mensaje), resultado: 'error', error: detalle });
     }
@@ -184,6 +191,7 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
 
 /** La planilla es una vista para Constanza: si Google falla, solo se anota en el log. */
 async function guardarEnPlanilla(env: Env, registros: readonly RegistroMensaje[]): Promise<void> {
+  if ((env.REGISTRO_PLANILLA ?? 'SI').trim().toUpperCase() === 'NO') return;
   const planilla = planillaDe(env);
   if (!planilla || registros.length === 0) return;
   try {
