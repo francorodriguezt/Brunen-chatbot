@@ -2,6 +2,13 @@
 
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
+## Próxima sesión
+Estado al 2026-10-31: el bot está desplegado con la corrección del edificio (versión `4c934673`) y el flujo encendido solo para los números de prueba; el panel y Telegram siguen sin activar.
+1. Repetir la prueba del edificio desde el número de prueba: `quiero 2 de 20` → el bot pide nombre y dirección → `Ana Torres, Av. Irarrázaval 2345 depto 502, Ñuñoa` (datos ficticios) → `No tiene nombre, gracias`. El bot no debe contestar esa última respuesta. Revisar en la base que quedó anotado «Sobre el edificio dijo: …» y medir el CPU con `wrangler tail`.
+2. Franco: activar Zero Trust Free y crear el bot de Telegram; después se despliega el panel y se configura Access (pasos en `docs/ETAPAS.md`).
+3. Dueño: empezar las gestiones de Meta (método de pago, verificación de empresa y si la coexistencia se puede hacer) y responder los precios que faltan.
+4. Después: bajar el CPU, probar el respaldo de la base (D35) y limpiar los pedidos de prueba de la base real (con el visto bueno de Franco).
+
 ## Decide Franco
 Franco aceptó las recomendaciones el 2026-10-28 y delegó la del acceso al panel (D34); quedan abiertas las dos que dependen de Constanza.
 - [x] **Acceso al panel:** Cloudflare Access (D34; Franco delegó la elección el 2026-10-28 en "lo mejor en lo práctico, la seguridad y el largo plazo"). Entra con un código al correo y no hay código propio de inicio de sesión. Cloudflare pide registrar un método de pago aunque no cobre (D33): ese paso es de Franco o del dueño (ver "Técnicos").
@@ -75,6 +82,7 @@ Respondió el cuestionario el 2026-10-29 (D36). Marcadas las que quedaron resuel
 
 ## Antes de salir a producción (Etapa 7)
 Datos de Meta tomados de fuentes secundarias el 2026-10-28: confirmar todo en la documentación oficial de Meta antes de actuar.
+- [ ] **No abrir a clientes reales hasta que el panel y Telegram estén activos:** hoy el bot le dice a quien reclama «ya avisamos al equipo», pero el aviso queda en la base y nadie lo ve ni lo recibe (no hay panel desplegado ni bot de Telegram). Con los números de prueba no importa.
 - [ ] Número definitivo. Lo más simple es un número nuevo solo para la API. La "coexistencia" (usar el mismo número en la app de WhatsApp Business y en la API) parece estar disponible en Chile, pero su alta pasa por un flujo de registro ("Embedded Signup") pensado para proveedores de tecnología: verificar si Franco puede hacerlo directo.
 - [ ] Verificación de empresa en Meta y aprobación del nombre visible. Sin verificar, el límite es de unos 250 contactos nuevos por día iniciados por la empresa (los clientes que escriben primero no cuentan); con verificación sube. Puede tardar de días a semanas.
 - [ ] Mensajes que inicia la empresa fuera de las 24 horas (por ejemplo, avisar la hora aproximada a los clientes con `Aviso_Hora`) exigen plantillas aprobadas por Meta y pueden cobrarse: decidir si se hacen.
