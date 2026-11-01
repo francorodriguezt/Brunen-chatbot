@@ -333,6 +333,13 @@ describe('quién escribe y dónde vive', () => {
     expect(d.pedido?.estado).toBe('Fuera_de_zona');
   });
 
+  it('un cliente nuevo fuera de zona no recibe la pregunta de datos, y la nota no dice que se le pidieron', async () => {
+    const d = await conversacion({ cliente: { estado: 'nuevo' } }).decir('quiero 2 de 20 en Maipú');
+    expect(d.pedido?.observaciones).toContain('Cliente nuevo, sin ficha');
+    expect(d.pedido?.observaciones).not.toContain('le pidió el nombre');
+    expect(d.memoria).toEqual({ accion: 'borrar' });
+  });
+
   it('un cliente bloqueado no hace pedidos: lo ve una persona', async () => {
     const d = await conversacion({ cliente: conocido({ estado: 'bloqueado' }) }).decir('quiero 2 de 20');
     expect(d.respuesta).toBe('Recibimos tu mensaje. Una persona del equipo te responderá en breve.');
