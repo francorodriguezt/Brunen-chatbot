@@ -138,3 +138,21 @@ Lo que el dueño quiere ver en el panel (2026-10-29): pedidos por confirmar (con
 - Franco aclaró (2026-10-29): hoy usan Optiroute y con él ven punto por punto dónde va el repartidor, su ubicación en vivo y cuánto demora de un punto a otro. Lo que se busca es crear una plataforma propia que haga las mismas funciones: la ruta con los puntos de la forma más eficiente posible y el seguimiento en vivo del repartidor (D38).
 - Franco pidió que el bot pregunte el nombre, la dirección y, si es un departamento, el edificio, (hecho, D37), y que dé una referencia de la hora de llegada según la programación de la ruta (por diseñar con la plataforma propia, D38).
 - PENDIENTE: nombre exacto y plan de Optiroute (¿es OptimoRoute?) y qué funciones usan; el archivo que suben hoy y quién lo arma; si los sobrantes siempre quedan en el furgón y si la carga lleva margen; qué pasa con un vacío que falta después de justificarlo; a quién se le da la hora de llegada y por qué canal; dirección de la planta (la ruta parte y termina ahí).
+
+## 16. Segundo cuestionario a Felipe y Constanza (2026-11-10, lo recogió Franco)
+Confirmado:
+- El historial de pedidos vive en un Excel con: fecha de entrega, nombre, dirección, comuna, teléfono, tipo de cliente (hogar, minimarket o empresa), cantidad, tamaño (10, 12 o 20 L), precio, tipo de pago, si pide factura y estado del pago (pagado o pendiente). Falta revisar el archivo real: puede haber cantidad y tamaño duplicados o mezclados.
+- Un cliente puede cambiar de dirección. Hoy se recupera buscando su último pedido. Debe conservarse el historial de direcciones y no asignar una antigua si hay duda de cuál vale.
+- Del Excel principal sale otro Excel que se importa a la plataforma de rutas; su exportación trae datos que sobran, se limpia a mano, se pasa a Word y se le envía al repartidor una instrucción por vez.
+- El furgón carga como máximo 65 bidones. Si el pedido del día supera eso, se usa una segunda planta (Actum, en Las Condes). Falta saber cuántos bidones de cada tamaño caben y la carga máxima permitida (65 bidones de 20 L pesan más de 1,3 toneladas solo en agua).
+- Jornada: el repartidor retira el furgón donde se guarda, carga en la planta, reparte, vuelve a la planta a dejar los vacíos y devuelve el furgón.
+- Felipe quiere ver la ubicación del repartidor en vivo, con los puntos entregados y pendientes. Avisos urgentes por Telegram. Constanza usará el panel en computador y celular. La cuenta administrativa será el correo de Brunen.
+- Carga inicial: 12 L a $4.500 y promoción de 2 unidades por $8.000.
+
+Contradicciones y huecos (por resolver antes de construir):
+- Carga inicial de 10 L: el cuestionario dice $4.000; el dueño dijo $4.500 para 12 L y 10 L (2026-10-29), y así está en `src/precios.ts`. No se cambia hasta confirmar.
+- Tipos de cliente: el Excel usa hogar, minimarket y empresa; el sistema usa normal, mayorista, empresa y especial. Hogar sería normal y minimarket sería mayorista (a confirmar). "Especial" es una condición de precio, no un tipo.
+- La tabla de pedidos no guarda tipo de pago, estado de pago ni si pide factura, que el Excel sí tiene.
+- Dirección de inicio y fin de la ruta: el negocio figura en Pudahuel y el cuestionario habla de otra planta.
+- Rastreo: Franco dijo el 2026-10-29 que hoy ya ven al repartidor en la plataforma de rutas, y a la vez el cuestionario dice que se le manda un Word por WhatsApp. Si el repartidor ya usa la app de la plataforma, el rastreo existe y no hay que construirlo. Es lo primero que hay que preguntar (D38 decía reemplazarla y el cuestionario habla de integrarla).
+- El celular del repartidor: no se sabe si es de la empresa o personal, ni si es Android o iPhone. Cambia cómo se pide su consentimiento para el rastreo.
