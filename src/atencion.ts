@@ -192,6 +192,28 @@ export async function limpiezasDelLote(env: Pick<EntornoAtencion, 'DB'>, azar: (
   await new MemoriaConversaciones(env.DB, azar).limpiar(Math.floor(Date.now() / 1000));
 }
 
+export const FALLA_DEL_TOKEN =
+  'El token de WhatsApp venció o no es válido: el bot no puede responder. Genera uno nuevo y cárgalo con "npx wrangler secret put WHATSAPP_TOKEN".';
+
+/**
+ * Con el token vencido el aviso general sale una vez por hora, pero no dice a quién no se le respondió. Esto anota a
+ * cada cliente afectado (una vez por hora y por cliente, sin Telegram) para que, cuando el token esté arreglado, una
+ * persona sepa a quién escribirle.
+ */
+export async function anotarClienteSinRespuesta(env: EntornoAtencion, telefono: string, ahora: Date = new Date()): Promise<void> {
+  if (!flujoActivo(env) || !env.DB) return;
+  const ahoraSegundos = Math.floor(ahora.getTime() / 1000);
+  try {
+    await new RepositorioD1(env.DB).guardarAviso(
+      { tipo: 'error', telefono, resumen: 'El bot no pudo responderle porque el token de WhatsApp no sirve. Cuando esté arreglado, revisa su chat y escríbele.', motivos: [] },
+      `sin-respuesta:${telefono}:${Math.floor(ahoraSegundos / 3600)}`,
+      ahoraSegundos,
+    );
+  } catch (error) {
+    console.error('No se pudo anotar al cliente sin respuesta:', error instanceof Error ? error.message : error);
+  }
+}
+
 const ultimosAvisos = new Map<string, number>();
 const UNA_HORA_MS = 3_600_000;
 

@@ -111,6 +111,24 @@ export async function enviarTexto(config: ConfigWhatsApp, para: string, cuerpo: 
   }
 }
 
+/**
+ * Comprueba si el token sigue sirviendo, sin enviar ningún mensaje: pide el identificador del propio número.
+ * 'token' = venció o no es válido; 'otro' = no se pudo saber (Meta no respondió o falló por otra razón).
+ */
+export async function revisarToken(config: ConfigWhatsApp): Promise<'ok' | 'token' | 'otro'> {
+  try {
+    const respuesta = await fetch(`https://graph.facebook.com/${config.graphApiVersion}/${config.phoneNumberId}?fields=id`, {
+      signal: AbortSignal.timeout(TIEMPO_MAXIMO_ENVIO_MS),
+      headers: { Authorization: `Bearer ${config.token}` },
+    });
+    if (respuesta.ok) return 'ok';
+    const detalle = await respuesta.text().catch(() => '');
+    return respuesta.status === 401 || codigoDeError(detalle) === 190 ? 'token' : 'otro';
+  } catch {
+    return 'otro';
+  }
+}
+
 /** Para logs: nunca registrar teléfonos completos. "56912345678" -> "*******5678". */
 export function enmascararTelefono(telefono: string): string {
   return telefono.length <= 4 ? '****' : '*'.repeat(telefono.length - 4) + telefono.slice(-4);

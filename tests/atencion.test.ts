@@ -348,7 +348,36 @@ describe('cuando algo falla por dentro', () => {
     expect(pedidosEn(env)).toHaveLength(2); // se guardan antes de responder
     const fallas = mundo.telegram.filter((t) => String(t.cuerpo.text).includes('token de WhatsApp'));
     expect(fallas).toHaveLength(1);
-    expect(avisosEn(env).filter((a) => a.tipo === 'error')).toHaveLength(1);
+    // Además del aviso general del token, queda uno con el teléfono del cliente (uno por hora, no uno por mensaje):
+    // cuando el token se arregle, una persona sabe a quién hay que escribirle.
+    expect(avisosEn(env).filter((a) => a.tipo === 'error').map((a) => a.telefono).sort()).toEqual(['', CLIENTE]);
+  });
+
+  it('con el token vencido, el aviso del cliente queda aunque su mensaje no generara un pedido', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    stubMundo({ hojas: HOJAS, whatsapp: 401 });
+    const env = await entorno();
+    await enviarAviso(env, texto('hola, cuánto cuesta el de 20?'));
+    const delCliente = env.DB.sql("SELECT resumen FROM avisos WHERE tipo = 'error' AND telefono = ?1", CLIENTE) as Array<{ resumen: string }>;
+    expect(delCliente).toHaveLength(1);
+    expect(delCliente[0]?.resumen).toContain('no pudo responderle');
+  });
+
+  it('al terminar de atender, el mensaje queda marcado como atendido, con el teléfono de quien escribió', async () => {
+    stubMundo({ hojas: HOJAS });
+    const env = await entorno();
+    await enviarAviso(env, texto('quiero 2 de 20'));
+    const filas = env.DB.sql('SELECT telefono, atendido_en FROM mensajes_procesados') as Array<{ telefono: string; atendido_en: number | null }>;
+    expect(filas).toHaveLength(1);
+    expect(filas[0]?.telefono).toBe(CLIENTE);
+    expect(filas[0]?.atendido_en).toBe(Math.floor(HORA.getTime() / 1000));
+  });
+
+  it('un mensaje de un número que no se atiende (modo prueba) también queda marcado: no es un mensaje colgado', async () => {
+    stubMundo({ hojas: HOJAS });
+    const env = await entorno();
+    await enviarAviso(env, texto('hola', '56977777777'));
+    expect(env.DB.sql('SELECT atendido_en FROM mensajes_procesados WHERE atendido_en IS NULL')).toEqual([]);
   });
 
   it('tras el fallo del envío, el reintento de Meta no duplica el pedido y esta vez sí responde', async () => {

@@ -17,6 +17,11 @@ FLUJO_PEDIDO = "SI"
 # Espera para juntar los mensajes seguidos de un cliente, en milisegundos (D27; por defecto 7000).
 # ESPERA_AGRUPADOR_MS = "7000"
 
+# El vigía (src/vigia.ts): cada 5 minutos busca mensajes que quedaron sin atender y, a las 7:30 de Santiago, revisa el
+# token de WhatsApp y la planilla. El plan gratis permite 5 tareas programadas por cuenta; esta es la única.
+[triggers]
+crons = ["*/5 * * * *"]
+
 [observability]
 # Workers Logs: los errores del Worker se ven en el panel de Cloudflare sin tener `wrangler tail`
 # abierto. Plan gratis: 200.000 eventos de log por día, 3 días de retención.

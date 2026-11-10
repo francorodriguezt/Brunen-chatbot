@@ -6,11 +6,13 @@ import {
   almacenDe,
   esMensajeNuevo,
   liberarMensaje,
+  marcarAtendidos,
   limpiarAlmacen,
   type AlmacenMensajes,
   type BaseDatos,
 } from '../src/almacen';
 import { firmarHmacSha256 } from '../src/firma';
+import { crearBaseSqlite } from './ayudas';
 
 // Todos los valores son ficticios.
 const ENV: Env = {
@@ -184,5 +186,43 @@ describe('el webhook con deduplicación', () => {
     await enviar(ENV, 'wamid.REPETIDO');
     await enviar(ENV, 'wamid.REPETIDO');
     expect(meta).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('AlmacenD1: quién escribió y si se terminó de atender', () => {
+  it('guarda el teléfono, y el mensaje nace sin atender', async () => {
+    const db = crearBaseSqlite();
+    await new AlmacenD1(db).registrarSiEsNuevo('wamid.A', 1000, '56911111111');
+    expect(db.sql('SELECT wamid, recibido_en, telefono, atendido_en FROM mensajes_procesados')).toEqual([{ wamid: 'wamid.A', recibido_en: 1000, telefono: '56911111111', atendido_en: null }]);
+  });
+
+  it('sin teléfono se guarda vacío (así los anotaba la versión anterior)', async () => {
+    const db = crearBaseSqlite();
+    await new AlmacenD1(db).registrarSiEsNuevo('wamid.A', 1000);
+    expect(db.sql('SELECT telefono FROM mensajes_procesados')).toEqual([{ telefono: '' }]);
+  });
+
+  it('marcarAtendidos anota cuándo terminó la atención, solo de esos mensajes y una sola vez', async () => {
+    const db = crearBaseSqlite();
+    const almacen = new AlmacenD1(db);
+    for (const id of ['wamid.A', 'wamid.B', 'wamid.C']) await almacen.registrarSiEsNuevo(id, 1000, '56911111111');
+    await almacen.marcarAtendidos(['wamid.A', 'wamid.B'], 1010);
+    await almacen.marcarAtendidos(['wamid.A'], 1999); // ya estaba: no cambia la hora
+    expect(db.sql('SELECT wamid, atendido_en FROM mensajes_procesados ORDER BY wamid')).toEqual([
+      { wamid: 'wamid.A', atendido_en: 1010 },
+      { wamid: 'wamid.B', atendido_en: 1010 },
+      { wamid: 'wamid.C', atendido_en: null },
+    ]);
+  });
+
+  it('marcarAtendidos sin mensajes no consulta la base', async () => {
+    const rota = { prepare: () => { throw new Error('no debía consultarse'); } } as unknown as BaseDatos;
+    await expect(new AlmacenD1(rota).marcarAtendidos([], 1000)).resolves.toBeUndefined();
+  });
+
+  it('si marcar falla, solo se registra: la atención al cliente ya terminó', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const caida = async () => { throw new Error('D1 caída'); };
+    await expect(marcarAtendidos({ registrarSiEsNuevo: caida, liberar: caida, marcarAtendidos: caida }, ['wamid.A'])).resolves.toBeUndefined();
   });
 });
