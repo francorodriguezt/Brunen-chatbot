@@ -37,6 +37,13 @@ flowchart LR
   H --> I[Pedido y aviso en D1, que ve el panel]
 ```
 
+## El panel
+Los pedidos por confirmar y el reparto del día, con datos de demostración (todo ficticio). Cómo se usa: [docs/GUIA_PANEL.md](docs/GUIA_PANEL.md).
+
+| Pedidos | Reparto del día |
+|---|---|
+| ![Bandeja de pedidos por confirmar](docs/img/panel-pedidos.png) | ![Reparto del día con la carga del furgón](docs/img/panel-reparto.png) |
+
 ## Decisiones que vale la pena mirar
 - **Webhook seguro:** valida `X-Hub-Signature-256` (HMAC-SHA256 con comparación en tiempo constante), responde 200 de inmediato y procesa con `ctx.waitUntil`, porque Meta reintenta si tarda.
 - **El LLM extrae, el código calcula:** precios, tramos, corte horario y feriados son funciones deterministas con pruebas, en zona horaria `America/Santiago`. La IA solo entra cuando las reglas no entienden, con un tope diario, validando todo lo que devuelve y sin recibir nombres ni teléfonos.
