@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BaseDatos } from '../src/almacen';
-import { agruparMensaje, limpiarPendientes, type MensajeAgrupable } from '../src/agrupador';
+import { agruparMensaje, anotarMensaje, limpiarPendientes, reclamarGrupo, type MensajeAgrupable } from '../src/agrupador';
 import { crearBaseSqlite } from './ayudas';
 
 afterEach(() => vi.restoreAllMocks());
@@ -134,5 +134,22 @@ describe('limpiarPendientes', () => {
     }
     await limpiarPendientes(db, ahora);
     expect(db.sql('SELECT wamid FROM mensajes_pendientes')).toEqual([{ wamid: 'reciente' }]);
+  });
+});
+
+describe('mensajes huérfanos', () => {
+  it('un mensaje que quedó a medias hace rato no se mezcla con lo que el cliente escribe después', async () => {
+    const db = crearBaseSqlite();
+    await anotarMensaje(db, msg('w.viejo', 'quiero 5 de 20'), 1000); // su proceso se interrumpió: nunca se reclamó
+    const propio = await anotarMensaje(db, msg('w.nuevo', 'hola, tienen de 12 litros?'), 1600); // diez minutos después
+    expect(await reclamarGrupo(db, msg('w.nuevo', 'hola, tienen de 12 litros?'), propio as number, 1607)).toEqual(['hola, tienen de 12 litros?']);
+    expect(db.sql('SELECT * FROM mensajes_pendientes')).toEqual([]); // el huérfano también se borra
+  });
+
+  it('los que llegaron dentro de la ventana de espera sí se juntan', async () => {
+    const db = crearBaseSqlite();
+    await anotarMensaje(db, msg('w.1', '2 bidones'), 1000);
+    const propio = await anotarMensaje(db, msg('w.2', 'de 20'), 1004);
+    expect(await reclamarGrupo(db, msg('w.2', 'de 20'), propio as number, 1011)).toEqual(['2 bidones', 'de 20']);
   });
 });

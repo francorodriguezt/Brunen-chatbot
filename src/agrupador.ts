@@ -19,6 +19,12 @@ import type { BaseDatos } from './almacen';
 /** Cuánto se espera a que llegue otro mensaje. PENDIENTE: ajustar con mensajes reales. */
 export const ESPERA_POR_DEFECTO_MS = 7000;
 const VIGENCIA_PENDIENTES_SEGUNDOS = 3600;
+/**
+ * Un mensaje anotado hace más que esto ya no es "seguido" del que llega ahora: quedó huérfano porque su proceso se
+ * interrumpió. No se mezcla con lo nuevo (el cliente recibiría una respuesta a algo que escribió hace rato); el vigía ya
+ * avisa de ese mensaje a una persona.
+ */
+const VENTANA_DE_GRUPO_SEGUNDOS = 120;
 
 export interface MensajeAgrupable {
   wamid: string;
@@ -57,15 +63,20 @@ export async function anotarMensaje(db: BaseDatos, mensaje: MensajeAgrupable, ah
 
 /**
  * Paso 2, después de esperar: si este mensaje sigue siendo el último de su número, se lleva todo el grupo (en el
- * orden en que llegó); si llegó uno más nuevo, o ya lo procesó otro, devuelve null.
+ * orden en que llegó); si llegó uno más nuevo, o ya lo procesó otro, devuelve null. Los huérfanos se borran sin juntarlos.
  */
-export async function reclamarGrupo(db: BaseDatos, mensaje: MensajeAgrupable, propio: number): Promise<string[] | null> {
+export async function reclamarGrupo(
+  db: BaseDatos,
+  mensaje: MensajeAgrupable,
+  propio: number,
+  ahoraSegundos: number = Math.floor(Date.now() / 1000),
+): Promise<string[] | null> {
   const ultimo = primeraFila(await db.prepare('SELECT MAX(id) AS ultimo FROM mensajes_pendientes WHERE telefono = ?1').bind(mensaje.telefono).run())?.ultimo;
   if (ultimo !== propio) return null; // llegó uno más nuevo (o ya se procesó): que lo haga el último
 
   const filas = (await db
-    .prepare('SELECT texto FROM mensajes_pendientes WHERE telefono = ?1 AND id <= ?2 ORDER BY id')
-    .bind(mensaje.telefono, propio)
+    .prepare('SELECT texto FROM mensajes_pendientes WHERE telefono = ?1 AND id <= ?2 AND recibido_en >= ?3 ORDER BY id')
+    .bind(mensaje.telefono, propio, ahoraSegundos - VENTANA_DE_GRUPO_SEGUNDOS)
     .run()).results as Array<{ texto: string }> | undefined;
   await db.prepare('DELETE FROM mensajes_pendientes WHERE telefono = ?1 AND id <= ?2').bind(mensaje.telefono, propio).run();
   if (!filas) return [mensaje.texto]; // la base no devolvió filas: se atiende este solo
@@ -82,7 +93,7 @@ export async function agruparMensaje(db: BaseDatos, mensaje: MensajeAgrupable, o
     const propio = await anotarMensaje(db, mensaje, opciones.ahoraSegundos);
     if (propio === null) return null;
     await (opciones.esperar ?? dormir)(opciones.esperaMs ?? ESPERA_POR_DEFECTO_MS);
-    return await reclamarGrupo(db, mensaje, propio);
+    return await reclamarGrupo(db, mensaje, propio, opciones.ahoraSegundos);
   } catch (error) {
     console.error('No se pudieron agrupar los mensajes; se atiende este solo:', error instanceof Error ? error.message : error);
     return [mensaje.texto];
