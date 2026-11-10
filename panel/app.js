@@ -1,5 +1,5 @@
 /**
- * Pantalla del panel (P1: bandeja de pedidos y avisos). JavaScript sin dependencias ni compilación: se sirve tal
+ * Pantalla del panel: bandeja de pedidos y avisos, pedidos anotados a mano y reparto del día. JavaScript sin dependencias ni compilación: se sirve tal
  * cual desde `panel/`. Todo lo que viene de la API (nombres, direcciones, lo que escribió el cliente) se muestra con
  * `textContent`, nunca como HTML, y la política de seguridad de `_headers` no deja correr scripts ni estilos en línea.
  */
@@ -11,6 +11,9 @@ const INTERVALO_OCULTO_MS = 20_000;
 const REFRESCO_FORZADO_MS = 60_000;
 const ZONA = 'America/Santiago';
 const MAX_LINEAS = 5; // el mismo tope que impone el servidor
+
+const VISTAS = ['pedidos', 'reparto', 'avisos'];
+const ESPERA_AL_BUSCAR_MS = 350; // se busca cuando la persona deja de escribir, no en cada letra
 
 const GRUPOS = [
   ['por_confirmar', 'Por confirmar'],
@@ -52,6 +55,7 @@ const TIPOS_BIDON = [
   ['12L', '12 L'],
   ['20L', '20 L'],
 ];
+const TAMANOS_DE_MAYOR_A_MENOR = [...TIPOS_BIDON].reverse(); // para el reparto: primero los de 20 L
 const NOMBRE_BIDON = Object.fromEntries(TIPOS_BIDON.map(([valor, texto]) => [valor, `Bidón ${texto}`]));
 
 const MENSAJE_DE_CAMBIO = {
@@ -66,9 +70,12 @@ const estado = {
   vista: 'pedidos',
   grupo: 'por_confirmar',
   fecha: '',
+  buscar: '',
+  fechaReparto: '',
   estadoDeAvisos: 'abierto',
   resumen: null,
-  firmas: { pedidos: '', avisos: '' },
+  opciones: { comunas: [], fechaSugerida: '' },
+  firmas: { pedidos: '', avisos: '', reparto: '' },
   turnoDeCarga: 0,
   ultimaCarga: 0,
   sondeando: false,
@@ -79,6 +86,7 @@ const estado = {
 const historiales = new Map(); // id de pedido -> historial ya cargado
 const historialesAbiertos = new Set(); // los que la persona dejó desplegados
 let pedidoEnEdicion = null;
+let anotandoNuevo = false; // el mismo formulario sirve para cambiar un pedido y para anotar uno nuevo
 
 const $ = (id) => document.getElementById(id);
 
@@ -124,6 +132,14 @@ function cuando(segundos) {
   if (dia === formatoDiaClave.format(new Date())) return `hoy ${hora}`;
   if (dia === formatoDiaClave.format(new Date(Date.now() - 86_400_000))) return `ayer ${hora}`;
   return `${formatoDiaCorto.format(fecha).replace('.', '')} ${hora}`;
+}
+
+const hoyEnSantiago = () => formatoDiaClave.format(new Date());
+
+/** "2026-10-31" + 1 -> "2026-11-01". */
+function sumarDias(iso, dias) {
+  const [anio, mes, dia] = String(iso).split('-').map(Number);
+  return new Date(Date.UTC(anio, mes - 1, dia + dias)).toISOString().slice(0, 10);
 }
 
 const soloDigitos = (telefono) => String(telefono ?? '').replace(/\D/g, '');
@@ -350,7 +366,8 @@ function tarjetaDePedido(pedido) {
 function pintarPedidos(pedidos) {
   const lista = $('lista-pedidos');
   if (pedidos.length === 0) {
-    lista.replaceChildren(h('p', { clase: 'vacio' }, estado.fecha ? 'No hay pedidos para ese día.' : VACIO_DE_PEDIDOS[estado.grupo]));
+    const vacio = estado.buscar ? 'No encontré pedidos con ese texto.' : estado.fecha ? 'No hay pedidos para ese día.' : VACIO_DE_PEDIDOS[estado.grupo];
+    lista.replaceChildren(h('p', { clase: 'vacio' }, vacio));
     return;
   }
   lista.replaceChildren(...pedidos.map(tarjetaDePedido));
@@ -360,23 +377,27 @@ async function cargarPedidos() {
   const turno = ++estado.turnoDeCarga;
   const consulta = new URLSearchParams({ grupo: estado.grupo });
   if (estado.fecha) consulta.set('fecha', estado.fecha);
-  const { pedidos } = await api(`/api/pedidos?${consulta}`);
+  // Lo que se busca (un nombre, un teléfono) va en el cuerpo, no en la dirección: las direcciones quedan en los registros.
+  const { pedidos } = estado.buscar ? await api('/api/pedidos/buscar', { texto: estado.buscar }) : await api(`/api/pedidos?${consulta}`);
   if (turno !== estado.turnoDeCarga) return; // llegó otra carga más nueva mientras esta esperaba
   // Si no cambió nada no se vuelve a dibujar: así no se pierde el foco ni lo que la persona dejó desplegado.
-  const firma = JSON.stringify([estado.grupo, estado.fecha, pedidos]);
+  const firma = JSON.stringify([estado.grupo, estado.fecha, estado.buscar, pedidos]);
   if (firma === estado.firmas.pedidos) return;
   estado.firmas.pedidos = firma;
   pintarPedidos(pedidos);
 }
 
 function bloquearTarjeta(idDePedido, bloqueada) {
-  for (const b of document.querySelectorAll(`[id="pedido-${idDePedido}"] .acciones button`)) b.disabled = bloqueada;
+  for (const b of document.querySelectorAll(`[id="pedido-${idDePedido}"] .acciones button, [id="parada-${idDePedido}"] .acciones button`)) b.disabled = bloqueada;
 }
+
+const versionDe = (pedido) => (Number.isInteger(pedido.actualizadoEn) ? { actualizadoEn: pedido.actualizadoEn } : {});
 
 async function cambiarEstado(pedido, nuevo, motivo = '') {
   bloquearTarjeta(pedido.id, true); // para que un segundo toque no mande el mismo cambio dos veces
   try {
-    await api(`/api/pedidos/${encodeURIComponent(pedido.id)}/estado`, motivo ? { estado: nuevo, motivo } : { estado: nuevo });
+    // `actualizadoEn` es la versión del pedido que se estaba viendo: si otra persona lo cambió, el servidor rechaza el cambio.
+    await api(`/api/pedidos/${encodeURIComponent(pedido.id)}/estado`, { estado: nuevo, ...(motivo && { motivo }), ...versionDe(pedido) });
     avisar(MENSAJE_DE_CAMBIO[nuevo] ?? 'Listo.');
   } catch (falla) {
     bloquearTarjeta(pedido.id, false); // si la lista no cambia, la tarjeta no se vuelve a dibujar y los botones quedarían apagados
@@ -474,23 +495,70 @@ function mostrarErrorDelEditor(texto) {
   $('error-editar').hidden = texto === '';
 }
 
+/** Los campos que solo tiene un pedido nuevo (teléfono, nombre, "dejarlo confirmado") se esconden al cambiar uno que ya existe. */
+function prepararFormulario(esNuevo, titulo, textoDelBoton) {
+  anotandoNuevo = esNuevo;
+  for (const campo of document.querySelectorAll('#dialogo-editar .solo-nuevo')) campo.hidden = !esNuevo;
+  $('cliente-reconocido').hidden = true;
+  $('titulo-editar').textContent = titulo;
+  $('guardar-editar').textContent = textoDelBoton;
+  mostrarErrorDelEditor('');
+}
+
 function abrirEditor(pedido) {
   pedidoEnEdicion = pedido;
+  prepararFormulario(false, `Cambiar pedido ${pedido.id}`, 'Guardar');
   const formulario = $('formulario-editar');
-  $('titulo-editar').textContent = `Cambiar pedido ${pedido.id}`;
   formulario.elements.fecha.value = pedido.fechaConfirmada ?? pedido.fechaEntrega;
   formulario.elements.comuna.value = pedido.comuna;
   formulario.elements.direccion.value = pedido.direccion;
   formulario.elements.notas.value = pedido.notasRepartidor;
+  formulario.elements.envases.value = pedido.envasesARetirar;
   $('editar-lineas').replaceChildren(...pedido.lineas.map(filaDeLinea));
   actualizarTotalDelEditor();
-  mostrarErrorDelEditor('');
   $('dialogo-editar').showModal();
 }
 
+/** Para los pedidos que no llegan por el bot: una llamada, un audio, una empresa con plan mensual. */
+function abrirNuevoPedido() {
+  pedidoEnEdicion = null;
+  prepararFormulario(true, 'Nuevo pedido', 'Anotar pedido');
+  const formulario = $('formulario-editar');
+  formulario.reset();
+  // La fecha sugerida ya aplica el corte de las 9:00 y salta el domingo; los feriados los revisa la persona.
+  formulario.elements.fecha.value = estado.opciones.fechaSugerida || hoyEnSantiago();
+  $('editar-lineas').replaceChildren(filaDeLinea());
+  actualizarTotalDelEditor();
+  $('dialogo-editar').showModal();
+  formulario.elements.telefono.focus();
+}
+
+/** Si ese teléfono ya pidió antes, se completan su nombre y su dirección para no escribirlos de nuevo. Es solo una ayuda. */
+async function reconocerCliente() {
+  if (!anotandoNuevo) return;
+  const formulario = $('formulario-editar');
+  const pista = $('cliente-reconocido');
+  pista.hidden = true;
+  const telefono = formulario.elements.telefono.value.trim();
+  if (soloDigitos(telefono).length < 8) return;
+  try {
+    const { datos } = await api('/api/clientes/anterior', { telefono });
+    if (!datos || !anotandoNuevo || formulario.elements.telefono.value.trim() !== telefono) return;
+    const completados = [['nombre', datos.nombre], ['direccion', datos.direccion], ['comuna', datos.comuna], ['notas', datos.notasRepartidor]].filter(
+      ([campo, valor]) => valor && formulario.elements[campo].value.trim() === '',
+    );
+    for (const [campo, valor] of completados) formulario.elements[campo].value = valor;
+    pista.textContent = completados.length > 0 ? `Ya pidió antes: completé sus datos con los del pedido ${datos.idPedido}. Revísalos.` : `Ya pidió antes (pedido ${datos.idPedido}).`;
+    pista.hidden = false;
+  } catch {
+    /* sin la ayuda, la persona escribe los datos */
+  }
+}
+
 /** Devuelve el problema en palabras, o '' si está bien. El servidor valida lo mismo: esto solo ahorra una ida y vuelta. */
-function problemaDeLaEdicion(fecha, lineas) {
+function problemaDeLaEdicion(fecha, lineas, envases) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return 'Elige la fecha de entrega.';
+  if (!Number.isInteger(envases) || envases < 0 || envases > 999) return 'Los envases por retirar deben ser un número entero (0 si no hay).';
   if (lineas.length === 0) return 'El pedido necesita al menos un producto.';
   for (const linea of lineas) {
     if (!Number.isInteger(linea.cantidad) || linea.cantidad < 1 || linea.cantidad > 999) return 'La cantidad debe ser un número entero entre 1 y 999.';
@@ -509,19 +577,48 @@ function cambiosDeLaEdicion(pedido, formulario, lineas) {
     const valor = formulario.elements[campo].value.trim();
     if (valor !== pedido[clave]) cambios[clave] = valor;
   }
+  const envases = Number(formulario.elements.envases.value || 0);
+  if (envases !== pedido.envasesARetirar) cambios.envasesARetirar = envases;
   const originales = pedido.lineas.map(({ tipo, cantidad, precioUnitario }) => ({ tipo, cantidad, precioUnitario }));
   if (JSON.stringify(lineas) !== JSON.stringify(originales)) cambios.lineas = lineas;
   return cambios;
 }
 
+async function guardarNuevoPedido(formulario, lineas) {
+  const campo = (nombre) => formulario.elements[nombre].value.trim();
+  const cuerpo = {
+    telefono: campo('telefono'),
+    nombre: campo('nombre'),
+    comuna: campo('comuna'),
+    direccion: campo('direccion'),
+    fecha: formulario.elements.fecha.value,
+    lineas,
+    notasRepartidor: campo('notas'),
+    envasesARetirar: Number(formulario.elements.envases.value || 0),
+    confirmar: formulario.elements.confirmar.checked,
+  };
+  $('guardar-editar').disabled = true;
+  try {
+    const { pedido } = await api('/api/pedidos', cuerpo);
+    $('dialogo-editar').close();
+    avisar(pedido.estado === 'Confirmado' ? `Pedido ${pedido.id} anotado y confirmado.` : `Pedido ${pedido.id} anotado: quedó por confirmar.`);
+  } catch (falla) {
+    mostrarErrorDelEditor(falla.message);
+  } finally {
+    $('guardar-editar').disabled = false;
+  }
+  await refrescar();
+}
+
 async function guardarEdicion(evento) {
   evento.preventDefault();
-  const pedido = pedidoEnEdicion;
-  if (!pedido) return;
   const formulario = $('formulario-editar');
   const lineas = leerLineasDelEditor();
-  const problema = problemaDeLaEdicion(formulario.elements.fecha.value, lineas);
+  const problema = problemaDeLaEdicion(formulario.elements.fecha.value, lineas, Number(formulario.elements.envases.value || 0));
   if (problema) return mostrarErrorDelEditor(problema);
+  if (anotandoNuevo) return guardarNuevoPedido(formulario, lineas);
+  const pedido = pedidoEnEdicion;
+  if (!pedido) return;
   const cambios = cambiosDeLaEdicion(pedido, formulario, lineas);
   if (Object.keys(cambios).length === 0) {
     $('dialogo-editar').close();
@@ -530,7 +627,7 @@ async function guardarEdicion(evento) {
 
   $('guardar-editar').disabled = true;
   try {
-    const { pedido: guardado } = await api(`/api/pedidos/${encodeURIComponent(pedido.id)}/editar`, cambios);
+    const { pedido: guardado } = await api(`/api/pedidos/${encodeURIComponent(pedido.id)}/editar`, { ...cambios, ...versionDe(pedido) });
     $('dialogo-editar').close();
     const yaSePuedeConfirmar = pedido.total === null && guardado.total !== null && (guardado.estado === 'Pendiente_Confirmacion' || guardado.estado === 'Fuera_de_zona');
     avisar(yaSePuedeConfirmar ? 'Guardado. Ya puedes confirmar el pedido.' : 'Cambios guardados.');
@@ -541,6 +638,129 @@ async function guardarEdicion(evento) {
     $('guardar-editar').disabled = false;
   }
   await refrescar();
+}
+
+// ---- Reparto del día ----
+
+/** Copia al portapapeles; si el navegador no deja, muestra el texto ya seleccionado para copiarlo a mano. */
+async function copiar(texto, mensaje) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    avisar(mensaje);
+  } catch {
+    $('texto-copiar').value = texto;
+    $('dialogo-copiar').showModal();
+    $('texto-copiar').select();
+  }
+}
+
+function tarjetaDeParada(parada) {
+  const insignia = ESTADOS[parada.estado] ?? { texto: parada.estado, color: '' };
+  const pedido = { id: parada.idPedido, nombre: parada.nombre, telefono: parada.telefono, actualizadoEn: parada.actualizadoEn };
+  const entregado = boton('Entregado', 'boton boton-chico boton-principal', () => entregarPedido(pedido));
+  const acciones = parada.estado === 'Confirmado' ? [boton('En ruta', 'boton boton-chico', () => cambiarEstado(pedido, 'En_Ruta')), entregado] : parada.estado === 'En_Ruta' ? [entregado] : [];
+  const bidones = TAMANOS_DE_MAYOR_A_MENOR.filter(([tipo]) => parada.bidones[tipo] > 0).map(([tipo, texto]) => `${parada.bidones[tipo]} × ${texto}`).join(', ');
+  const dato = (nombre, valor) => h('span', {}, h('b', {}, `${nombre}: `), valor);
+  return h(
+    'article',
+    { clase: `tarjeta parada${parada.estado === 'Entregado' ? ' hecha' : ''}`, id: `parada-${parada.idPedido}` },
+    h(
+      'div',
+      { clase: 'tarjeta-cabecera' },
+      h('span', { clase: 'orden' }, String(parada.orden)),
+      h('strong', { clase: 'direccion' }, [parada.direccion, parada.comuna].filter(Boolean).join(', ') || 'Sin dirección'),
+      h('span', { clase: `insignia ${insignia.color}` }, insignia.texto),
+    ),
+    h('div', { clase: 'cliente' }, parada.nombre ? h('span', {}, parada.nombre) : null, enlaceWhatsApp(parada.telefono)),
+    h(
+      'div',
+      { clase: 'datos' },
+      dato('Deja', bidones || 'sin bidones'),
+      dato('Cobra', parada.total === null ? h('span', { clase: 'falta' }, 'sin precio') : pesos.format(parada.total)),
+      parada.envasesARetirar > 0 ? dato('Retira', `${parada.envasesARetirar} ${parada.envasesARetirar === 1 ? 'envase' : 'envases'}`) : null,
+      parada.notas ? dato('Notas', parada.notas) : null,
+    ),
+    h('div', { clase: 'acciones' }, acciones, boton('Ver pedido', 'boton boton-chico', () => verPedido(parada.idPedido))),
+  );
+}
+
+function pintarReparto({ reparto, texto, tsv }) {
+  const resumen = $('resumen-reparto');
+  const lista = $('lista-reparto');
+  const titulo = h('h2', { clase: 'titulo-reparto' }, `Reparto del ${fechaLarga(reparto.fecha)}`);
+  const sinConfirmar =
+    reparto.sinConfirmar > 0
+      ? h(
+          'p',
+          { clase: 'revision' },
+          reparto.sinConfirmar === 1 ? 'Hay 1 pedido de este día sin confirmar: todavía no está en la lista. ' : `Hay ${reparto.sinConfirmar} pedidos de este día sin confirmar: todavía no están en la lista. `,
+          boton('Verlos', 'boton boton-chico', () => verPorConfirmarDelDia(reparto.fecha)),
+        )
+      : null;
+  resumen.hidden = false;
+
+  if (reparto.paradas.length === 0) {
+    resumen.replaceChildren(titulo, sinConfirmar ?? '');
+    lista.replaceChildren(h('p', { clase: 'vacio' }, 'No hay entregas confirmadas para este día.'));
+    return;
+  }
+  const cifra = (numero, palabra) => h('li', {}, h('b', {}, String(numero)), ` ${palabra}`);
+  resumen.replaceChildren(
+    titulo,
+    h(
+      'ul',
+      { clase: 'cifras' },
+      cifra(reparto.paradas.length, reparto.paradas.length === 1 ? 'parada' : 'paradas'),
+      ...TAMANOS_DE_MAYOR_A_MENOR.filter(([tipo]) => reparto.carga[tipo] > 0).map(([tipo, nombre]) => cifra(reparto.carga[tipo], `de ${nombre}`)),
+      reparto.envasesARetirar > 0 ? cifra(reparto.envasesARetirar, reparto.envasesARetirar === 1 ? 'envase por retirar' : 'envases por retirar') : null,
+      reparto.entregadas > 0 ? cifra(reparto.entregadas, reparto.entregadas === 1 ? 'entregada' : 'entregadas') : null,
+    ),
+    sinConfirmar ?? '',
+    h(
+      'div',
+      { clase: 'acciones' },
+      boton('Copiar lista', 'boton boton-principal', () => copiar(texto, 'Lista copiada: pégala en WhatsApp.')),
+      boton('Copiar para Excel', 'boton', () => copiar(tsv, 'Copiado: pégalo en Excel o en la app de rutas.')),
+      h('a', { clase: 'boton', href: `/api/reparto.csv?fecha=${encodeURIComponent(reparto.fecha)}`, download: `reparto-${reparto.fecha}.csv` }, 'Descargar archivo'),
+    ),
+  );
+  lista.replaceChildren(...reparto.paradas.map(tarjetaDeParada));
+}
+
+function pintarDiaDelReparto() {
+  const hoy = hoyEnSantiago();
+  $('reparto-hoy').setAttribute('aria-pressed', String(estado.fechaReparto === hoy));
+  $('reparto-manana').setAttribute('aria-pressed', String(estado.fechaReparto === sumarDias(hoy, 1)));
+  $('fecha-reparto').value = estado.fechaReparto;
+}
+
+function elegirDiaDelReparto(fecha) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return;
+  estado.fechaReparto = fecha;
+  pintarDiaDelReparto();
+  void recargarVistaActual();
+}
+
+async function cargarReparto() {
+  estado.fechaReparto ||= hoyEnSantiago();
+  pintarDiaDelReparto();
+  const turno = ++estado.turnoDeCarga;
+  const datos = await api(`/api/reparto?fecha=${encodeURIComponent(estado.fechaReparto)}`);
+  if (turno !== estado.turnoDeCarga) return;
+  const firma = JSON.stringify(datos);
+  if (firma === estado.firmas.reparto) return;
+  estado.firmas.reparto = firma;
+  pintarReparto(datos);
+}
+
+/** Desde el reparto: los pedidos de ese día que todavía nadie confirmó. */
+async function verPorConfirmarDelDia(fecha) {
+  estado.grupo = 'por_confirmar';
+  estado.fecha = fecha;
+  limpiarBusqueda();
+  $('filtro-fecha').value = fecha;
+  pintarFiltros();
+  await activarVista('pedidos');
 }
 
 // ---- Avisos ----
@@ -595,6 +815,7 @@ async function resolverAviso(aviso, elementoBoton) {
 async function verPedido(idDePedido) {
   estado.grupo = 'todos';
   estado.fecha = '';
+  limpiarBusqueda();
   $('filtro-fecha').value = '';
   pintarFiltros();
   await activarVista('pedidos');
@@ -666,9 +887,25 @@ function construirFiltros() {
   pintarFiltros();
 }
 
+function limpiarBusqueda() {
+  estado.buscar = '';
+  $('buscar-pedidos').value = '';
+}
+
+let esperaDelBuscador;
+function alEscribirEnElBuscador(evento) {
+  const texto = evento.currentTarget.value.trim();
+  clearTimeout(esperaDelBuscador);
+  esperaDelBuscador = setTimeout(() => {
+    // Con una sola letra no se busca: se vuelve a la lista normal.
+    estado.buscar = texto.length >= 2 ? texto : '';
+    void recargarVistaActual();
+  }, ESPERA_AL_BUSCAR_MS);
+}
+
 function activarVista(nombre) {
   estado.vista = nombre;
-  for (const vista of ['pedidos', 'avisos']) {
+  for (const vista of VISTAS) {
     const activa = vista === nombre;
     $(`pestana-${vista}`).setAttribute('aria-selected', String(activa));
     $(`pestana-${vista}`).tabIndex = activa ? 0 : -1;
@@ -679,7 +916,7 @@ function activarVista(nombre) {
 
 async function recargarVistaActual() {
   try {
-    await (estado.vista === 'pedidos' ? cargarPedidos() : cargarAvisos());
+    await { pedidos: cargarPedidos, reparto: cargarReparto, avisos: cargarAvisos }[estado.vista]();
     estado.ultimaCarga = Date.now();
   } catch (falla) {
     avisar(falla.message, true);
@@ -797,21 +1034,40 @@ function mostrarBotonDeAvisos() {
 
 // ---- Arranque ----
 
+/** Las comunas que se atienden (para escribirlas siempre igual) y la fecha de entrega sugerida para un pedido nuevo. */
+async function cargarOpciones() {
+  try {
+    const { comunas, fechaSugerida } = await api('/api/opciones');
+    estado.opciones = { comunas: comunas ?? [], fechaSugerida: fechaSugerida ?? '' };
+    $('lista-comunas').replaceChildren(...estado.opciones.comunas.map((comuna) => h('option', { value: comuna })));
+  } catch {
+    /* sin opciones el formulario funciona igual: la comuna y la fecha se escriben a mano */
+  }
+}
+
 function iniciar() {
   construirFiltros();
   mostrarBotonDeAvisos();
 
-  for (const pestana of document.querySelectorAll('[role=tab]')) {
-    const vista = pestana.id === 'pestana-pedidos' ? 'pedidos' : 'avisos';
+  VISTAS.forEach((vista, i) => {
+    const pestana = $(`pestana-${vista}`);
     pestana.addEventListener('click', () => void activarVista(vista));
     pestana.addEventListener('keydown', (evento) => {
       if (evento.key !== 'ArrowLeft' && evento.key !== 'ArrowRight') return;
       evento.preventDefault();
-      const otra = vista === 'pedidos' ? 'avisos' : 'pedidos';
+      const otra = VISTAS[(i + (evento.key === 'ArrowRight' ? 1 : VISTAS.length - 1)) % VISTAS.length];
       void activarVista(otra);
       $(`pestana-${otra}`).focus();
     });
-  }
+  });
+
+  $('nuevo-pedido').addEventListener('click', abrirNuevoPedido);
+  $('buscar-pedidos').addEventListener('input', alEscribirEnElBuscador);
+  $('formulario-editar').elements.telefono.addEventListener('change', () => void reconocerCliente());
+  $('reparto-hoy').addEventListener('click', () => elegirDiaDelReparto(hoyEnSantiago()));
+  $('reparto-manana').addEventListener('click', () => elegirDiaDelReparto(sumarDias(hoyEnSantiago(), 1)));
+  $('fecha-reparto').addEventListener('change', (evento) => elegirDiaDelReparto(evento.currentTarget.value));
+  void cargarOpciones();
 
   $('activar-avisos').addEventListener('click', () => void activarAvisosDelNavegador());
   $('formulario-editar').addEventListener('submit', (evento) => void guardarEdicion(evento));
@@ -823,6 +1079,7 @@ function iniciar() {
   $('editar-lineas').addEventListener('input', actualizarTotalDelEditor);
   $('dialogo-editar').addEventListener('close', () => {
     pedidoEnEdicion = null;
+    anotandoNuevo = false;
   });
 
   document.addEventListener('pointerdown', prepararAudio);

@@ -514,3 +514,209 @@ describe('datos de un cliente por sus pedidos anteriores (D40)', () => {
     expect(await r.datosDelUltimoPedido('56911111111')).toBeNull();
   });
 });
+
+describe('los pedidos de un día, para el reparto', () => {
+  it('trae los de ese día por su fecha confirmada o, si no la hay, por la propuesta, sin los cancelados', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ idPedido: 'P261028-AAAAA', fechaEntrega: '2026-10-29' }), AHORA);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-BBBBB', fechaEntrega: '2026-10-30' }), AHORA);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-CCCCC', fechaEntrega: '2026-10-28' }), AHORA);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-DDDDD', fechaEntrega: '2026-10-29' }), AHORA);
+    await r.cambiarEstado('P261028-CCCCC', 'Confirmado', OPERADORA, AHORA + 1, { fechaConfirmada: '2026-10-29' }); // se movió a ese día
+    await r.cambiarEstado('P261028-DDDDD', 'Cancelado', OPERADORA, AHORA + 1);
+    expect((await r.pedidosDelDia('2026-10-29')).map((p) => p.id).sort()).toEqual(['P261028-AAAAA', 'P261028-CCCCC']);
+  });
+
+  it('un día sin pedidos da una lista vacía', async () => {
+    expect(await repo().r.pedidosDelDia('2026-10-29')).toEqual([]);
+  });
+});
+
+describe('anotar un pedido a mano desde el panel', () => {
+  const MANUAL = {
+    telefono: '56922222222',
+    nombre: 'Luz Demo',
+    comuna: 'Macul',
+    direccion: 'Avenida Ficticia 987',
+    fecha: '2026-10-30',
+    lineas: [{ tipo: '20L' as const, cantidad: 2, precioUnitario: 3300 }],
+    notasRepartidor: 'Dejar en conserjería',
+    envasesARetirar: 1,
+    confirmar: false,
+  };
+
+  it('queda por confirmar, con su total calculado, y el historial dice quién lo anotó', async () => {
+    const { r } = repo();
+    const res = await r.crearPedido(MANUAL, OPERADORA, AHORA, '2026-10-28');
+    expect(res).toMatchObject({
+      ok: true,
+      valor: {
+        telefono: '56922222222', nombre: 'Luz Demo', comuna: 'Macul', direccion: 'Avenida Ficticia 987', fechaEntrega: '2026-10-30', fechaConfirmada: null,
+        estado: 'Pendiente_Confirmacion', total: 6600, notasRepartidor: 'Dejar en conserjería', envasesARetirar: 1, creadoEn: AHORA,
+        lineas: [{ tipo: '20L', cantidad: 2, precioUnitario: 3300, subtotal: 6600 }],
+      },
+    });
+    const id = res.ok ? res.valor.id : '';
+    expect(id).toMatch(/^P261028-[0-9A-Z]{5}$/);
+    expect(await r.historialDe(id)).toEqual([{ en: AHORA, quien: OPERADORA, accion: 'creado', detalle: 'a mano en el panel' }]);
+  });
+
+  it('las observaciones dicen que se anotó a mano, para distinguirlo de los que tomó el bot', async () => {
+    const res = await repo().r.crearPedido(MANUAL, OPERADORA, AHORA, '2026-10-28');
+    expect(res.ok && res.valor.observaciones).toBe('Anotado a mano en el panel.');
+  });
+
+  it('con "confirmar" queda confirmado de una vez, por quien lo anotó y para la fecha indicada', async () => {
+    const res = await repo().r.crearPedido({ ...MANUAL, confirmar: true }, OPERADORA, AHORA, '2026-10-28');
+    expect(res).toMatchObject({ ok: true, valor: { estado: 'Confirmado', confirmadoPor: OPERADORA, fechaConfirmada: '2026-10-30' } });
+  });
+
+  it('con "confirmar" pero sin precio queda por confirmar: nunca se confirma sin precio', async () => {
+    const res = await repo().r.crearPedido({ ...MANUAL, confirmar: true, lineas: [{ tipo: '12L', cantidad: 2, precioUnitario: null }] }, OPERADORA, AHORA, '2026-10-28');
+    expect(res).toMatchObject({ ok: true, valor: { estado: 'Pendiente_Confirmacion', total: null } });
+  });
+
+  it('se puede anotar sin teléfono ni dirección (se completan después con "Cambiar")', async () => {
+    const res = await repo().r.crearPedido({ ...MANUAL, telefono: '', direccion: '', comuna: '', nombre: 'Empresa Ejemplo' }, OPERADORA, AHORA, '2026-10-28');
+    expect(res).toMatchObject({ ok: true, valor: { telefono: '', direccion: '' } });
+  });
+
+  it.each([
+    ['sin productos', { lineas: [] }, 'datos_invalidos'],
+    ['con más de 5 líneas', { lineas: Array.from({ length: 6 }, () => ({ tipo: '20L' as const, cantidad: 1, precioUnitario: 4500 })) }, 'datos_invalidos'],
+    ['con una cantidad de cero', { lineas: [{ tipo: '20L' as const, cantidad: 0, precioUnitario: 4500 }] }, 'datos_invalidos'],
+    ['con un precio negativo', { lineas: [{ tipo: '20L' as const, cantidad: 1, precioUnitario: -1 }] }, 'datos_invalidos'],
+    ['con un tamaño que no existe', { lineas: [{ tipo: '15L' as never, cantidad: 1, precioUnitario: 4500 }] }, 'datos_invalidos'],
+    ['con un teléfono que no son solo dígitos', { telefono: '+56 9 2222' }, 'datos_invalidos'],
+    ['con envases negativos', { envasesARetirar: -1 }, 'datos_invalidos'],
+    ['con envases que no son un número entero', { envasesARetirar: 1.5 }, 'datos_invalidos'],
+    ['con una fecha que no existe', { fecha: '2026-02-30' }, 'fecha_invalida'],
+    ['con una fecha mal escrita', { fecha: '30-10-2026' }, 'fecha_invalida'],
+  ])('rechaza un pedido %s y no guarda nada', async (_nombre, cambios, error) => {
+    const { r, db } = repo();
+    expect(await r.crearPedido({ ...MANUAL, ...cambios }, OPERADORA, AHORA, '2026-10-28')).toEqual({ ok: false, error });
+    expect(db.sql('SELECT COUNT(*) AS n FROM pedidos')).toEqual([{ n: 0 }]);
+  });
+
+  it('recorta los textos demasiado largos en vez de fallar', async () => {
+    const res = await repo().r.crearPedido({ ...MANUAL, nombre: 'N'.repeat(300), direccion: 'D'.repeat(900), notasRepartidor: 'X'.repeat(2000) }, OPERADORA, AHORA, '2026-10-28');
+    expect(res.ok && [res.valor.nombre.length, res.valor.direccion.length, res.valor.notasRepartidor.length]).toEqual([80, 200, 500]);
+  });
+
+  it('si el identificador sorteado ya existe, sortea otro', async () => {
+    const db = crearBaseSqlite();
+    const sorteos = [...Array<number>(5).fill(0), ...Array<number>(5).fill(0), ...Array<number>(5).fill(0.5)]; // "00000" dos veces y después "IIIII"
+    const r = new RepositorioD1(db, () => sorteos.shift() ?? 0.99);
+    const primero = await r.crearPedido(MANUAL, OPERADORA, AHORA, '2026-10-28');
+    const segundo = await r.crearPedido(MANUAL, OPERADORA, AHORA, '2026-10-28');
+    expect([primero.ok && primero.valor.id, segundo.ok && segundo.valor.id]).toEqual(['P261028-00000', 'P261028-IIIII']);
+  });
+});
+
+describe('buscar pedidos', () => {
+  async function conTres() {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ idPedido: 'P261028-AAAAA', nombre: 'Ana Prueba', telefono: '56911111111', direccion: 'Calle Falsa 123' }), AHORA);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-BBBBB', nombre: 'Pedro Muestra', telefono: '56922222222', direccion: 'Avenida Ficticia 987' }), AHORA + 10);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-CCCCC', nombre: 'Ana María Ejemplo', telefono: '56933333333', direccion: 'Pasaje Inventado 45' }), AHORA + 20);
+    return r;
+  }
+  const idsDe = async (r: RepositorioD1, texto: string) => (await r.buscarPedidos(texto)).map((p) => p.id);
+
+  it('por parte del nombre, sin importar mayúsculas, del más nuevo al más antiguo', async () => {
+    expect(await idsDe(await conTres(), 'ana')).toEqual(['P261028-CCCCC', 'P261028-AAAAA']);
+  });
+
+  it('por parte del teléfono, aunque se escriba con espacios o con +', async () => {
+    const r = await conTres();
+    expect(await idsDe(r, '2222')).toEqual(['P261028-BBBBB']);
+    expect(await idsDe(r, '+56 9 3333')).toEqual(['P261028-CCCCC']);
+  });
+
+  it('por la dirección y por el número de pedido', async () => {
+    const r = await conTres();
+    expect(await idsDe(r, 'ficticia')).toEqual(['P261028-BBBBB']);
+    expect(await idsDe(r, 'P261028-AAA')).toEqual(['P261028-AAAAA']);
+  });
+
+  it('los comodines de SQL se buscan como texto: "%" no trae todo', async () => {
+    const r = await conTres();
+    expect(await idsDe(r, '%%')).toEqual([]);
+    expect(await idsDe(r, '__')).toEqual([]);
+  });
+
+  it('con menos de 2 caracteres no busca', async () => {
+    const r = await conTres();
+    expect(await idsDe(r, 'a')).toEqual([]);
+    expect(await idsDe(r, '   ')).toEqual([]);
+  });
+});
+
+describe('que dos personas no se pisen: la versión que cada una estaba viendo', () => {
+  it('cambiar el estado con la versión que se veía funciona', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA);
+    expect(await r.cambiarEstado('P261028-AAAAA', 'Confirmado', OPERADORA, AHORA + 60, { versionVista: AHORA })).toMatchObject({ ok: true });
+  });
+
+  it('si otra persona lo cambió después de que se cargó la pantalla, el cambio de estado se rechaza', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA);
+    await r.editarPedido('P261028-AAAAA', { direccion: 'Otra Calle 9' }, 'dueno@brunen.test', AHORA + 30);
+    expect(await r.cambiarEstado('P261028-AAAAA', 'Confirmado', OPERADORA, AHORA + 60, { versionVista: AHORA })).toEqual({ ok: false, error: 'conflicto' });
+    expect((await r.obtenerPedido('P261028-AAAAA'))?.estado).toBe('Pendiente_Confirmacion');
+  });
+
+  it('lo mismo al editar: no se guarda encima de un cambio que no se vio', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA);
+    await r.editarPedido('P261028-AAAAA', { direccion: 'Otra Calle 9' }, 'dueno@brunen.test', AHORA + 30);
+    expect(await r.editarPedido('P261028-AAAAA', { comuna: 'Macul' }, OPERADORA, AHORA + 60, AHORA)).toEqual({ ok: false, error: 'conflicto' });
+    expect(await r.obtenerPedido('P261028-AAAAA')).toMatchObject({ direccion: 'Otra Calle 9', comuna: 'Ñuñoa' });
+  });
+
+  it('dos cambios dentro del mismo segundo igual dejan versiones distintas', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA);
+    const uno = await r.editarPedido('P261028-AAAAA', { direccion: 'Calle Uno 1' }, OPERADORA, AHORA);
+    const dos = await r.editarPedido('P261028-AAAAA', { direccion: 'Calle Dos 2' }, OPERADORA, AHORA);
+    expect([uno.ok && uno.valor.actualizadoEn, dos.ok && dos.valor.actualizadoEn]).toEqual([AHORA + 1, AHORA + 2]);
+  });
+
+  it('cuando el bot completa los datos del cliente también cambia la versión', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ nombre: '', direccion: '', comuna: '' }), AHORA);
+    await r.completarDatos({ idPedido: 'P261028-AAAAA', nombre: 'Ana Torres', direccion: 'Av. Siempre Viva 742', comuna: 'Ñuñoa' }, AHORA);
+    expect((await r.obtenerPedido('P261028-AAAAA'))?.actualizadoEn).toBe(AHORA + 1);
+  });
+
+  it('sin versión (por ejemplo, una pantalla antigua todavía abierta) se mantiene la comprobación de siempre', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA);
+    await r.editarPedido('P261028-AAAAA', { direccion: 'Otra Calle 9' }, 'dueno@brunen.test', AHORA + 30);
+    expect(await r.cambiarEstado('P261028-AAAAA', 'Confirmado', OPERADORA, AHORA + 60)).toMatchObject({ ok: true });
+  });
+});
+
+describe('editar los envases por retirar', () => {
+  it('se pueden corregir, y el historial lo dice', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA);
+    const res = await r.editarPedido('P261028-AAAAA', { envasesARetirar: 5 }, OPERADORA, AHORA + 1);
+    expect(res).toMatchObject({ ok: true, valor: { envasesARetirar: 5 } });
+    expect((await r.historialDe('P261028-AAAAA')).at(-1)).toMatchObject({ accion: 'editado', detalle: 'envases' });
+  });
+
+  it('si no se mandan, quedan como estaban', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA); // el pedido de prueba trae 2 envases por retirar
+    const res = await r.editarPedido('P261028-AAAAA', { comuna: 'Macul' }, OPERADORA, AHORA + 1);
+    expect(res).toMatchObject({ ok: true, valor: { envasesARetirar: 2 } });
+  });
+
+  it.each([-1, 1.5, 1000])('rechaza %s envases', async (envasesARetirar) => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA);
+    expect(await r.editarPedido('P261028-AAAAA', { envasesARetirar }, OPERADORA, AHORA + 1)).toEqual({ ok: false, error: 'datos_invalidos' });
+  });
+});

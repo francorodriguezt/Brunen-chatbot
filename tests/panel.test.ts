@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PedidoARegistrar } from '../src/pedidos';
 import { autenticar, olvidarClavesDeAcceso, type EntornoAcceso } from '../src/panel/acceso';
 import panel, { type EntornoPanel } from '../src/panel';
+import { manejarApi } from '../src/panel/api';
 import { RepositorioD1 } from '../src/repositorio';
 import { AUD, DOMINIO, crearAccesoFalso, type AccesoFalso } from './acceso-falso';
 import { crearBaseSqlite } from './ayudas';
@@ -444,5 +445,241 @@ describe('la API: protección de las escrituras', () => {
     const r = await pedir(env, '/api/pedidos');
     expect(r.status).toBe(500);
     expect(await r.text()).not.toContain('secretos');
+  });
+});
+
+describe('la API: reparto del día', () => {
+  it('devuelve las paradas del día con la carga y los textos listos para copiar', async () => {
+    const { env, repositorio } = await entornoPanel();
+    await repositorio.cambiarEstado('P261028-AAAAA', 'Confirmado', 'x@y.test', AHORA);
+    const r = await pedir(env, '/api/reparto?fecha=2026-10-29');
+    expect(r.status).toBe(200);
+    const datos = (await r.json()) as { reparto: { paradas: Array<{ idPedido: string }> } & Record<string, unknown>; texto: string; tsv: string };
+    expect(datos.reparto).toMatchObject({ fecha: '2026-10-29', totalBidones: 2, carga: { '20L': 2, '12L': 0, '10L': 0 }, sinConfirmar: 1 });
+    expect(datos.reparto.paradas.map((p) => p.idPedido)).toEqual(['P261028-AAAAA']);
+    expect(datos.texto).toContain('Reparto del jueves 29 de octubre');
+    expect(datos.tsv.split('\n')).toHaveLength(2);
+  });
+
+  it('un día sin entregas responde vacío, no un error', async () => {
+    const { env } = await entornoPanel();
+    const datos = (await (await pedir(env, '/api/reparto?fecha=2027-01-05')).json()) as { reparto: { paradas: unknown[] } };
+    expect(datos.reparto.paradas).toEqual([]);
+  });
+
+  it.each(['/api/reparto', '/api/reparto?fecha=mañana', '/api/reparto?fecha=2026-13-45', '/api/reparto.csv', '/api/reparto.csv?fecha=29-10-2026'])('sin fecha o con una fecha mal escrita (%s): 400', async (ruta) => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, ruta)).status).toBe(400);
+  });
+
+  it('el archivo se descarga como CSV, con el día en el nombre y la marca que Excel necesita para los acentos', async () => {
+    const { env, repositorio } = await entornoPanel();
+    await repositorio.cambiarEstado('P261028-AAAAA', 'Confirmado', 'x@y.test', AHORA);
+    const r = await pedir(env, '/api/reparto.csv?fecha=2026-10-29');
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toBe('text/csv; charset=utf-8');
+    expect(r.headers.get('content-disposition')).toBe('attachment; filename="reparto-2026-10-29.csv"');
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(new TextDecoder().decode(bytes)).toContain('P261028-AAAAA;Ana Prueba;56911111111;Calle Falsa 123;Ñuñoa;2;0;0;2;');
+  });
+
+  it('el reparto también exige sesión', async () => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, '/api/reparto?fecha=2026-10-29', { token: null })).status).toBe(401);
+    expect((await pedir(env, '/api/reparto.csv?fecha=2026-10-29', { token: null })).status).toBe(401);
+  });
+});
+
+describe('la API: anotar un pedido a mano', () => {
+  const NUEVO = {
+    telefono: '+56 9 2222 2222',
+    nombre: 'Luz Demo',
+    comuna: 'Macul',
+    direccion: 'Avenida Ficticia 987',
+    fecha: '2026-10-30',
+    lineas: [{ tipo: '20L', cantidad: 2, precioUnitario: 3300 }],
+    notasRepartidor: 'Dejar en conserjería',
+    envasesARetirar: 1,
+    confirmar: true,
+  };
+  type Creado = { pedido: { id: string } & Record<string, unknown> };
+
+  it('lo crea confirmado por quien está conectado, con el teléfono en el formato de WhatsApp y el número de pedido del día', async () => {
+    const { env } = await entornoPanel();
+    const r = await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: NUEVO });
+    expect(r.status).toBe(201);
+    const { pedido } = (await r.json()) as Creado;
+    expect(pedido).toMatchObject({ telefono: '56922222222', nombre: 'Luz Demo', estado: 'Confirmado', confirmadoPor: 'operadora@brunen.test', total: 6600, fechaConfirmada: '2026-10-30', envasesARetirar: 1 });
+    expect(pedido.id).toMatch(/^P261026-[0-9A-Z]{5}$/); // AHORA es el lunes 26 de octubre en Santiago
+  });
+
+  it('sin "confirmar" queda por confirmar y aparece en la bandeja', async () => {
+    const { env } = await entornoPanel();
+    const { pedido } = (await (await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: { ...NUEVO, confirmar: false } })).json()) as Creado;
+    expect(pedido.estado).toBe('Pendiente_Confirmacion');
+    const bandeja = (await (await pedir(env, '/api/pedidos')).json()) as { pedidos: Array<{ id: string }> };
+    expect(bandeja.pedidos.map((p) => p.id)).toContain(pedido.id);
+  });
+
+  it('lo mínimo: basta con los bidones y la fecha', async () => {
+    const { env } = await entornoPanel();
+    const r = await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: { fecha: '2026-10-30', lineas: [{ tipo: '12L', cantidad: 1, precioUnitario: null }] } });
+    expect(r.status).toBe(201);
+    expect(((await r.json()) as Creado).pedido).toMatchObject({ telefono: '', nombre: '', estado: 'Pendiente_Confirmacion', total: null, envasesARetirar: 0 });
+  });
+
+  it('un teléfono que no se entiende: 422 con una explicación', async () => {
+    const { env } = await entornoPanel();
+    const r = await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: { ...NUEVO, telefono: '12345' } });
+    expect(r.status).toBe(422);
+    expect(((await r.json()) as { error: string }).error).toContain('teléfono');
+  });
+
+  it.each([
+    ['un nombre que no es texto', { nombre: 5 }],
+    ['un teléfono que no es texto', { telefono: 56922222222 }],
+    ['líneas que no son una lista', { lineas: 'dos de 20' }],
+    ['sin líneas', { lineas: undefined }],
+    ['sin fecha', { fecha: undefined }],
+    ['envases que no son un número', { envasesARetirar: 'dos' }],
+    ['"confirmar" que no es sí o no', { confirmar: 'sí' }],
+  ])('rechaza %s: 400', async (_nombre, cambios) => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: { ...NUEVO, ...cambios } })).status).toBe(400);
+  });
+
+  it.each([
+    ['sin productos', { lineas: [] }],
+    ['con una línea que no es un producto', { lineas: [null] }],
+    ['con una cantidad de cero', { lineas: [{ tipo: '20L', cantidad: 0, precioUnitario: 3300 }] }],
+    ['con una fecha que no existe', { fecha: '2026-02-30' }],
+  ])('un pedido %s: 422 y no se guarda', async (_nombre, cambios) => {
+    const { env, db } = await entornoPanel();
+    expect((await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: { ...NUEVO, ...cambios } })).status).toBe(422);
+    expect(db.sql('SELECT COUNT(*) AS n FROM pedidos')).toEqual([{ n: 2 }]);
+  });
+
+  it('tiene las mismas protecciones que las demás escrituras', async () => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: NUEVO, cabeceras: { 'x-panel': '0' } })).status).toBe(400);
+    expect((await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: NUEVO, cabeceras: { origin: 'https://otro.example' } })).status).toBe(403);
+    expect((await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: NUEVO, token: null })).status).toBe(401);
+  });
+});
+
+describe('la API: buscar pedidos', () => {
+  const buscar = (env: EntornoPanel, texto: unknown) => pedir(env, '/api/pedidos/buscar', { metodo: 'POST', cuerpo: { texto } });
+
+  it('trae los que calzan por nombre o teléfono, estén en el estado que estén', async () => {
+    const { env, repositorio } = await entornoPanel();
+    await repositorio.cambiarEstado('P261028-AAAAA', 'Cancelado', 'x@y.test', AHORA);
+    const ids = async (texto: string) => ((await (await buscar(env, texto)).json()) as { pedidos: Array<{ id: string }> }).pedidos.map((p) => p.id);
+    expect(await ids('ana pru')).toEqual(['P261028-AAAAA']);
+    expect((await ids('1111 1111')).sort()).toEqual(['P261028-AAAAA', 'P261028-BBBBB']);
+    expect(await ids('nadie con este nombre')).toEqual([]);
+  });
+
+  it('con menos de 2 caracteres, o sin texto: 400 con explicación', async () => {
+    const { env } = await entornoPanel();
+    expect((await buscar(env, 'a')).status).toBe(400);
+    expect((await buscar(env, 5)).status).toBe(400);
+    expect((await buscar(env, undefined)).status).toBe(400);
+  });
+
+  it('lo que se busca (nombres, teléfonos) viaja en el cuerpo y no en la dirección, que queda en los registros de Cloudflare', async () => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, '/api/pedidos?buscar=ana')).status).toBe(400);
+    expect((await pedir(env, '/api/pedidos/buscar')).status).toBe(404);
+  });
+});
+
+describe('la API: opciones para anotar un pedido', () => {
+  it('entrega las 12 comunas que se atienden y la fecha de entrega sugerida', async () => {
+    const { env } = await entornoPanel();
+    const datos = (await (await pedir(env, '/api/opciones')).json()) as { comunas: string[]; fechaSugerida: string };
+    expect(datos.comunas).toHaveLength(12);
+    expect(datos.comunas).toContain('Ñuñoa');
+    // AHORA es lunes a las 04:33 en Santiago: antes del corte de las 9:00 se sugiere el mismo día.
+    expect(datos.fechaSugerida).toBe('2026-10-26');
+  });
+
+  it('después del corte sugiere el siguiente día de despacho; el sábado en la tarde, el lunes', async () => {
+    const { repositorio } = await entornoPanel();
+    const sugerida = async (instante: string) => {
+      const ahoraSegundos = Date.parse(instante) / 1000;
+      const r = await manejarApi(new Request('https://panel.example/api/opciones'), new URL('https://panel.example/api/opciones'), { repositorio, correo: 'x@y.test', ahoraSegundos });
+      return ((await r.json()) as { fechaSugerida: string }).fechaSugerida;
+    };
+    expect(await sugerida('2026-10-26T15:00:00Z')).toBe('2026-10-27'); // lunes 12:00 en Santiago
+    expect(await sugerida('2026-10-31T16:00:00Z')).toBe('2026-11-02'); // sábado 13:00 en Santiago
+  });
+});
+
+describe('la API: reconocer al cliente por su teléfono', () => {
+  const anterior = (env: EntornoPanel, telefono: unknown) => pedir(env, '/api/clientes/anterior', { metodo: 'POST', cuerpo: { telefono } });
+
+  it('devuelve los datos de su último pedido con dirección, aunque el teléfono venga con espacios', async () => {
+    const { env } = await entornoPanel();
+    const r = await anterior(env, '+56 9 1111 1111');
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ datos: { idPedido: 'P261028-BBBBB', nombre: '', direccion: 'Calle Falsa 123', comuna: 'Ñuñoa', notasRepartidor: '' } });
+  });
+
+  it('si ese teléfono no tiene pedidos, o no se entiende, no hay datos', async () => {
+    const { env } = await entornoPanel();
+    expect(await (await anterior(env, '56999999999')).json()).toEqual({ datos: null });
+    expect(await (await anterior(env, 'hola')).json()).toEqual({ datos: null });
+    expect(await (await anterior(env, undefined)).json()).toEqual({ datos: null });
+  });
+
+  it('el teléfono viaja en el cuerpo, no en la dirección', async () => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, '/api/clientes/anterior?telefono=56911111111')).status).toBe(404);
+  });
+});
+
+describe('la API: la versión del pedido que la pantalla estaba mostrando', () => {
+  it('con la versión al día, confirma', async () => {
+    const { env } = await entornoPanel();
+    const r = await pedir(env, '/api/pedidos/P261028-AAAAA/estado', { metodo: 'POST', cuerpo: { estado: 'Confirmado', actualizadoEn: AHORA - 600 } });
+    expect(r.status).toBe(200);
+  });
+
+  it('si otra persona lo cambió mientras tanto: 409 con explicación, y el pedido no cambia', async () => {
+    const { env, repositorio } = await entornoPanel();
+    await repositorio.editarPedido('P261028-AAAAA', { direccion: 'Otra Calle 9' }, 'dueno@brunen.test', AHORA - 10);
+    const r = await pedir(env, '/api/pedidos/P261028-AAAAA/estado', { metodo: 'POST', cuerpo: { estado: 'Confirmado', actualizadoEn: AHORA - 600 } });
+    expect(r.status).toBe(409);
+    expect(((await r.json()) as { error: string }).error).toContain('Otra persona');
+    expect((await repositorio.obtenerPedido('P261028-AAAAA'))?.estado).toBe('Pendiente_Confirmacion');
+  });
+
+  it('lo mismo al editar', async () => {
+    const { env, repositorio } = await entornoPanel();
+    await repositorio.editarPedido('P261028-AAAAA', { direccion: 'Otra Calle 9' }, 'dueno@brunen.test', AHORA - 10);
+    const r = await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo: { comuna: 'Macul', actualizadoEn: AHORA - 600 } });
+    expect(r.status).toBe(409);
+    expect((await repositorio.obtenerPedido('P261028-AAAAA'))?.comuna).toBe('Ñuñoa');
+  });
+
+  it.each(['estado', 'editar'])('una versión que no es un número entero se rechaza al pedir "%s": 400', async (accion) => {
+    const { env } = await entornoPanel();
+    const cuerpo = accion === 'estado' ? { estado: 'Confirmado', actualizadoEn: 'ayer' } : { comuna: 'Macul', actualizadoEn: 1.5 };
+    expect((await pedir(env, `/api/pedidos/P261028-AAAAA/${accion}`, { metodo: 'POST', cuerpo })).status).toBe(400);
+  });
+});
+
+describe('la API: envases por retirar al editar', () => {
+  it('se pueden corregir desde "Cambiar"', async () => {
+    const { env } = await entornoPanel();
+    const r = await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo: { envasesARetirar: 3 } });
+    expect(r.status).toBe(200);
+    expect(((await r.json()) as { pedido: { envasesARetirar: number } }).pedido.envasesARetirar).toBe(3);
+  });
+
+  it('si no son un número: 400', async () => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo: { envasesARetirar: 'tres' } })).status).toBe(400);
   });
 });

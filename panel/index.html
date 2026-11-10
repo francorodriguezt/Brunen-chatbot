@@ -21,6 +21,7 @@
       <button type="button" role="tab" id="pestana-pedidos" aria-selected="true" aria-controls="vista-pedidos">
         Pedidos <span class="contador" id="cuenta-pedidos" hidden></span>
       </button>
+      <button type="button" role="tab" id="pestana-reparto" aria-selected="false" aria-controls="vista-reparto" tabindex="-1">Reparto</button>
       <button type="button" role="tab" id="pestana-avisos" aria-selected="false" aria-controls="vista-avisos" tabindex="-1">
         Avisos <span class="contador" id="cuenta-avisos" hidden></span>
       </button>
@@ -31,8 +32,21 @@
 
   <main>
     <section id="vista-pedidos" role="tabpanel" aria-labelledby="pestana-pedidos">
+      <div class="barra-acciones">
+        <button type="button" id="nuevo-pedido" class="boton boton-principal">+ Nuevo pedido</button>
+        <input type="search" id="buscar-pedidos" class="buscador" placeholder="Buscar por nombre, teléfono o dirección" aria-label="Buscar pedidos" autocomplete="off" maxlength="60">
+      </div>
       <div class="filtros" role="group" aria-label="Qué pedidos mostrar" id="filtros-pedidos"></div>
       <div id="lista-pedidos" class="lista"></div>
+    </section>
+    <section id="vista-reparto" role="tabpanel" aria-labelledby="pestana-reparto" hidden>
+      <div class="filtros" role="group" aria-label="Qué día mostrar">
+        <button type="button" id="reparto-hoy" aria-pressed="false">Hoy</button>
+        <button type="button" id="reparto-manana" aria-pressed="false">Mañana</button>
+        <label class="filtro-fecha">Otro día <input type="date" id="fecha-reparto"></label>
+      </div>
+      <div id="resumen-reparto" class="resumen-reparto" hidden></div>
+      <div id="lista-reparto" class="lista"></div>
     </section>
     <section id="vista-avisos" role="tabpanel" aria-labelledby="pestana-avisos" hidden>
       <div class="filtros" role="group" aria-label="Qué avisos mostrar" id="filtros-avisos"></div>
@@ -44,16 +58,22 @@
     <form method="dialog" id="formulario-editar">
       <h2 id="titulo-editar">Cambiar pedido</h2>
       <div class="campos">
+        <label class="solo-nuevo">Teléfono <input type="tel" name="telefono" maxlength="20" autocomplete="off" inputmode="tel" placeholder="9 1234 5678"></label>
+        <label class="solo-nuevo">Nombre <input type="text" name="nombre" maxlength="80" autocomplete="off"></label>
+        <p class="ancho pista solo-nuevo" id="cliente-reconocido" role="status" hidden></p>
         <label>Fecha de entrega <input type="date" name="fecha" required></label>
-        <label>Comuna <input type="text" name="comuna" maxlength="80" autocomplete="off"></label>
+        <label>Comuna <input type="text" name="comuna" maxlength="80" autocomplete="off" list="lista-comunas"></label>
         <label class="ancho">Dirección <input type="text" name="direccion" maxlength="200" autocomplete="off"></label>
         <label class="ancho">Notas para el repartidor <textarea name="notas" rows="2" maxlength="500"></textarea></label>
+        <label>Envases por retirar <input type="number" name="envases" min="0" max="999" step="1" inputmode="numeric" value="0"></label>
       </div>
+      <datalist id="lista-comunas"></datalist>
       <fieldset>
         <legend>Bidones</legend>
         <div id="editar-lineas"></div>
         <div class="fila-total"><button type="button" id="agregar-linea" class="boton boton-chico">Agregar línea</button><strong id="editar-total"></strong></div>
       </fieldset>
+      <label class="casilla solo-nuevo"><input type="checkbox" name="confirmar" checked> Dejarlo confirmado (necesita el precio de todos los bidones)</label>
       <p class="error-formulario" id="error-editar" role="alert" hidden></p>
       <div class="acciones-dialogo">
         <button type="button" class="boton" id="cancelar-editar">Cerrar</button>
@@ -70,6 +90,17 @@
       <div class="acciones-dialogo">
         <button type="button" class="boton" id="volver-accion">Volver</button>
         <button type="submit" class="boton" id="confirmar-accion"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogo-copiar" aria-labelledby="titulo-copiar">
+    <form method="dialog">
+      <h2 id="titulo-copiar">Copia el texto</h2>
+      <p class="suave">El navegador no dejó copiarlo solo: ya está seleccionado, cópialo con Ctrl + C (o manteniendo el dedo encima).</p>
+      <textarea id="texto-copiar" rows="10" readonly></textarea>
+      <div class="acciones-dialogo">
+        <button type="submit" class="boton">Cerrar</button>
       </div>
     </form>
   </dialog>
