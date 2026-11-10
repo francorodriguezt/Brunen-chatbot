@@ -1,6 +1,6 @@
 # Conocimiento del proyecto — Chatbot Brunen SpA
 Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
-Última actualización: 2026-10-29
+Última actualización: 2026-11-10
 
 > Datos sensibles (cuenta bancaria, teléfono de Constanza, teléfonos de clientes) NO se guardan en este repo:
 > viven en la hoja CONFIGURACION / CLIENTES de la planilla. Aquí solo se indica dónde están.
@@ -86,12 +86,12 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 14. Cliente bloqueado: lo atiende una persona y el pedido no se anota (dueño, 2026-10-29). Facturas, boletas y empresas con plan mensual: siempre una persona.
 
 ## 10. Arquitectura (actualizada 2026-10-28)
-- Canal: WhatsApp Cloud API (Meta). Número: el dueño eligió el actual con coexistencia (2026-10-29). Según la documentación oficial de Meta (revisada el 2026-10-29), el alta de coexistencia pasa por un Tech Provider o Solution Partner y exige la app WhatsApp Business 2.24.17 o superior; falta confirmar que podamos hacerla directo. Plan B: un número nuevo solo para el bot.
+- Canal: WhatsApp Cloud API (Meta). Número: el dueño eligió el actual con coexistencia (2026-10-29). Según la documentación oficial de Meta (revisada el 2026-10-29), el alta de coexistencia pasa por un Tech Provider o Solution Partner y exige la app WhatsApp Business 2.24.17 o superior; confirmado el 2026-11-10 que no se puede hacer directo (D45): hay que elegir entre un proveedor, que Brunen sea su propio Tech Provider o un número nuevo solo para el bot. Con coexistencia se desactivan las listas de difusión y hay que abrir la app al menos cada 14 días.
 - Motor: código propio en **Cloudflare Workers + TypeScript** (plan gratuito). Reemplaza la idea inicial de n8n.
 - Interpretación: parser por reglas + LLM de respaldo (Groq gratis). Gemini gratis descartado (usa los datos).
 - Datos: los pedidos y los avisos viven en la base D1 de Cloudflare, junto con la memoria del bot (mensajes ya vistos, pedido a medias, último pedido); Google Sheets sigue para CLIENTES, PRECIOS, CONFIGURACION y FERIADOS (D32, D33). Respaldo de D1: Time Travel (7 días) y una exportación semanal guardada fuera del repositorio (D35).
-- Panel de administración propio (un Worker aparte, detrás de Cloudflare Access: D34) para que Constanza y el dueño vean, confirmen y cambien pedidos y avisos. Telegram queda solo para lo muy urgente (reclamos y fallas del sistema).
-- Comprobantes: se guardarán en D1 por 60 días y se verán en el panel (D30, D32; Drive con la cuenta de servicio no sirve). Monitoreo: UptimeRobot → `/salud`.
+- Panel de administración propio (un Worker aparte, detrás de Cloudflare Access: D34) para que Constanza y el dueño vean, confirmen y cambien pedidos y avisos. Telegram queda solo para lo muy urgente (reclamos y fallas del sistema). Desde el 2026-11-10 el panel también arma el reparto del día, listo para copiar o descargar, y permite anotar a mano los pedidos que no llegan por el bot (D42).
+- Comprobantes: se guardarán en D1 por 60 días y se verán en el panel (D30, D32; Drive con la cuenta de servicio no sirve). Monitoreo: UptimeRobot → `/salud`. Además, una tarea programada (el vigía, D43) deja un aviso si un mensaje quedó sin atender y revisa cada mañana el token de WhatsApp y la planilla.
 - Flujo: webhook → validar firma → 200 inmediato → deduplicar → revisar `BOT_ACTIVO` → buscar cliente → según tipo:
   - Texto: juntar los mensajes seguidos → parser (→ LLM si hace falta) → pedido / pregunta frecuente / escalamiento. El pedido y su aviso quedan en D1. Lo dudoso se anota igual y se manda a revisión; al cliente no se le promete.
   - Imagen: posible comprobante → aviso en el panel (guardar la imagen y anotar en PAGOS: Etapa 6). Audio u otro: pedir texto.
@@ -123,7 +123,7 @@ Lo que el dueño quiere ver en el panel (2026-10-29): pedidos por confirmar (con
 - Con ~520 pedidos/mes y 1 mensaje por pedido: USD 0. Peor caso (50 pedidos diarios todos los días, ~1.300/mes): ~USD 6/mes.
 - Cloudflare Workers gratis: 100.000 solicitudes/día, 10 ms de CPU por invocación.
 - Groq gratis: no entrena ni retiene datos por defecto.
-- Ley 21.719 de datos personales: vigencia 1-dic-2026 (proyecto para postergar a 2027).
+- Ley 21.719 de datos personales: vigencia 1-dic-2026. El Senado aprobó en primer trámite (28-oct-2026) un proyecto que la posterga a 2027; mientras no sea ley, vale el 1-dic-2026 (D45).
 
 ## 15. Turno de reparto (lo describió Franco el 2026-10-28; falta confirmarlo con el dueño y el repartidor)
 1. El repartidor llega a la planta.
@@ -131,7 +131,7 @@ Lo que el dueño quiere ver en el panel (2026-10-29): pedidos por confirmar (con
 3. Reparte en cada punto y retira los bidones vacíos. Si faltan vacíos (por ejemplo, el cliente pidió 3 y solo tiene 2 para entregar), se debe avisar y justificar el faltante.
 4. Al terminar de entregar, pasa una de dos cosas: le piden que vaya a dejar los vacíos y deje el furgón en la planta, o que se lleve el furgón y vaya al día siguiente a dejar los vacíos que quedaron en él.
 - Idea de Franco: al empezar el día, generar la ruta de direcciones lo más óptima posible, "de más cerca a más lejos de la planta de agua y de vuelta".
-- Hoy `src/rutaDelDia.ts` solo ordena por comuna y dirección y deja la optimización a la app de rutas (formato provisional).
+- Hoy el panel (pestaña Reparto, `src/reparto.ts`, D42) arma la lista del día ordenada por comuna y dirección, con la carga del furgón y los envases por retirar, y deja la optimización a la app de rutas (columnas provisionales).
 - El dueño (audios que le mandó a Franco, 2026-10-29): si el repartidor termina temprano, deja el furgón estacionado en el lugar del dueño (confirmar si es la planta); si termina cerca de las 18:00, carga al día siguiente. El dueño lleva el control de los bidones que sobran del turno y al día siguiente le dice cuántos sacar (ejemplo: saca 60, sobran 5, al día siguiente saca 55). Eso debería poder hacerse en el panel.
 - Lo que más le interesa al dueño: tener el Excel de los pedidos listo y ordenado, subirlo a la plataforma, que el repartidor use la plataforma, que él y Constanza le hagan seguimiento desde ahí y que la plataforma le entregue punto por punto lo que debe repartir.
 - Franco aclaró (2026-10-29): hoy usan Optiroute y con él ven punto por punto dónde va el repartidor, su ubicación en vivo y cuánto demora de un punto a otro. Lo que se busca es crear una plataforma propia que haga las mismas funciones: la ruta con los puntos de la forma más eficiente posible y el seguimiento en vivo del repartidor (D38).

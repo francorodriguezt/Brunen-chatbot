@@ -8,11 +8,11 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | 1 | Esqueleto de punta a punta con el número de prueba de Meta | ✅ Lista (2026-10-28) |
 | 2 | Planilla de desarrollo + deduplicación por wamid + registro de mensajes | ✅ Lista (2026-10-28) |
 | 3 | Intérprete: parser por reglas + LLM de respaldo, casos en `tests/mensajes.json` | ✅ Lista (2026-10-28): reglas (54 casos) y respaldo con IA verificado con una llamada real |
-| 4 | Flujo de pedido: cotizar, fecha, guardar el pedido en D1, responder 1 mensaje, ERRORES | 🟡 Conectada al Worker detrás de `FLUJO_PEDIDO` (D33) y probada de punta a punta con servicios simulados y, desde el 2026-10-30, con mensajes reales (encendida solo para los números de prueba); faltan repetir la prueba tras la última corrección, bajar el CPU (D31), el visto bueno del dueño y abrirla a más números |
+| 4 | Flujo de pedido: cotizar, fecha, guardar el pedido en D1, responder 1 mensaje, ERRORES | 🟡 Conectada al Worker detrás de `FLUJO_PEDIDO` (D33) y probada de punta a punta con servicios simulados y, desde el 2026-10-30, con mensajes reales (encendida solo para los números de prueba); faltan repetir la prueba tras la última corrección, bajar el CPU (D31), el visto bueno del dueño y abrirla a más números. Construido el 2026-11-10, sin desplegar: el vigía que avisa si un mensaje queda sin atender (D43) |
 | 5 | Constanza: bandeja de pedidos y avisos con Confirmar / Cambiar; Telegram solo para lo muy urgente | 🟡 La bandeja y las acciones están en el panel (P1, probado en local); faltan el acceso, el despliegue y el bot de Telegram |
-| 6 | Imágenes (comprobantes + PAGOS), audio, fuera de zona, reclamos, RUTA_DEL_DIA | 🟡 Lista del día lista (formato provisional); comprobantes: guardarlos en D1 y verlos en el panel (D30, D32) |
+| 6 | Imágenes (comprobantes + PAGOS), audio, fuera de zona, reclamos, lista del día | 🟡 La lista del día está en el panel (pestaña Reparto, D42; columnas provisionales); comprobantes: guardarlos en D1 y verlos en el panel (D30, D32), sin construir |
 | 7 | Producción: número definitivo, verificación de empresa, piloto con 5–10 clientes | |
-| P | Panel de administración: pedidos, avisos, clientes, mapa, estadísticas | 🟡 P1 (bandeja) lista y probada en local (D33); acceso decidido: Cloudflare Access (D34); P2 a P5 sin empezar |
+| P | Panel de administración: pedidos, avisos, clientes, mapa, estadísticas | 🟡 P1 (bandeja) y la primera parte de P2 (reparto del día, pedidos a mano y búsqueda, D42) listas y probadas en local; acceso decidido: Cloudflare Access (D34), falta activarlo y desplegar; P3 a P5 sin empezar |
 
 ---
 
@@ -51,7 +51,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 
 **Avance (2026-10-28):** ✅ Lista, salvo cargar los feriados. En producción:
 - Deduplicación por `wamid` en la base D1 (D20), con liberación si el envío falla.
-- Registro de cada mensaje en la hoja MENSAJES_PROCESADOS (teléfono enmascarado, sin el texto) y de cada fallo en ERRORES, en la planilla de desarrollo.
+- Registro de cada mensaje en la hoja MENSAJES_PROCESADOS (teléfono enmascarado, sin el texto) y de cada fallo en ERRORES, en la planilla de desarrollo. Apagado desde el 2026-11-10 (D44): los pedidos, los avisos y las fallas ya se ven en el panel.
 - Aviso en el log cuando el token de WhatsApp vence, y registro de las entregas fallidas de Meta.
 - Lectura de la hoja FERIADOS con caché de 6 horas (`src/feriados.ts`), todavía sin conectar al cálculo de fechas (Etapa 4).
 
@@ -102,6 +102,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | Decisión | `motor.ts`, `textos.ts`, `pedidos.ts`, `alertas.ts` | Decide respuesta, fila de PEDIDOS y aviso a la operadora; lo dudoso se manda a revisión |
 | Flujo | `flujo.ts` | Une todo con dependencias inyectables y nunca lanza errores |
 | Conexión | `atencion.ts`, `index.ts`, `repositorio.ts` | Recibe cada mensaje, junta los seguidos, guarda el pedido y el aviso en D1, envía la respuesta única y avisa por Telegram solo lo urgente |
+| Vigía | `vigia.ts`, `almacen.ts` | Tarea programada cada 5 minutos: deja un aviso si un mensaje quedó sin atender y, a las 7:30, revisa el token de WhatsApp y la planilla (D43) |
 
 Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con el motor). Por qué así: D26 a D28 y D33.
 
@@ -112,6 +113,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 4. Probar con los 12 casos de CONVERSACIONES.md y con 2 o 3 mensajes seguidos para el agrupador. Cada pedido y cada aviso debe aparecer en el panel.
 5. Medir el CPU de cada tipo de mensaje con `wrangler tail` (límite de 10 ms en el plan gratis, D31) y la cantidad de llamadas a Google.
 6. Recién entonces, ampliar a más números (Etapa 7), con el respaldo de la base ya probado (D35).
+7. Pendiente desde el 2026-11-10: aplicar la migración `0005` (vigía, D43) y volver a desplegar. En el panel de Cloudflare debe aparecer la tarea programada `*/5 * * * *` en el Worker.
 
 **Lo que respondió el dueño (2026-10-29, D36):** precios de carga inicial y mayorista, descuento por tamaño, empresas y facturas a una persona, un solo mensaje por pedido, textos sin cambios y los audios para Constanza. **Falta de su parte** (ver `docs/PENDIENTES.md`): carga inicial de 12 L y 10 L desde 3 envases, precios especiales de 12 L y 10 L, qué significa `Credito` y las gestiones en Meta. **Construido por sus respuestas (2026-10-29):** los precios nuevos (la recarga mayorista de 12 L y 10 L ya entra en el flujo; la carga inicial está calculada y probada, todavía sin usar) que el bot no responda los audios y que pida nombre, dirección y edificio al cliente nuevo (D37).
 
@@ -138,20 +140,20 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 
 ## Panel de administración (D32)
 
-**Estado (2026-10-28):** la fase P1 (bandeja) está construida y probada en local (D33); el acceso será Cloudflare Access (D34). Falta que Franco active Zero Trust y desplegar el panel (las migraciones ya están aplicadas desde el 2026-10-29). Las demás fases, sin empezar.
+**Estado (2026-11-10):** la fase P1 (bandeja) y la primera parte de P2 (reparto del día, pedidos a mano y búsqueda, D42) están construidas y probadas en local; el acceso será Cloudflare Access (D34). Falta que Franco active Zero Trust y desplegar el panel. Las demás fases, sin empezar. Cómo se usa: [GUIA_PANEL.md](GUIA_PANEL.md).
 
 **Qué es:** una página privada en un Worker aparte (`brunen-panel`), gratis, donde Constanza y el dueño ven los pedidos y los avisos del bot, los confirman y, más adelante, administran a los clientes por ubicación, bidones y mapa. Los datos viven en D1 (fuente de verdad); el panel no tiene ningún secreto de WhatsApp, Google ni Groq.
 
 | Fase | Qué incluye |
 |---|---|
 | P1 Bandeja (lista) | Pedidos por confirmar, confirmados y cerrados, con confirmar / cambiar (fecha, comuna, dirección, notas, bidones y precios) / cancelar / en ruta / entregado, lo que escribió el cliente, observaciones del bot e historial de cambios; avisos (reclamos, facturas, comprobantes, mensajes no entendidos, fallas) con "resuelto"; se actualiza sola con sonido y notificación; funciona en el celular y con tema oscuro |
-| P2 Reparto del día | Lista del día por comuna lista para copiar (`rutaDelDia.ts`), envases por retirar. En diseño (D38; ver `docs/PENDIENTES.md`): una plataforma propia que haga lo que hoy hace Optiroute (la ruta más eficiente con los puntos del día, la vista del repartidor punto por punto y el seguimiento en vivo), más la carga con los sobrantes de cada turno, los vacíos por parada con justificación de faltantes y la hora de llegada para el cliente. No depende de Meta |
+| P2 Reparto del día | **Primera parte lista (D42):** las paradas del día por comuna y dirección, con la carga del furgón, lo que se cobra y los envases por retirar; copiar para WhatsApp o para Excel, descargar el archivo y marcar en ruta o entregado; anotar un pedido a mano y buscar. En diseño (D38; ver `docs/PENDIENTES.md`): una plataforma propia que haga lo que hoy hace Optiroute (la ruta más eficiente con los puntos del día, la vista del repartidor punto por punto y el seguimiento en vivo), más la carga con los sobrantes de cada turno, los vacíos por parada con justificación de faltantes y la hora de llegada para el cliente. No depende de Meta |
 | P3 Clientes y mapa | Ficha, historial y envases por cliente; importación del Excel; mapa por comuna y con punto exacto; el bot pasa a leer los clientes de D1 |
 | P4 Estadísticas | Bidones entregados por día, semana y mes; envases pendientes por cliente; comprobantes por revisar. El dueño no pidió ventas en pesos, clientes que dejaron de pedir ni reclamos abiertos (D36) |
 | P5 Configuración | Interruptor del bot y aviso de contingencia, precios, feriados y textos editables, sin tocar la planilla |
 
 **Probarlo en tu computador** (sin tocar producción: todo es local):
-1. `npm run datos-locales`: crea las tablas en la base D1 local y carga pedidos y avisos ficticios (se puede repetir).
+1. `npm run datos-locales`: crea las tablas en la base D1 local y carga pedidos y avisos ficticios, con entregas para hoy y para mañana. Se puede repetir: cada vez los deja como recién llegados.
 2. `npm run dev:panel -- --var PANEL_DEV_CORREO:tu@correo.test` y abrir http://localhost:8787 (si el puerto está ocupado, agregar `--port 8788`). `PANEL_DEV_CORREO` solo funciona desde localhost.
 
 **Cómo encenderlo en producción** (cada paso con aprobación de Franco):
@@ -169,10 +171,10 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 
 ## Etapa 6 — Comprobantes, audio y lista del día
 
-**Estado (2026-10-28):** construida la lista del día (`rutaDelDia.ts`, formato provisional); investigado dónde guardar los comprobantes (D30, propuesta).
+**Estado (2026-11-10):** la lista del día está en el panel (pestaña Reparto, `reparto.ts`, D42; columnas provisionales); decidido dónde guardar los comprobantes (en D1: D30 y D32), sin construir.
 
 **Falta:**
-1. Lista del día: leer los pedidos confirmados del día, escribir la hoja RUTA_DEL_DIA y dar el texto copiable (por ejemplo, con un comando en Telegram o una tarea programada). Ajustar el formato al archivo de importación de la app de rutas (confirmar si es OptimoRoute).
-2. Imágenes: el dueño elige dónde guardar los comprobantes (D30). Bajar la imagen apenas llega (la dirección dura 5 minutos), avisar a la operadora y anotar en PAGOS; el bot no verifica pagos solo.
+1. Lista del día: hecha en el panel (D42). Falta ajustar las columnas al archivo de importación de la app de rutas (confirmar si es OptimoRoute).
+2. Imágenes: guardar los comprobantes en D1 (D30, D32). Con coexistencia la imagen también queda en la app de WhatsApp Business, así que se construye cuando esté decidido el número (D45). Bajar la imagen apenas llega (la dirección dura 5 minutos), avisar a la operadora y anotar en PAGOS; el bot no verifica pagos solo.
 3. Audio: el bot no responde y deja un aviso, porque los audios los responde siempre Constanza (D36). Transcribirlos con Groq (Whisper, gratis hasta 2.000 solicitudes por día según la consola, D23) sería una decisión del dueño por privacidad.
 4. Fuera de zona y reclamos ya están en el motor de la Etapa 4.
