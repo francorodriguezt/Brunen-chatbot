@@ -120,7 +120,25 @@ a { color: var(--acento); }
 .conexion { background: var(--peligro-suave); color: var(--peligro); border-bottom: 1px solid var(--peligro); padding: 0.5rem 1rem; text-align: center; font-weight: 600; }
 .conexion .boton { margin-left: 0.6rem; }
 
+.barra-acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+.buscador { flex: 1 1 14rem; width: auto; background: var(--superficie); }
+
+.resumen-reparto { background: var(--superficie); border: 1px solid var(--borde); border-radius: 14px; box-shadow: var(--sombra); padding: 1rem; display: grid; gap: 0.7rem; margin-bottom: 1rem; }
+.titulo-reparto { margin: 0; font-size: 1.1rem; }
+.titulo-reparto::first-letter { text-transform: uppercase; }
+.cifras { display: flex; flex-wrap: wrap; gap: 0.4rem 0.6rem; margin: 0; padding: 0; list-style: none; }
+.cifras li { background: var(--neutro-suave); border-radius: 10px; padding: 0.3rem 0.7rem; font-size: 0.92rem; }
+.cifras b { font-size: 1.1rem; }
+.revision .boton { margin-left: 0.3rem; }
+.parada .tarjeta-cabecera { justify-content: flex-start; flex-wrap: nowrap; align-items: flex-start; }
+.parada .insignia { margin-left: auto; white-space: nowrap; }
+.orden { flex: none; display: inline-grid; place-items: center; min-width: 1.9rem; height: 1.9rem; padding: 0 0.3rem; border-radius: 999px; background: var(--acento); color: var(--acento-texto); font-weight: 700; font-size: 0.9rem; }
+.direccion { font-size: 1.02rem; overflow-wrap: anywhere; }
+.parada.hecha { opacity: 0.65; }
+.parada.hecha .orden { background: var(--ok); }
+
 .acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-top: 0.2rem; }
+a.boton { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .boton {
   appearance: none; font: inherit; font-weight: 600; border: 1px solid var(--borde); background: var(--superficie); color: var(--texto);
   border-radius: 10px; padding: 0.55rem 1rem; min-height: 2.75rem; cursor: pointer;
@@ -142,6 +160,9 @@ label { display: grid; gap: 0.25rem; font-size: 0.9rem; font-weight: 600; }
 input, select, textarea {
   font: inherit; font-weight: 400; color: var(--texto); background: var(--fondo); border: 1px solid var(--borde); border-radius: 8px; padding: 0.5rem 0.6rem; width: 100%;
 }
+.pista { margin: 0; background: var(--acento-suave); color: var(--acento); border-radius: 8px; padding: 0.45rem 0.7rem; font-size: 0.9rem; font-weight: 600; }
+label.casilla { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.9rem; font-weight: 500; }
+label.casilla input { width: 1.15rem; height: 1.15rem; flex: none; }
 fieldset { border: 1px solid var(--borde); border-radius: 10px; margin: 0.9rem 0 0; padding: 0.6rem 0.8rem 0.8rem; }
 legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.3rem; }
 .linea-editable { display: grid; grid-template-columns: 5.5rem 1fr 1.4fr auto; gap: 0.5rem; align-items: end; margin-bottom: 0.5rem; }

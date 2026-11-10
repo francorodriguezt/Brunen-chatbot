@@ -2,12 +2,19 @@
  * API del panel (D32): lo que la pantalla pide y manda. Todo pasa por `RepositorioD1`, que ya impone las reglas del
  * negocio (no confirmar sin precio, no saltar de estado, historial de quién hizo qué).
  *
+ * Además de la bandeja (pedidos y avisos): el reparto del día con sus textos para copiar y su archivo CSV, anotar un
+ * pedido a mano, buscar, y reconocer a un cliente por su teléfono.
+ *
  * Seguridad de las escrituras (POST): solo con `Content-Type: application/json`, con la cabecera `X-Panel: 1` y, si el
  * navegador manda `Origin`, desde el mismo sitio. Un formulario o un script de otra página no puede cumplir esas
  * condiciones sin permiso (no se habilita CORS), así que no puede mover pedidos con la sesión de la operadora.
  */
 
-import { ESTADOS_DE_PEDIDO, type CambiosDePedido, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type RepositorioD1 } from '../repositorio';
+import { COMUNAS_ATENDIDAS } from '../comunas';
+import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
+import { armarReparto, csvDeReparto, textoDeReparto, tsvDeReparto } from '../reparto';
+import { ESTADOS_DE_PEDIDO, type CambiosDePedido, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type PedidoManual, type RepositorioD1 } from '../repositorio';
+import { normalizarTelefono } from '../whatsapp';
 
 export interface ContextoApi {
   repositorio: RepositorioD1;
@@ -65,6 +72,41 @@ async function leerCuerpo(request: Request): Promise<Record<string, unknown> | n
 }
 
 const esTexto = (valor: unknown): valor is string => typeof valor === 'string';
+const esFecha = (valor: string | null): valor is string => valor !== null && /^\d{4}-\d{2}-\d{2}$/.test(valor);
+const SIN_FERIADOS: ReadonlySet<string> = new Set();
+
+/**
+ * La versión del pedido que la pantalla mostraba (`actualizadoEn`). Si viene, el repositorio rechaza el cambio cuando
+ * alguien lo modificó después. `undefined` = la pantalla no la mandó; `null` = vino, pero no es un número entero.
+ */
+function versionVista(cuerpo: Record<string, unknown>): number | undefined | null {
+  if (!('actualizadoEn' in cuerpo)) return undefined;
+  return Number.isInteger(cuerpo.actualizadoEn) ? (cuerpo.actualizadoEn as number) : null;
+}
+
+/**
+ * Lo que manda el formulario "Nuevo pedido". Devuelve null si algún dato no es del tipo esperado y 'telefono' si el
+ * teléfono no se entiende; las reglas del negocio (cantidades, fecha real) las revisa el repositorio.
+ */
+function aPedidoManual(cuerpo: Record<string, unknown>): PedidoManual | 'telefono' | null {
+  const textos: Record<'telefono' | 'nombre' | 'comuna' | 'direccion' | 'notasRepartidor', string> = { telefono: '', nombre: '', comuna: '', direccion: '', notasRepartidor: '' };
+  for (const campo of Object.keys(textos) as Array<keyof typeof textos>) {
+    if (cuerpo[campo] === undefined) continue;
+    if (!esTexto(cuerpo[campo])) return null;
+    textos[campo] = cuerpo[campo];
+  }
+  const envases = cuerpo.envasesARetirar ?? 0;
+  const confirmar = cuerpo.confirmar ?? false;
+  if (!esTexto(cuerpo.fecha) || !Array.isArray(cuerpo.lineas) || typeof envases !== 'number' || typeof confirmar !== 'boolean') return null;
+
+  let telefono = '';
+  if (textos.telefono.trim() !== '') {
+    const normalizado = normalizarTelefono(textos.telefono);
+    if (!normalizado) return 'telefono';
+    telefono = normalizado;
+  }
+  return { ...textos, telefono, fecha: cuerpo.fecha, lineas: cuerpo.lineas as LineaEditable[], envasesARetirar: envases, confirmar };
+}
 
 /** Convierte lo que manda la pantalla en cambios del repositorio. Lo que no viene, no se toca. */
 function aCambios(cuerpo: Record<string, unknown>): CambiosDePedido | null {
@@ -78,6 +120,10 @@ function aCambios(cuerpo: Record<string, unknown>): CambiosDePedido | null {
       if (!esTexto(cuerpo[campo])) return null;
       cambios[campo] = cuerpo[campo];
     }
+  }
+  if ('envasesARetirar' in cuerpo) {
+    if (typeof cuerpo.envasesARetirar !== 'number') return null;
+    cambios.envasesARetirar = cuerpo.envasesARetirar;
   }
   if ('lineas' in cuerpo) {
     if (!Array.isArray(cuerpo.lineas)) return null;
@@ -102,7 +148,59 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       return json({ correo, ahora: ahoraSegundos, resumen: await repositorio.resumen() });
     }
 
+    if (ruta === '/api/opciones' && metodo === 'GET') {
+      // La fecha sugerida aplica el corte de las 9:00 y salta los domingos, pero no conoce los feriados (viven en la
+      // planilla y el panel no tiene acceso a Google): la persona la revisa antes de guardar.
+      const sugerida = calcularFechaEntrega(new Date(ahoraSegundos * 1000), { feriados: SIN_FERIADOS });
+      return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha });
+    }
+
+    if ((ruta === '/api/reparto' || ruta === '/api/reparto.csv') && metodo === 'GET') {
+      const fecha = url.searchParams.get('fecha');
+      if (!esFecha(fecha) || Number.isNaN(Date.parse(`${fecha}T00:00:00Z`))) return error(400, 'Fecha no válida.');
+      const reparto = armarReparto(await repositorio.pedidosDelDia(fecha), fecha);
+      if (ruta === '/api/reparto') return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto) });
+      return new Response(csvDeReparto(reparto), {
+        status: 200,
+        headers: {
+          'content-type': 'text/csv; charset=utf-8',
+          'content-disposition': `attachment; filename="reparto-${fecha}.csv"`,
+          'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff',
+        },
+      });
+    }
+
+    // Estas dos solo leen, pero van por POST: lo que se busca (un nombre, un teléfono) viaja en el cuerpo y no en la
+    // dirección, que queda escrita en los registros de Cloudflare.
+    if ((ruta === '/api/clientes/anterior' || ruta === '/api/pedidos/buscar') && metodo === 'POST') {
+      const rechazo = esperadoComoEscritura(request, url);
+      if (rechazo) return rechazo;
+      const cuerpo = await leerCuerpo(request);
+      if (!cuerpo) return error(400, 'Solicitud no válida.');
+      if (ruta === '/api/clientes/anterior') {
+        // Para no volver a escribir los datos de alguien que ya pidió: los de su último pedido con dirección (D40).
+        const telefono = esTexto(cuerpo.telefono) ? normalizarTelefono(cuerpo.telefono) : null;
+        return json({ datos: telefono ? await repositorio.datosDelUltimoPedido(telefono) : null });
+      }
+      if (!esTexto(cuerpo.texto) || cuerpo.texto.trim().length < 2) return error(400, 'Escribe al menos 2 letras o números para buscar.');
+      return json({ pedidos: await repositorio.buscarPedidos(cuerpo.texto) });
+    }
+
+    if (ruta === '/api/pedidos' && metodo === 'POST') {
+      const rechazo = esperadoComoEscritura(request, url);
+      if (rechazo) return rechazo;
+      const cuerpo = await leerCuerpo(request);
+      const manual = cuerpo ? aPedidoManual(cuerpo) : null;
+      if (!manual) return error(400, 'Solicitud no válida.');
+      if (manual === 'telefono') return error(422, 'Revisa el teléfono: escríbelo con sus 9 dígitos (por ejemplo 9 1234 5678) o déjalo vacío.');
+      const creado = await repositorio.crearPedido(manual, correo, ahoraSegundos, fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha);
+      if (!creado.ok) return respuestaDeRepositorio(creado, 'pedido');
+      return json({ pedido: creado.valor }, 201);
+    }
+
     if (ruta === '/api/pedidos' && metodo === 'GET') {
+      if (url.searchParams.has('buscar')) return error(400, 'La búsqueda se hace con el buscador del panel.');
       const grupo = url.searchParams.get('grupo') ?? 'por_confirmar';
       if (!Object.hasOwn(GRUPOS, grupo)) return error(400, 'Grupo de pedidos no válido.'); // `in` también acepta "constructor" y "__proto__"
       const fecha = url.searchParams.get('fecha') ?? undefined;
@@ -122,6 +220,8 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
         if (rechazo) return rechazo;
         const cuerpo = await leerCuerpo(request);
         if (!cuerpo) return error(400, 'Solicitud no válida.');
+        const version = versionVista(cuerpo);
+        if (version === null) return error(400, 'Solicitud no válida.');
 
         if (pedido[2] === 'estado') {
           const nuevo = cuerpo.estado;
@@ -129,13 +229,13 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
           if (cuerpo.fechaConfirmada !== undefined && !esTexto(cuerpo.fechaConfirmada)) return error(400, 'Fecha no válida.');
           const motivo = esTexto(cuerpo.motivo) ? cuerpo.motivo.slice(0, 300) : undefined;
           return respuestaDeRepositorio(
-            await repositorio.cambiarEstado(id, nuevo as EstadoDePedido, correo, ahoraSegundos, { fechaConfirmada: cuerpo.fechaConfirmada as string | undefined, motivo }),
+            await repositorio.cambiarEstado(id, nuevo as EstadoDePedido, correo, ahoraSegundos, { fechaConfirmada: cuerpo.fechaConfirmada as string | undefined, motivo, versionVista: version }),
             'pedido',
           );
         }
         const cambios = aCambios(cuerpo);
         if (!cambios) return error(400, 'Solicitud no válida.');
-        return respuestaDeRepositorio(await repositorio.editarPedido(id, cambios, correo, ahoraSegundos), 'pedido');
+        return respuestaDeRepositorio(await repositorio.editarPedido(id, cambios, correo, ahoraSegundos, version), 'pedido');
       }
     }
 

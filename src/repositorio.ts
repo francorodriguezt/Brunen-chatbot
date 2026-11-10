@@ -77,7 +77,24 @@ export interface CambiosDePedido {
   comuna?: string;
   direccion?: string;
   notasRepartidor?: string;
+  envasesARetirar?: number;
   lineas?: LineaEditable[];
+}
+
+/** Un pedido que una persona anota en el panel: el que llegó por teléfono, por un audio o de una empresa con plan mensual. */
+export interface PedidoManual {
+  /** Solo dígitos, con código de país, o vacío si todavía no se sabe. */
+  telefono: string;
+  nombre: string;
+  comuna: string;
+  direccion: string;
+  /** Día de entrega (YYYY-MM-DD). */
+  fecha: string;
+  lineas: LineaEditable[];
+  notasRepartidor: string;
+  envasesARetirar: number;
+  /** true = queda confirmado de una vez, si todas las líneas tienen precio. */
+  confirmar: boolean;
 }
 
 export type ErrorDeRepositorio =
@@ -93,6 +110,8 @@ export type ResultadoRepo<T> = { ok: true; valor: T } | { ok: false; error: Erro
 
 const TIPOS: ReadonlySet<string> = new Set<TipoBidon>(['10L', '12L', '20L']);
 const MAX_TEXTO = 500;
+const MAX_LINEAS = 5;
+const INTENTOS_DE_ID = 5;
 const RETENCION_TEXTO_SEGUNDOS = 90 * 24 * 3600;
 const PROBABILIDAD_LIMPIEZA = 0.02;
 
@@ -111,6 +130,20 @@ function fechaValida(texto: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
   const fecha = new Date(`${texto}T00:00:00Z`);
   return !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === texto;
+}
+
+/** Las líneas tal como las manda la pantalla, ya revisadas y con su subtotal; null si alguna no es válida. */
+function aLineasValidadas(lineas: readonly LineaEditable[]): LineaPedido[] | null {
+  if (lineas.length === 0 || lineas.length > MAX_LINEAS) return null;
+  const validas: LineaPedido[] = [];
+  for (const l of lineas) {
+    if (typeof l !== 'object' || l === null) return null;
+    const cantidadOk = Number.isInteger(l.cantidad) && l.cantidad >= 1 && l.cantidad <= 999;
+    const precioOk = l.precioUnitario === null || (Number.isInteger(l.precioUnitario) && l.precioUnitario >= 0 && l.precioUnitario <= 1_000_000);
+    if (!TIPOS.has(l.tipo) || !cantidadOk || !precioOk) return null;
+    validas.push({ tipo: l.tipo, cantidad: l.cantidad, precioUnitario: l.precioUnitario, subtotal: l.precioUnitario === null ? null : l.precioUnitario * l.cantidad });
+  }
+  return validas;
 }
 
 function jsonODefecto<T>(texto: unknown, defecto: T): T {
@@ -274,7 +307,7 @@ export class RepositorioD1 {
          notas_repartidor = CASE WHEN ?4 = '' THEN notas_repartidor WHEN notas_repartidor = '' THEN ?4 ELSE substr(notas_repartidor || '. ' || ?4, 1, ${MAX_TEXTO}) END,
          observaciones = CASE WHEN ?5 = '' THEN observaciones WHEN observaciones = '' THEN ?5 ELSE substr(observaciones || ' | ' || ?5, 1, ${MAX_TEXTO}) END,
          estado = CASE WHEN ?6 = 'Fuera_de_zona' AND estado = 'Pendiente_Confirmacion' THEN 'Fuera_de_zona' ELSE estado END,
-         actualizado_en = ?7
+         actualizado_en = MAX(actualizado_en + 1, ?7)
        WHERE id = ?8 AND estado NOT IN ('Entregado', 'Cancelado')`,
       (c.nombre ?? '').slice(0, 80),
       (c.direccion ?? '').slice(0, 200),
@@ -337,25 +370,88 @@ export class RepositorioD1 {
     return (await this.filas(sql, ...valores)).map(aPedido);
   }
 
+  /** Los pedidos de un día (por su fecha confirmada o, si no la hay, la propuesta), sin los cancelados: de aquí sale el reparto. */
+  async pedidosDelDia(fecha: string): Promise<PedidoGuardado[]> {
+    const filas = await this.filas(
+      `SELECT ${COLUMNAS_PEDIDO} FROM pedidos WHERE COALESCE(fecha_confirmada, fecha_entrega) = ?1 AND estado != 'Cancelado' ORDER BY creado_en, rowid LIMIT 500`,
+      fecha,
+    );
+    return filas.map(aPedido);
+  }
+
+  /**
+   * Busca por parte del nombre, la dirección, el número de pedido o el teléfono, del más nuevo al más antiguo. Recorre
+   * la tabla completa, así que solo corre cuando alguien busca (no en la consulta que se repite cada pocos segundos).
+   */
+  async buscarPedidos(textoBuscado: string, limite = 50): Promise<PedidoGuardado[]> {
+    const limpio = textoBuscado.trim().slice(0, 60);
+    if (limpio.length < 2) return [];
+    // % y _ son comodines de LIKE: se escapan para buscarlos como texto.
+    const patron = `%${limpio.replace(/[\\%_]/g, '\\$&')}%`;
+    const digitos = limpio.replace(/\D/g, '');
+    const patronTelefono = digitos.length >= 3 ? `%${digitos}%` : '';
+    const tope = Math.min(Math.max(Math.trunc(limite), 1), 100);
+    const filas = await this.filas(
+      `SELECT ${COLUMNAS_PEDIDO} FROM pedidos
+       WHERE nombre LIKE ?1 ESCAPE '\\' OR direccion LIKE ?1 ESCAPE '\\' OR id LIKE ?1 ESCAPE '\\' OR (?2 != '' AND telefono LIKE ?2)
+       ORDER BY creado_en DESC, rowid DESC LIMIT ${tope}`,
+      patron,
+      patronTelefono,
+    );
+    return filas.map(aPedido);
+  }
+
+  /**
+   * Anota un pedido que no llegó por el bot. `hoyLocal` es la fecha de hoy en Santiago (YYYY-MM-DD): con ella se arma el
+   * número de pedido, igual que los del bot, y el final se sortea. Con `confirmar` y todos los precios, queda confirmado.
+   */
+  async crearPedido(p: PedidoManual, quien: string, ahoraSegundos: number, hoyLocal: string): Promise<ResultadoRepo<PedidoGuardado>> {
+    if (!fechaValida(p.fecha)) return { ok: false, error: 'fecha_invalida' };
+    const lineas = aLineasValidadas(p.lineas);
+    const telefonoOk = p.telefono === '' || /^\d{8,15}$/.test(p.telefono);
+    const envasesOk = Number.isInteger(p.envasesARetirar) && p.envasesARetirar >= 0 && p.envasesARetirar <= 999;
+    if (!lineas || !telefonoOk || !envasesOk) return { ok: false, error: 'datos_invalidos' };
+
+    const total = calcularTotal(lineas);
+    const prefijo = `P${hoyLocal.slice(2, 4)}${hoyLocal.slice(5, 7)}${hoyLocal.slice(8, 10)}-`;
+    for (let intento = 0; intento < INTENTOS_DE_ID; intento++) {
+      const id = prefijo + Array.from({ length: 5 }, () => Math.min(35, Math.floor(this.azar() * 36)).toString(36).toUpperCase()).join('');
+      const creado = await this.cambios(
+        `INSERT INTO pedidos (id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, actualizado_en)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'Pendiente_Confirmacion', ?8, ?9, ?10, ?11, 'Anotado a mano en el panel.', ?2) ON CONFLICT(id) DO NOTHING`,
+        id, ahoraSegundos, p.telefono, p.nombre.trim().slice(0, 80), p.comuna.trim().slice(0, 80), p.direccion.trim().slice(0, 200), p.fecha,
+        JSON.stringify(lineas), total, p.notasRepartidor.trim().slice(0, MAX_TEXTO), p.envasesARetirar,
+      );
+      if (creado === 0) continue; // ese número ya existe: se sortea otro
+      await this.anotarHistorial(id, ahoraSegundos, quien, 'creado', 'a mano en el panel');
+      if (p.confirmar && total !== null) await this.cambiarEstado(id, 'Confirmado', quien, ahoraSegundos);
+      return { ok: true, valor: (await this.obtenerPedido(id)) as PedidoGuardado };
+    }
+    return { ok: false, error: 'conflicto' };
+  }
+
   async historialDe(id: string): Promise<Array<{ en: number; quien: string; accion: string; detalle: string }>> {
     const filas = await this.filas('SELECT en, quien, accion, detalle FROM historial_pedidos WHERE pedido_id = ?1 ORDER BY en, id', id);
     return filas.map((f) => ({ en: numero(f.en), quien: texto(f.quien), accion: texto(f.accion), detalle: texto(f.detalle) }));
   }
 
   /**
-   * Cambia el estado. `confirmado_por` y la fecha confirmada se llenan al confirmar. La actualización exige que el
-   * estado siga siendo el que se leyó: si otra persona lo cambió en el medio, devuelve "conflicto".
+   * Cambia el estado. `confirmado_por` y la fecha confirmada se llenan al confirmar. `versionVista` es el
+   * `actualizadoEn` del pedido que la persona tenía en pantalla: si alguien (otra persona o el bot) lo cambió después,
+   * devuelve "conflicto" y no toca nada, para que nadie confirme algo distinto de lo que vio. La versión sube con cada
+   * cambio, aunque dos caigan en el mismo segundo.
    */
   async cambiarEstado(
     id: string,
     nuevo: EstadoDePedido,
     quien: string,
     ahoraSegundos: number,
-    opciones: { fechaConfirmada?: string; motivo?: string } = {},
+    opciones: { fechaConfirmada?: string; motivo?: string; versionVista?: number } = {},
   ): Promise<ResultadoRepo<PedidoGuardado>> {
     if (!ESTADOS_DE_PEDIDO.includes(nuevo)) return { ok: false, error: 'datos_invalidos' };
     const actual = await this.obtenerPedido(id);
     if (!actual) return { ok: false, error: 'no_existe' };
+    if (opciones.versionVista !== undefined && opciones.versionVista !== actual.actualizadoEn) return { ok: false, error: 'conflicto' };
     if (!TRANSICIONES[actual.estado]?.includes(nuevo)) return { ok: false, error: 'transicion_invalida' };
 
     let fechaConfirmada = actual.fechaConfirmada;
@@ -365,19 +461,23 @@ export class RepositorioD1 {
       if (!fechaValida(fechaConfirmada)) return { ok: false, error: 'fecha_invalida' };
     }
     const cambiado = await this.cambios(
-      `UPDATE pedidos SET estado = ?1, actualizado_en = ?2, fecha_confirmada = ?3, confirmado_por = CASE WHEN ?1 = 'Confirmado' THEN ?4 ELSE confirmado_por END
-       WHERE id = ?5 AND estado = ?6`,
-      nuevo, ahoraSegundos, fechaConfirmada, quien, id, actual.estado,
+      `UPDATE pedidos SET estado = ?1, actualizado_en = MAX(actualizado_en + 1, ?2), fecha_confirmada = ?3, confirmado_por = CASE WHEN ?1 = 'Confirmado' THEN ?4 ELSE confirmado_por END
+       WHERE id = ?5 AND estado = ?6 AND actualizado_en = ?7`,
+      nuevo, ahoraSegundos, fechaConfirmada, quien, id, actual.estado, actual.actualizadoEn,
     );
     if (cambiado === 0) return { ok: false, error: 'conflicto' };
     await this.anotarHistorial(id, ahoraSegundos, quien, `estado: ${actual.estado} -> ${nuevo}`, opciones.motivo ?? '');
     return { ok: true, valor: (await this.obtenerPedido(id)) as PedidoGuardado };
   }
 
-  /** Corrige datos del pedido. Las líneas se recalculan: el subtotal de cada una y el total salen de cantidad y precio. */
-  async editarPedido(id: string, cambios: CambiosDePedido, quien: string, ahoraSegundos: number): Promise<ResultadoRepo<PedidoGuardado>> {
+  /**
+   * Corrige datos del pedido. Las líneas se recalculan: el subtotal de cada una y el total salen de cantidad y precio.
+   * `versionVista` funciona igual que en `cambiarEstado`.
+   */
+  async editarPedido(id: string, cambios: CambiosDePedido, quien: string, ahoraSegundos: number, versionVista?: number): Promise<ResultadoRepo<PedidoGuardado>> {
     const actual = await this.obtenerPedido(id);
     if (!actual) return { ok: false, error: 'no_existe' };
+    if (versionVista !== undefined && versionVista !== actual.actualizadoEn) return { ok: false, error: 'conflicto' };
     if (actual.estado === 'Entregado' || actual.estado === 'Cancelado') return { ok: false, error: 'pedido_cerrado' };
 
     const fechaConfirmada = cambios.fechaConfirmada === undefined ? actual.fechaConfirmada : cambios.fechaConfirmada;
@@ -385,24 +485,20 @@ export class RepositorioD1 {
 
     let lineas = actual.lineas;
     if (cambios.lineas) {
-      if (cambios.lineas.length === 0 || cambios.lineas.length > 5) return { ok: false, error: 'datos_invalidos' };
-      const nuevas: LineaPedido[] = [];
-      for (const l of cambios.lineas) {
-        const cantidadOk = Number.isInteger(l.cantidad) && l.cantidad >= 1 && l.cantidad <= 999;
-        const precioOk = l.precioUnitario === null || (Number.isInteger(l.precioUnitario) && l.precioUnitario >= 0 && l.precioUnitario <= 1_000_000);
-        if (!TIPOS.has(l.tipo) || !cantidadOk || !precioOk) return { ok: false, error: 'datos_invalidos' };
-        nuevas.push({ tipo: l.tipo, cantidad: l.cantidad, precioUnitario: l.precioUnitario, subtotal: l.precioUnitario === null ? null : l.precioUnitario * l.cantidad });
-      }
+      const nuevas = aLineasValidadas(cambios.lineas);
+      if (!nuevas) return { ok: false, error: 'datos_invalidos' };
       lineas = nuevas;
     }
     const comuna = (cambios.comuna ?? actual.comuna).slice(0, 80);
     const direccion = (cambios.direccion ?? actual.direccion).slice(0, 200);
     const notas = (cambios.notasRepartidor ?? actual.notasRepartidor).slice(0, MAX_TEXTO);
+    const envases = cambios.envasesARetirar ?? actual.envasesARetirar;
+    if (!Number.isInteger(envases) || envases < 0 || envases > 999) return { ok: false, error: 'datos_invalidos' };
 
     const hecho = await this.cambios(
-      `UPDATE pedidos SET fecha_confirmada = ?1, comuna = ?2, direccion = ?3, notas_repartidor = ?4, lineas = ?5, total = ?6, actualizado_en = ?7
+      `UPDATE pedidos SET fecha_confirmada = ?1, comuna = ?2, direccion = ?3, notas_repartidor = ?4, lineas = ?5, total = ?6, actualizado_en = MAX(actualizado_en + 1, ?7), envases_a_retirar = ?10
        WHERE id = ?8 AND actualizado_en = ?9`,
-      fechaConfirmada, comuna, direccion, notas, JSON.stringify(lineas), calcularTotal(lineas), ahoraSegundos, id, actual.actualizadoEn,
+      fechaConfirmada, comuna, direccion, notas, JSON.stringify(lineas), calcularTotal(lineas), ahoraSegundos, id, actual.actualizadoEn, envases,
     );
     if (hecho === 0) return { ok: false, error: 'conflicto' };
     const partes = [
@@ -411,6 +507,7 @@ export class RepositorioD1 {
       cambios.comuna !== undefined ? 'comuna' : '',
       cambios.direccion !== undefined ? 'dirección' : '',
       cambios.notasRepartidor !== undefined ? 'notas' : '',
+      cambios.envasesARetirar !== undefined ? 'envases' : '',
     ].filter(Boolean);
     await this.anotarHistorial(id, ahoraSegundos, quien, 'editado', partes.join(', '));
     return { ok: true, valor: (await this.obtenerPedido(id)) as PedidoGuardado };
