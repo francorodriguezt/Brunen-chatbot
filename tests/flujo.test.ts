@@ -74,7 +74,6 @@ describe('un pedido completo de un cliente conocido', () => {
       estado: 'Pendiente_Confirmacion',
       comuna: 'Ñuñoa',
       direccion: 'Calle Falsa 123',
-      fechaHora: '2026-10-28 10:00',
     });
     expect(d.alerta).toMatchObject({ tipo: 'pedido', motivos: [], nombre: 'Ana Prueba' });
     expect(d.memoria).toEqual({ accion: 'borrar' });

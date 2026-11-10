@@ -11,7 +11,6 @@ const OPERADORA = 'operadora@brunen.test';
 function pedido(cambios: Partial<PedidoARegistrar> = {}): PedidoARegistrar {
   return {
     idPedido: 'P261028-AAAAA',
-    fechaHora: '2026-10-28 10:00',
     telefono: '56911111111',
     nombre: 'Ana Prueba',
     lineas: [{ tipo: '20L', cantidad: 2, precioUnitario: 3300, subtotal: 6600 }],
