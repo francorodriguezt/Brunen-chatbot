@@ -134,7 +134,7 @@ Segunda ronda: lo que falta después del cuestionario respondido y de los audios
 ## Mejoras posibles
 Ninguna bloquea la salida a prueba; van de más a menos útiles para el piloto.
 - [x] Guía de uso del panel para la operadora, con "qué hacer si falla": `docs/GUIA_PANEL.md` (2026-11-10). Falta revisarla con Constanza.
-- [ ] Capturas del panel con datos ficticios en el README: hoy solo tiene la insignia de la revisión automática, y es lo primero que mira un reclutador.
+- [x] Capturas del panel con datos ficticios en el README (2026-11-10).
 - [x] Buscar pedidos por nombre, teléfono, dirección o número de pedido en el panel (D42, 2026-11-10).
 - [ ] Abrir el bot a todos los números: hoy solo responde a los de `NUMEROS_PERMITIDOS`. Para el piloto se agregan los teléfonos de los clientes invitados; para abrirlo del todo falta una forma explícita de decir "todos". Antes de eso conviene que, sin el flujo de pedido encendido, el bot no responda nada: el modo prueba (contestar lo que entendió el intérprete) ya no se usa.
 - [ ] Quitar de `telegram.ts` los botones Confirmar y Cambiar, que quedaron sin uso cuando la bandeja pasó al panel (D32).
