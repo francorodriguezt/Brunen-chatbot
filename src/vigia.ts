@@ -9,6 +9,9 @@
  *  - Revisión diaria (7:30 de Santiago, antes de que empiecen los pedidos): que el token de WhatsApp siga sirviendo y
  *    que la planilla se pueda leer. Así el equipo se entera antes que un cliente.
  *
+ *  - Clientes en espera. Con el número compartido, el bot calla mientras una persona atiende a un cliente (`relevo.ts`).
+ *    Si esa pausa termina y el cliente había escrito algo que nadie respondió, deja un aviso para una persona.
+ *
  * Corre aparte de la atención a los clientes: si esta tarea falla o se corta, ningún cliente se queda sin respuesta.
  */
 
@@ -17,6 +20,7 @@ import { AlmacenD1, type BaseDatos } from './almacen';
 import { FALLA_DEL_TOKEN, avisarFalla, type EntornoAtencion } from './atencion';
 import { leerConfiguracion } from './configuracion';
 import { fechaHoraLocal } from './despacho';
+import { cerrarPausasVencidas } from './relevo';
 import { RepositorioD1 } from './repositorio';
 import { configTelegram, enviarAlerta } from './telegram';
 import { revisarToken } from './whatsapp';
@@ -94,6 +98,34 @@ export async function vigilar(env: EntornoAtencion, ahora: Date = new Date()): P
 }
 
 /**
+ * Cierra las pausas que ya terminaron (`relevo.ts`) y deja un aviso por cada cliente que escribió durante la pausa y
+ * no recibió respuesta de nadie. No es urgente (no sale por Telegram): es un recordatorio en el panel. Nunca lanza errores.
+ */
+export async function avisarClientesEnEspera(env: EntornoAtencion, ahora: Date = new Date()): Promise<number> {
+  const db = env.DB;
+  if (!db) return 0;
+  const ahoraSegundos = Math.floor(ahora.getTime() / 1000);
+  try {
+    const repositorio = new RepositorioD1(db);
+    let avisos = 0;
+    for (const { telefono, esperaDesde } of await cerrarPausasVencidas(db, ahoraSegundos)) {
+      const local = fechaHoraLocal(new Date(esperaDesde * 1000));
+      const alerta: Alerta = {
+        tipo: 'escalamiento',
+        telefono,
+        resumen: `Escribió a las ${dosDigitos(local.hora)}:${dosDigitos(local.minuto)} mientras una persona atendía su conversación, y después nadie le respondió. Revisa su chat.`,
+        motivos: [],
+      };
+      if (await repositorio.guardarAviso(alerta, `en-espera:${telefono}:${esperaDesde}`, ahoraSegundos)) avisos += 1;
+    }
+    return avisos;
+  } catch (error) {
+    console.error('El vigía no pudo revisar las conversaciones que atendía una persona:', error instanceof Error ? error.message : error);
+    return 0;
+  }
+}
+
+/**
  * Comprueba lo que el bot necesita para atender, sin escribirle a nadie. Un tropiezo momentáneo de Meta no es una
  * alarma: solo se avisa cuando el token ya no sirve o cuando la planilla no se puede leer.
  */
@@ -116,6 +148,7 @@ export async function revisionDiaria(env: EntornoAtencion, ahora: Date = new Dat
 export async function tareaProgramada(env: EntornoAtencion, ahora: Date): Promise<void> {
   try {
     await vigilar(env, ahora);
+    await avisarClientesEnEspera(env, ahora);
     const local = fechaHoraLocal(ahora);
     if (local.hora === 7 && local.minuto >= 30 && local.minuto < 35) await revisionDiaria(env, ahora);
   } catch (error) {

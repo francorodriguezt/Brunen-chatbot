@@ -20,6 +20,8 @@ export type Resultado =
   | 'agrupado'
   | 'ignorado_modo_prueba'
   | 'ignorado_bot_apagado'
+  /** Una persona atiende a ese cliente desde la app: el bot no participa (relevo.ts). */
+  | 'ignorado_atiende_persona'
   | 'error';
 
 export interface RegistroMensaje {

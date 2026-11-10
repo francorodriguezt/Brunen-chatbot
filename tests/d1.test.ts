@@ -73,6 +73,7 @@ describe('migraciones', () => {
     expect(tablas).toEqual([
       { name: 'avisos' },
       { name: 'conversaciones' },
+      { name: 'conversaciones_tomadas' },
       { name: 'historial_pedidos' },
       { name: 'mensajes_pendientes' },
       { name: 'mensajes_procesados' },
