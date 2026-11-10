@@ -21,7 +21,7 @@ import type { BusquedaCliente } from './clientes';
 import { detectarComuna, esComunaAtendida } from './comunas';
 import type { EstadoConversacion } from './conversacion';
 import type { DatosDelCliente } from './datos';
-import { fechaHoraLocal, textoFechaHora } from './despacho';
+import { fechaHoraLocal } from './despacho';
 import type { PropuestaEntrega } from './entrega';
 import { accionDePedido, type AccionSugerida, type Intencion, type Interpretacion, type ItemInterpretado } from './interprete';
 import { generarIdPedido, type CompletarPedido, type DatosPrevios, type LineaPedido, type PedidoARegistrar } from './pedidos';
@@ -239,7 +239,6 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
   const idPedido = generarIdPedido(e.wamid, fechaHoraLocal(e.ahora).fecha);
   const pedido: PedidoARegistrar = {
     idPedido,
-    fechaHora: textoFechaHora(e.ahora),
     telefono: e.telefono,
     nombre: cliente?.nombre ?? previo?.nombre ?? '',
     lineas,
