@@ -4,6 +4,7 @@
  *   - GET  /webhook  -> verificación de Meta (hub.challenge).
  *   - POST /webhook  -> valida la firma, responde 200 de inmediato y procesa en segundo plano.
  *   - GET  /salud    -> para el monitoreo (UptimeRobot).
+ *   - Tarea programada (cada 5 minutos) -> el vigía: mensajes que quedaron sin atender y la revisión diaria (vigia.ts).
  *
  * Procesamiento de cada mensaje (solo de los números de `NUMEROS_PERMITIDOS` mientras dure la prueba):
  *   - Con `FLUJO_PEDIDO = "SI"` y D1: el flujo de pedido completo (atencion.ts): ficha del cliente, precio, entrega,
@@ -12,6 +13,8 @@
  */
 
 import {
+  FALLA_DEL_TOKEN,
+  anotarClienteSinRespuesta,
   atenderConFlujo,
   avisarFalla,
   esperaDeAgrupador,
@@ -23,12 +26,13 @@ import {
 import { anotarMensaje, esperarGrupo, reclamarGrupo } from './agrupador';
 import { leerBotActivo } from './configuracion';
 import { proponerEntrega, type PropuestaEntrega } from './entrega';
-import { almacenDe, esMensajeNuevo, liberarMensaje, limpiarAlmacen } from './almacen';
+import { almacenDe, esMensajeNuevo, liberarMensaje, limpiarAlmacen, marcarAtendidos } from './almacen';
 import { igualesTiempoConstante, verificarFirma } from './firma';
 import type { Intencion } from './interprete';
 import { interpretarConRespaldo } from './llm';
 import { planillaDe, type RegistroMensaje } from './planilla';
 import { describirInterpretacion } from './resumen';
+import { tareaProgramada } from './vigia';
 import {
   ErrorWhatsApp,
   enmascararTelefono,
@@ -56,6 +60,13 @@ export interface Env extends EntornoAtencion {
 /** Subconjunto de ExecutionContext que usamos; facilita las pruebas. */
 export interface Contexto {
   waitUntil(promesa: Promise<unknown>): void;
+}
+
+/** Lo que Cloudflare entrega en cada disparo de la tarea programada (`[triggers]` en wrangler.toml). */
+export interface EventoProgramado {
+  /** Milisegundos Unix del momento en que debía correr. */
+  scheduledTime: number;
+  cron: string;
 }
 
 export function numerosPermitidos(env: Env): Set<string> {
@@ -129,7 +140,7 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
   // 1. Sin repetidos: Meta reintenta si tarda, y el mismo mensaje no se atiende dos veces.
   const nuevos: MensajeEntrante[] = [];
   for (const mensaje of mensajes) {
-    if (almacen && !(await esMensajeNuevo(almacen, mensaje.id))) {
+    if (almacen && !(await esMensajeNuevo(almacen, mensaje.id, undefined, mensaje.de))) {
       console.log(`Mensaje repetido ignorado (${mensaje.id})`);
       continue;
     }
@@ -166,6 +177,8 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
         }
       }
       registros.push({ ...base(mensaje), ...(await procesarMensaje(mensaje, env, agrupado)) });
+      // Terminó (respondido, ignorado o agrupado con otro): el vigía ya no tiene que avisar por este mensaje.
+      if (almacen) await marcarAtendidos(almacen, [mensaje.id]);
     } catch (error) {
       // Si falló, se suelta el mensaje para que un reintento de Meta sí lo procese.
       if (almacen) await liberarMensaje(almacen, mensaje.id);
@@ -174,7 +187,8 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
         console.error(
           'TOKEN DE WHATSAPP VENCIDO O INVÁLIDO: genera uno nuevo en API Setup y cárgalo con "npx wrangler secret put WHATSAPP_TOKEN".',
         );
-        await avisarFalla(env, 'token-whatsapp', 'El token de WhatsApp venció o no es válido: el bot no puede responder. Genera uno nuevo y cárgalo con "npx wrangler secret put WHATSAPP_TOKEN".');
+        await avisarFalla(env, 'token-whatsapp', FALLA_DEL_TOKEN);
+        await anotarClienteSinRespuesta(env, mensaje.de);
       } else {
         // Sin este aviso, un cliente a quien no se le pudo responder solo quedaría en el log y en la hoja ERRORES.
         const queFallo = error instanceof ErrorWhatsApp ? 'No se pudo responder al cliente por WhatsApp' : 'Falló la atención de un mensaje';
@@ -275,5 +289,10 @@ export default {
     }
 
     return new Response('Method not allowed', { status: 405 });
+  },
+
+  /** Tarea programada: corre aparte de los mensajes, así que nunca le quita tiempo a la respuesta de un cliente. */
+  async scheduled(evento: EventoProgramado, env: Env, ctx: Contexto): Promise<void> {
+    ctx.waitUntil(tareaProgramada(env, new Date(evento.scheduledTime)));
   },
 };

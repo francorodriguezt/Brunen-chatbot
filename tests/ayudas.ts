@@ -114,6 +114,10 @@ export function stubMundo(
     const cuerpo = typeof init?.body === 'string' ? init.body : '';
     if (url.startsWith('https://graph.facebook.com')) {
       const estado = opciones.whatsapp ?? 200;
+      // Una consulta (GET), como la que revisa si el token sigue sirviendo, no es un envío.
+      if ((init?.method ?? 'GET') === 'GET') {
+        return new Response(estado === 200 ? '{"id":"000000000000000"}' : JSON.stringify({ error: { code: estado === 401 ? 190 : 1 } }), { status: estado });
+      }
       if (estado === 200) {
         const dato = JSON.parse(cuerpo) as { to: string; text: { body: string } };
         mundo.enviados.push({ para: dato.to, texto: dato.text.body });

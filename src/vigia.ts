@@ -1,0 +1,124 @@
+/**
+ * Vigía: lo que el bot revisa por su cuenta, con una tarea programada de Cloudflare (cada 5 minutos, `wrangler.toml`),
+ * para que una falla no pase en silencio.
+ *
+ *  - Mensajes sin atender. El webhook responde 200 a Meta de inmediato y atiende en segundo plano; si ese trabajo se
+ *    interrumpe (límite de CPU, una caída, un despliegue), Meta no reintenta y el cliente quedaría sin respuesta sin que
+ *    nadie se entere. Cada mensaje se anota al llegar y se marca al terminar (`almacen.ts`): el vigía busca los que
+ *    llegaron hace más de dos minutos y nunca terminaron, y deja un aviso con el teléfono para que una persona le escriba.
+ *  - Revisión diaria (7:30 de Santiago, antes de que empiecen los pedidos): que el token de WhatsApp siga sirviendo y
+ *    que la planilla se pueda leer. Así el equipo se entera antes que un cliente.
+ *
+ * Corre aparte de la atención a los clientes: si esta tarea falla o se corta, ningún cliente se queda sin respuesta.
+ */
+
+import type { Alerta } from './alertas';
+import { AlmacenD1, type BaseDatos } from './almacen';
+import { FALLA_DEL_TOKEN, avisarFalla, type EntornoAtencion } from './atencion';
+import { leerConfiguracion } from './configuracion';
+import { fechaHoraLocal } from './despacho';
+import { RepositorioD1 } from './repositorio';
+import { configTelegram, enviarAlerta } from './telegram';
+import { revisarToken } from './whatsapp';
+
+/** Atender un mensaje tarda, como mucho, la espera del agrupador más los 30 s que da Cloudflare: pasado esto, ya no va a terminar. */
+const ESPERA_ANTES_DE_AVISAR_SEGUNDOS = 120;
+/** Más atrás no se avisa: un mensaje de ayer ya lo vio alguien o ya no importa. */
+const VENTANA_SEGUNDOS = 24 * 3600;
+const MAXIMO_POR_PASADA = 50;
+/** Por Telegram van uno por uno solo los primeros: si falla todo a la vez, el resto se resume en un mensaje. */
+const MAXIMO_POR_TELEGRAM = 3;
+
+export interface MensajeSinAtender {
+  wamid: string;
+  telefono: string;
+  recibidoEn: number;
+}
+
+/** Los mensajes que llegaron y nunca terminaron de atenderse. Los que no tienen teléfono los anotó una versión anterior del bot. */
+export async function mensajesSinAtender(db: BaseDatos, ahoraSegundos: number): Promise<MensajeSinAtender[]> {
+  const resultado = await db
+    .prepare(
+      `SELECT wamid, telefono, recibido_en FROM mensajes_procesados
+       WHERE atendido_en IS NULL AND telefono != '' AND recibido_en < ?1 AND recibido_en >= ?2 ORDER BY recibido_en LIMIT ${MAXIMO_POR_PASADA}`,
+    )
+    .bind(ahoraSegundos - ESPERA_ANTES_DE_AVISAR_SEGUNDOS, ahoraSegundos - VENTANA_SEGUNDOS)
+    .run();
+  return ((resultado.results ?? []) as Array<Record<string, unknown>>).map((fila) => ({
+    wamid: String(fila.wamid),
+    telefono: String(fila.telefono),
+    recibidoEn: Number(fila.recibido_en),
+  }));
+}
+
+const dosDigitos = (n: number): string => String(n).padStart(2, '0');
+
+/**
+ * Deja un aviso por cada cliente con mensajes sin atender y devuelve cuántos avisos nuevos hubo. Nunca lanza errores.
+ * El aviso no se repite: su origen es el mensaje, y los mensajes quedan marcados para la pasada siguiente.
+ */
+export async function vigilar(env: EntornoAtencion, ahora: Date = new Date()): Promise<number> {
+  const db = env.DB;
+  if (!db) return 0;
+  const ahoraSegundos = Math.floor(ahora.getTime() / 1000);
+  try {
+    const colgados = await mensajesSinAtender(db, ahoraSegundos);
+    if (colgados.length === 0) return 0;
+
+    const porCliente = new Map<string, MensajeSinAtender[]>();
+    for (const mensaje of colgados) porCliente.set(mensaje.telefono, [...(porCliente.get(mensaje.telefono) ?? []), mensaje]);
+
+    const repositorio = new RepositorioD1(db);
+    const nuevos: Alerta[] = [];
+    for (const [telefono, mensajes] of porCliente) {
+      const primero = mensajes[0] as MensajeSinAtender;
+      const local = fechaHoraLocal(new Date(primero.recibidoEn * 1000));
+      const hora = `${dosDigitos(local.hora)}:${dosDigitos(local.minuto)}`;
+      const cuales = mensajes.length === 1 ? `un mensaje de este cliente (recibido a las ${hora})` : `${mensajes.length} mensajes de este cliente (el primero, recibido a las ${hora})`;
+      const alerta: Alerta = { tipo: 'error', telefono, resumen: `El bot no terminó de atender ${cuales}. Revisa su chat y respóndele si hace falta.`, motivos: [] };
+      if (await repositorio.guardarAviso(alerta, `sin-atender:${primero.wamid}`, ahoraSegundos)) nuevos.push(alerta);
+    }
+    await new AlmacenD1(db).marcarAtendidos(colgados.map((mensaje) => mensaje.wamid), ahoraSegundos);
+
+    const telegram = configTelegram(env);
+    for (const alerta of nuevos.slice(0, MAXIMO_POR_TELEGRAM)) await enviarAlerta(telegram, alerta);
+    const resto = nuevos.length - MAXIMO_POR_TELEGRAM;
+    if (resto > 0) {
+      await enviarAlerta(telegram, { tipo: 'error', telefono: '', resumen: `El bot tampoco terminó de atender a ${resto} clientes más: están en los avisos del panel.`, motivos: [] });
+    }
+    return nuevos.length;
+  } catch (error) {
+    console.error('El vigía no pudo revisar los mensajes sin atender:', error instanceof Error ? error.message : error);
+    return 0;
+  }
+}
+
+/**
+ * Comprueba lo que el bot necesita para atender, sin escribirle a nadie. Un tropiezo momentáneo de Meta no es una
+ * alarma: solo se avisa cuando el token ya no sirve o cuando la planilla no se puede leer.
+ */
+export async function revisionDiaria(env: EntornoAtencion, ahora: Date = new Date()): Promise<void> {
+  const token = await revisarToken({ token: env.WHATSAPP_TOKEN, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID, graphApiVersion: env.GRAPH_API_VERSION });
+  if (token === 'token') await avisarFalla(env, 'token-whatsapp', FALLA_DEL_TOKEN, ahora);
+
+  const hayPlanilla = Boolean(env.GOOGLE_SERVICE_ACCOUNT_JSON && env.GOOGLE_SHEET_ID);
+  if (hayPlanilla && (await leerConfiguracion(env)) === undefined) {
+    await avisarFalla(
+      env,
+      'planilla',
+      'No se pudo leer la planilla de Google (clientes, precios, feriados y configuración): mientras no vuelva, el bot deriva los pedidos a una persona. Revisa que la planilla siga compartida con la cuenta de servicio.',
+      ahora,
+    );
+  }
+}
+
+/** Lo que corre en cada disparo de la tarea programada. La hora que cuenta es la de Santiago, con su horario de verano. */
+export async function tareaProgramada(env: EntornoAtencion, ahora: Date): Promise<void> {
+  try {
+    await vigilar(env, ahora);
+    const local = fechaHoraLocal(ahora);
+    if (local.hora === 7 && local.minuto >= 30 && local.minuto < 35) await revisionDiaria(env, ahora);
+  } catch (error) {
+    console.error('La tarea programada falló:', error instanceof Error ? error.message : error);
+  }
+}
