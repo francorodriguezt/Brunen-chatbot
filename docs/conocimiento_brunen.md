@@ -83,6 +83,7 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 11. Contingencia: `ESTADO_SERVICIO = reducido` agrega `MENSAJE_EXCEPCION`; `BOT_ACTIVO = NO` apaga el bot.
 12. Mensajes que inicia el negocio fuera de la ventana de 24 h requieren plantillas aprobadas por Meta.
 13. **Un solo mensaje saliente por pedido** (presupuesto de mensajes gratis). Aprobado por el dueño el 2026-10-29 (opción A: Constanza escribe solo si algo cambia).
+15. Número compartido con la app (D46): si una persona le escribe a un cliente desde la app, el bot no le responde durante una hora (configurable) y, si el cliente quedó sin respuesta, deja un aviso en el panel.
 14. Cliente bloqueado: lo atiende una persona y el pedido no se anota (dueño, 2026-10-29). Facturas, boletas y empresas con plan mensual: siempre una persona.
 
 ## 10. Arquitectura (actualizada 2026-10-28)
