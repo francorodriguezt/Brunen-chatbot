@@ -4,6 +4,8 @@
  *   - GET  /webhook  -> verificación de Meta (hub.challenge).
  *   - POST /webhook  -> valida la firma, responde 200 de inmediato y procesa en segundo plano.
  *   - GET  /salud    -> para el monitoreo (UptimeRobot).
+ *   - Con el número compartido con la app WhatsApp Business, el mismo POST trae también los mensajes que una persona
+ *     envía desde la app: mientras ella atiende a un cliente, el bot no le responde (relevo.ts).
  *   - Tarea programada (cada 5 minutos) -> el vigía: mensajes que quedaron sin atender y la revisión diaria (vigia.ts).
  *
  * Procesamiento de cada mensaje (solo de los números de `NUMEROS_PERMITIDOS` mientras dure la prueba):
@@ -31,6 +33,7 @@ import { igualesTiempoConstante, verificarFirma } from './firma';
 import type { Intencion } from './interprete';
 import { interpretarConRespaldo } from './llm';
 import { planillaDe, type RegistroMensaje } from './planilla';
+import { anotarEsperaDelCliente, conversacionTomada, necesitaRespuesta, pausaPorPersona, registrarEcos } from './relevo';
 import { describirInterpretacion } from './resumen';
 import { tareaProgramada } from './vigia';
 import {
@@ -38,8 +41,10 @@ import {
   enmascararTelefono,
   enviarTexto,
   esErrorDeToken,
+  extraerEcos,
   extraerEstados,
   extraerMensajes,
+  type EcoDePersona,
   type EstadoMensaje,
   type MensajeEntrante,
 } from './whatsapp';
@@ -55,6 +60,8 @@ export interface Env extends EntornoAtencion {
   BOT_ACTIVO?: string;
   /** "NO" deja de anotar cada lote en las hojas MENSAJES_PROCESADOS y ERRORES: ahorra una llamada a Google por mensaje (D31). */
   REGISTRO_PLANILLA?: string;
+  /** Minutos que el bot calla con un cliente después de que una persona le escribe desde la app (por defecto 60; 0 = nunca). */
+  PAUSA_POR_PERSONA_MINUTOS?: string;
 }
 
 /** Subconjunto de ExecutionContext que usamos; facilita las pruebas. */
@@ -105,6 +112,39 @@ async function motivoParaIgnorar(mensaje: MensajeEntrante, env: Env): Promise<Re
 }
 
 /**
+ * Número compartido con la app (relevo.ts): true si una persona le escribió hace poco a este cliente y el bot debe
+ * callar. Solo se revisa para los mensajes que el bot iba a atender. Si la base falla, el bot atiende: es mejor
+ * responder de más que dejar a alguien sin respuesta.
+ */
+async function atiendeUnaPersona(mensaje: MensajeEntrante, env: Env): Promise<boolean> {
+  if (!env.DB || pausaPorPersona(env) === 0) return false;
+  if ((env.BOT_ACTIVO ?? 'SI').toUpperCase() === 'NO' || !numerosPermitidos(env).has(mensaje.de)) return false;
+  try {
+    const ahoraSegundos = Math.floor(Date.now() / 1000);
+    if (!(await conversacionTomada(env.DB, mensaje.de, ahoraSegundos))) return false;
+    // Si lo que escribió necesita respuesta, queda anotado: el vigía avisa si la pausa termina y nadie le contestó.
+    if (necesitaRespuesta(mensaje)) await anotarEsperaDelCliente(env.DB, mensaje.de, ahoraSegundos);
+    console.log(`Una persona atiende a ${enmascararTelefono(mensaje.de)}: el bot no responde`);
+    return true;
+  } catch (error) {
+    console.error('No se pudo revisar si una persona atiende la conversación; el bot atiende:', error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
+/** Anota que una persona escribió desde la app: el bot calla con esos clientes durante la pausa. */
+async function anotarRelevo(ecos: readonly EcoDePersona[], env: Env): Promise<void> {
+  const pausa = pausaPorPersona(env);
+  if (!env.DB || pausa === 0) return;
+  try {
+    const clientes = await registrarEcos(env.DB, ecos, pausa, Math.floor(Date.now() / 1000));
+    if (clientes > 0) console.log(`Una persona escribió desde la app a ${clientes} cliente(s): el bot no les responde durante ${pausa / 60} minutos`);
+  } catch (error) {
+    console.error('No se pudo anotar que una persona tomó la conversación:', error instanceof Error ? error.message : error);
+  }
+}
+
+/**
  * Atiende un mensaje. `agrupado` solo lo usa el flujo de pedido: son los textos que el lote ya juntó para este cliente
  * (`null` = otro mensaje seguido se llevó el grupo; sin valor, el mensaje espera por su cuenta).
  */
@@ -147,12 +187,18 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
     nuevos.push(mensaje);
   }
 
+  // 1b. Número compartido con la app: si una persona está atendiendo a este cliente, el bot no participa.
+  const conPersona = new Set<string>();
+  for (const mensaje of nuevos) {
+    if (await atiendeUnaPersona(mensaje, env)) conPersona.add(mensaje.id);
+  }
+
   // 2. Con el flujo de pedido, los textos de este aviso se anotan todos primero y se espera UNA sola vez a que lleguen
   //    más mensajes seguidos del mismo cliente (D27): así "2 bidones" y "de 20" reciben una sola respuesta.
   const anotados = new Map<string, number>();
   if (flujoActivo(env) && env.DB) {
     for (const mensaje of nuevos) {
-      if (mensaje.tipo !== 'text' || !mensaje.texto || (await motivoParaIgnorar(mensaje, env))) continue;
+      if (conPersona.has(mensaje.id) || mensaje.tipo !== 'text' || !mensaje.texto || (await motivoParaIgnorar(mensaje, env))) continue;
       try {
         const id = await anotarMensaje(env.DB, { wamid: mensaje.id, telefono: mensaje.de, texto: mensaje.texto });
         if (id !== null) anotados.set(mensaje.id, id);
@@ -165,6 +211,11 @@ async function procesarLote(mensajes: MensajeEntrante[], env: Env): Promise<void
 
   // 3. Cada mensaje.
   for (const mensaje of nuevos) {
+    if (conPersona.has(mensaje.id)) {
+      registros.push({ ...base(mensaje), resultado: 'ignorado_atiende_persona' });
+      if (almacen) await marcarAtendidos(almacen, [mensaje.id]);
+      continue;
+    }
     try {
       let agrupado: readonly string[] | null | undefined;
       const id = anotados.get(mensaje.id);
@@ -283,6 +334,12 @@ export default {
       } catch (error) {
         // Un aviso de estado raro nunca debe romper el 200 a Meta.
         console.error('No se pudieron registrar los estados:', error instanceof Error ? error.message : error);
+      }
+      try {
+        const ecos = extraerEcos(payload);
+        if (ecos.length > 0) ctx.waitUntil(anotarRelevo(ecos, env));
+      } catch (error) {
+        console.error('No se pudieron leer los ecos:', error instanceof Error ? error.message : error);
       }
       ctx.waitUntil(procesarLote(extraerMensajes(payload), env));
       return new Response('OK', { status: 200 });

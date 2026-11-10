@@ -1,6 +1,7 @@
 /**
  * Utilidades para la WhatsApp Cloud API de Meta.
  * - extraerMensajes: normaliza el payload del webhook.
+ * - extraerEcos: los mensajes que una persona envió desde la app, cuando el número es compartido (relevo.ts).
  * - enviarTexto: envía un mensaje de texto (cada envío cuenta para el cupo de 1.000 gratis al mes).
  */
 
@@ -39,6 +40,8 @@ export function extraerMensajes(payload: unknown): MensajeEntrante[] {
   const mensajes: MensajeEntrante[] = [];
   for (const entrada of datos.entry) {
     for (const cambio of entrada.changes ?? []) {
+      // Con el número compartido llegan otros avisos (ecos, historial): solo "messages" trae mensajes de clientes.
+      if (cambio.field !== undefined && cambio.field !== 'messages') continue;
       for (const m of cambio.value?.messages ?? []) {
         if (!m.id || !m.from || !m.type) continue;
         mensajes.push({
@@ -52,6 +55,54 @@ export function extraerMensajes(payload: unknown): MensajeEntrante[] {
     }
   }
   return mensajes;
+}
+
+/**
+ * Un mensaje que una persona del negocio envió desde la app WhatsApp Business o desde un equipo vinculado. Meta lo
+ * avisa (campo `smb_message_echoes`) cuando el número se comparte entre la app y la API. También llegan así las
+ * ediciones y los borrados hechos desde la app. Los mensajes que envía el bot por la API no generan este aviso.
+ * Fuente: https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/smb_message_echoes
+ */
+export interface EcoDePersona {
+  id: string; // wamid
+  para: string; // teléfono del cliente, solo dígitos
+  timestamp: number; // segundos Unix
+  tipo: string; // text | image | video | document | revoke | edit
+}
+
+interface PayloadEcos {
+  object?: string;
+  entry?: Array<{
+    changes?: Array<{
+      field?: string;
+      value?: {
+        contacts?: Array<{ wa_id?: string }>;
+        message_echoes?: Array<{ id?: string; to?: string; timestamp?: string; type?: string }>;
+      };
+    }>;
+  }>;
+}
+
+/**
+ * Devuelve los ecos con el teléfono del cliente. Meta omite el teléfono cuando el cliente usa un nombre de usuario y
+ * no lo comparte: ese eco se salta, porque el bot identifica a los clientes por su teléfono.
+ */
+export function extraerEcos(payload: unknown): EcoDePersona[] {
+  const datos = payload as PayloadEcos | null;
+  if (!datos || typeof datos !== 'object' || datos.object !== 'whatsapp_business_account' || !Array.isArray(datos.entry)) return [];
+  const ecos: EcoDePersona[] = [];
+  for (const entrada of datos.entry) {
+    for (const cambio of entrada?.changes ?? []) {
+      if (cambio?.field !== 'smb_message_echoes') continue;
+      const deContactos = cambio.value?.contacts?.[0]?.wa_id;
+      for (const m of cambio.value?.message_echoes ?? []) {
+        const para = String(m?.to ?? deContactos ?? '').replace(/\D/g, '');
+        if (!m?.id || !para) continue;
+        ecos.push({ id: m.id, para, timestamp: Number(m.timestamp ?? 0), tipo: m.type ?? '' });
+      }
+    }
+  }
+  return ecos;
 }
 
 export interface ConfigWhatsApp {

@@ -19,6 +19,9 @@ FLUJO_PEDIDO = "SI"
 # El registro de cada mensaje en las hojas MENSAJES_PROCESADOS y ERRORES queda apagado (D44): los pedidos y los avisos ya
 # están en D1 y se ven en el panel, y cada registro era una llamada más a Google por mensaje. "SI" lo vuelve a encender.
 REGISTRO_PLANILLA = "NO"
+# Con el número compartido entre el bot y la app WhatsApp Business (coexistencia, D46): minutos que el bot calla con un
+# cliente después de que una persona le escribe desde la app (por defecto 60; con 0 el bot no se calla nunca).
+# PAUSA_POR_PERSONA_MINUTOS = "60"
 
 # El vigía (src/vigia.ts): cada 5 minutos busca mensajes que quedaron sin atender y, a las 7:30 de Santiago, revisa el
 # token de WhatsApp y la planilla. El plan gratis permite 5 tareas programadas por cuenta; esta es la única.
