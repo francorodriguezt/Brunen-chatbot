@@ -18,9 +18,9 @@ Brunen vende por WhatsApp el 100 % de sus pedidos: una persona recibe cada mensa
 | 3 | Intérprete de mensajes: reglas y respaldo con IA (Groq) | Lista |
 | 4 | Flujo de pedido: cliente, precio, fecha, memoria de la conversación, registro en D1 | Encendido en producción solo para números de prueba y probado de punta a punta; falta abrirlo a clientes reales |
 | 5 | Bandeja de pedidos y avisos para la operadora; Telegram solo para lo muy urgente | La bandeja está en el panel, todavía sin desplegar; el envío de avisos por Telegram está listo, falta crear el bot |
-| 6 | Comprobantes, audio y lista del día para el repartidor | Lista del día lista; falta decidir dónde guardar los comprobantes |
+| 6 | Comprobantes, audio y lista del día para el repartidor | La lista del día está en el panel (pestaña Reparto); falta guardar los comprobantes |
 | 7 | Producción y piloto con clientes | Pendiente |
-| P | Panel de administración: pedidos, avisos, clientes por ubicación, mapa y estadísticas | P1 (bandeja de pedidos y avisos) lista y probada en local; el acceso será Cloudflare Access; falta activarlo y desplegar |
+| P | Panel de administración: pedidos, avisos, reparto del día, clientes por ubicación, mapa y estadísticas | Bandeja de pedidos y avisos, reparto del día, pedidos anotados a mano y búsqueda: listos y probados en local; el acceso será Cloudflare Access; falta activarlo y desplegar |
 
 Hoy el bot atiende solo a los números de prueba: anota el pedido de punta a punta, responde una sola vez y, si es un cliente nuevo, le pide el nombre, la dirección y, si es departamento, el edificio. Cómo conversa con los clientes está en [docs/CONVERSACIONES.md](docs/CONVERSACIONES.md) y el detalle y los criterios de cada etapa en [docs/ETAPAS.md](docs/ETAPAS.md).
 
@@ -41,14 +41,15 @@ flowchart LR
 - **Webhook seguro:** valida `X-Hub-Signature-256` (HMAC-SHA256 con comparación en tiempo constante), responde 200 de inmediato y procesa con `ctx.waitUntil`, porque Meta reintenta si tarda.
 - **El LLM extrae, el código calcula:** precios, tramos, corte horario y feriados son funciones deterministas con pruebas, en zona horaria `America/Santiago`. La IA solo entra cuando las reglas no entienden, con un tope diario, validando todo lo que devuelve y sin recibir nombres ni teléfonos.
 - **Lo dudoso no se le promete al cliente:** si el precio depende de algo pendiente, la tabla de precios tiene errores o la fecha no es segura, el pedido se anota igual, una persona recibe los motivos y al cliente se le dice que se lo confirman.
+- **Ningún mensaje se pierde en silencio:** el webhook responde 200 y atiende en segundo plano, así que si ese trabajo se corta Meta no reintenta. Cada mensaje se anota al llegar y se marca al terminar; una tarea programada cada 5 minutos busca los que nunca terminaron y deja un aviso con el teléfono para que una persona responda. Cada mañana revisa además que el token de WhatsApp y la planilla sigan funcionando.
 - **Presupuesto de mensajes:** WhatsApp regala 1.000 mensajes de servicio al mes por número. El diseño apunta a 1 mensaje por pedido, junta los mensajes seguidos del cliente y no responde a un simple "gracias".
 - **Plan gratuito de Cloudflare:** 10 ms de CPU por solicitud. Las lecturas de la planilla se guardan en memoria, el token de Google se pide una sola vez y el flujo lee solo lo que cada mensaje necesita.
-- **Panel de administración con acceso cerrado por defecto:** es un Worker aparte, detrás de Cloudflare Access, sin ningún secreto de WhatsApp ni de Google. Comprueba en cada solicitud el token de Access (firma RS256, emisor, audiencia y vencimiento) y, si falta configuración, no sirve nada. Las escrituras exigen una cabecera propia y el mismo origen, la política de contenido solo permite scripts propios y lo que escribe un cliente se muestra siempre como texto, nunca como HTML. La consulta que se repite cada pocos segundos usa solo índices, y una prueba lo vigila para no pasar el límite gratuito de lecturas de D1.
+- **Panel de administración con acceso cerrado por defecto:** es un Worker aparte, detrás de Cloudflare Access, sin ningún secreto de WhatsApp ni de Google. Comprueba en cada solicitud el token de Access (firma RS256, emisor, audiencia y vencimiento) y, si falta configuración, no sirve nada. Las escrituras exigen una cabecera propia y el mismo origen, la política de contenido solo permite scripts propios y lo que escribe un cliente se muestra siempre como texto, nunca como HTML. Cada cambio lleva la versión del pedido que la persona estaba viendo, para que dos personas no se pisen; lo que se busca (nombres, teléfonos) viaja en el cuerpo de la solicitud y no en la dirección; y lo que escribe un cliente no puede terminar como fórmula en el Excel del reparto. La consulta que se repite cada pocos segundos usa solo índices, y una prueba lo vigila para no pasar el límite gratuito de lecturas de D1.
 - **Datos personales:** los teléfonos se enmascaran en los logs, los secretos viven solo en `.dev.vars` o en `wrangler secret`, la IA corre con retención de datos cero y los datos reales de clientes no entran al repositorio.
-- Las 40 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
+- Las 45 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
 
 ## Calidad
-- Más de 880 pruebas automáticas con Vitest: los casos de precios del negocio, mensajes de ejemplo para el intérprete, conversaciones completas de punta a punta y la seguridad del panel (tokens falsificados, vencidos o de otra aplicación).
+- Más de 1.000 pruebas automáticas con Vitest: los casos de precios del negocio, mensajes de ejemplo para el intérprete, conversaciones completas de punta a punta y la seguridad del panel (tokens falsificados, vencidos o de otra aplicación).
 - Las pruebas de la base de datos corren el SQL de verdad sobre SQLite con las migraciones reales, no sobre un doble.
 - TypeScript en modo estricto y CI en GitHub Actions (`npm run check` en cada push).
 - Scripts para validar la configuración y simular un mensaje firmado como Meta, sin depender de Meta.
@@ -56,12 +57,12 @@ flowchart LR
 ## Estructura
 | Carpeta | Contenido |
 |---|---|
-| `src/` | Worker, firma, WhatsApp, deduplicación, intérprete y respaldo con IA, precios, fechas y despacho, lectura de la planilla, motor del flujo de pedido, pedidos y avisos en D1, y el Worker del panel (`src/panel/`) |
+| `src/` | Worker, firma, WhatsApp, deduplicación, intérprete y respaldo con IA, precios, fechas y despacho, lectura de la planilla, motor del flujo de pedido, pedidos y avisos en D1, reparto del día, el vigía de mensajes sin atender y el Worker del panel (`src/panel/`) |
 | `panel/` | Pantalla del panel: HTML, CSS y JavaScript sin dependencias |
 | `tests/` | Pruebas, mensajes de ejemplo (`mensajes.json`) y ayudas compartidas |
 | `migrations/` | Esquema de la base D1 |
 | `scripts/` | `verificar-config`, `simular-mensaje`, `preparar-planilla` y los datos ficticios para ver el panel en local |
-| `docs/` | Conocimiento del negocio, decisiones, etapas, pendientes, conversaciones de ejemplo y guía de desarrollo |
+| `docs/` | Conocimiento del negocio, decisiones, etapas, pendientes, conversaciones de ejemplo, guía del panel y guía de desarrollo |
 
 Para correrlo, probarlo y desplegarlo: [docs/DESARROLLO.md](docs/DESARROLLO.md).
 
