@@ -156,6 +156,20 @@ describe('roles de columna', () => {
     expect(clasificarColumnas(ENCABEZADOS)).toEqual(['fecha', 'nombre', 'direccion', 'comuna', 'telefono', 'tipo_cliente', 'cantidad', 'tamano', 'precio', 'tipo_pago', 'factura', 'estado_pago']);
   });
 
+  it('distingue "cantidad de bidones" de "cant bidones y tamaño" (así las describió Franco)', () => {
+    expect(clasificarColumnas(['cantidad de bidones', 'cant bidones y tamaño'])).toEqual(['cantidad', 'tamano']);
+  });
+
+  it('una columna combinada con muchas formas ("15 de 20lts") conserva números y unidades, y tapa lo demás', () => {
+    const filas = Array.from({ length: 45 }, (_, n) => [`${n + 1} de 20lts`]);
+    const r = anonimizarHoja([['cant bidones y tamaño'], ...filas, ['3 de 12 para Pedro']]);
+    expect(r.columnas[0].tratamiento).toBe('numero');
+    expect(r.filas[14][0]).toBe('15 de 20lts');
+    expect(r.filas[45][0]).toBe('3 de 12 ? ?');
+    const informe = construirInforme({ archivo: 'x.csv', hojas: [{ nombre: 'h', ...r }] });
+    expect(informe).toMatch(/\| 20 L \| 45 \|/);
+  });
+
   it('una sobrescritura manda sobre lo automático', () => {
     expect(clasificarColumnas(['Apodo', 'Vendedor'], new Map([['apodo', 'nombre'], ['vendedor', 'omitir']]))).toEqual(['nombre', 'omitir']);
   });

@@ -1,6 +1,6 @@
 # Conocimiento del proyecto — Chatbot Brunen SpA
 Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
-Última actualización: 2026-11-10
+Última actualización: 2026-11-11
 
 > Datos sensibles (cuenta bancaria, teléfono de Constanza, teléfonos de clientes) NO se guardan en este repo:
 > viven en la hoja CONFIGURACION / CLIENTES de la planilla. Aquí solo se indica dónde están.
@@ -147,12 +147,18 @@ Confirmado:
 - El furgón carga como máximo 65 bidones. Si el pedido del día supera eso, se usa una segunda planta (Actum, en Las Condes). Falta saber cuántos bidones de cada tamaño caben y la carga máxima permitida (65 bidones de 20 L pesan más de 1,3 toneladas solo en agua).
 - Jornada: el repartidor retira el furgón donde se guarda, carga en la planta, reparte, vuelve a la planta a dejar los vacíos y devuelve el furgón.
 - Felipe quiere ver la ubicación del repartidor en vivo, con los puntos entregados y pendientes. Avisos urgentes por Telegram. Constanza usará el panel en computador y celular. La cuenta administrativa será el correo de Brunen.
-- Carga inicial: 12 L a $4.500 y promoción de 2 unidades por $8.000.
+- Carga inicial (texto original): "10L: 4000 · 12L: 4500 y 2X8000". La promoción de 2 por $8.000 va escrita junto a los 12 L.
+- El Excel del día siguiente se va armando el mismo día (el día anterior al reparto).
+- La hoja del repartidor que arman hoy trae, por parada: nombre, dirección con comuna, teléfono, pedido ("15 de 20lts") y forma de pago; si paga en efectivo, el monto a cobrar. No trae el tipo de cliente, y debería.
+- Cuando la ruta está lista se le avisa al repartidor, que la inicia desde la aplicación de la plataforma de rutas en su celular; desde ahí se ve en vivo dónde está y los puntos. Felipe necesita seguir viéndolo sí o sí, sobre todo para responderle a un cliente cuándo llega su pedido; Franco quiere que el bot pueda dar esa respuesta.
+- Constanza recibe los avisos urgentes por Telegram.
+- Franco quiere hacer por su cuenta todo lo posible en Meta: la gestión y los documentos.
 
 Contradicciones y huecos (por resolver antes de construir):
 - Carga inicial de 10 L: el cuestionario dice $4.000; el dueño dijo $4.500 para 12 L y 10 L (2026-10-29), y así está en `src/precios.ts`. No se cambia hasta confirmar.
 - Tipos de cliente: el Excel usa hogar, minimarket y empresa; el sistema usa normal, mayorista, empresa y especial. Hogar sería normal y minimarket sería mayorista (a confirmar). "Especial" es una condición de precio, no un tipo.
 - La tabla de pedidos no guarda tipo de pago, estado de pago ni si pide factura, que el Excel sí tiene.
 - Dirección de inicio y fin de la ruta: el negocio figura en Pudahuel y el cuestionario habla de otra planta.
-- Rastreo: Franco dijo el 2026-10-29 que hoy ya ven al repartidor en la plataforma de rutas, y a la vez el cuestionario dice que se le manda un Word por WhatsApp. Si el repartidor ya usa la app de la plataforma, el rastreo existe y no hay que construirlo. Es lo primero que hay que preguntar (D38 decía reemplazarla y el cuestionario habla de integrarla).
+- Rastreo (resuelto el 2026-11-11 con el texto original de las respuestas): el repartidor ya usa la aplicación de la plataforma de rutas y el seguimiento en vivo ya existe. No hay que construirlo: hay que conservarlo (D48). Queda por saber por qué, teniendo la aplicación, igual se le manda el Word parada por parada (hipótesis: la aplicación no le muestra qué entregar ni cuánto cobrar).
+- Corte de las 9:00 y armado del Excel: si el Excel de mañana se arma hoy, falta saber cómo entran a la ruta los pedidos que llegan el mismo día antes de las 9:00.
 - El celular del repartidor: no se sabe si es de la empresa o personal, ni si es Android o iPhone. Cambia cómo se pide su consentimiento para el rastreo.

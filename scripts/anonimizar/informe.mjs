@@ -77,8 +77,16 @@ function fechaDe(valor) {
 function tamanoNormal(valor) {
   const v = String(valor ?? '').trim();
   if (v === '') return '(vacío)';
-  const m = /(\d{1,2})/.exec(v);
-  return m ? `${m[1]} L` : v;
+  // La columna puede venir combinada ("15 de 20lts"): el tamaño es el número que es 10, 12 o 20, no el primero.
+  // Si algún número lleva unidad ("20lts", "12 L"), ese es el tamaño: "10 de 20lts" son 10 bidones de 20 L.
+  const conUnidad = [...new Set([...v.matchAll(/(\d+)\s*(?:l|lt|lts|litros?)\b/gi)].map((m) => m[1]))];
+  if (conUnidad.length === 1) return `${conUnidad[0]} L`;
+  if (conUnidad.length > 1) return 'varios tamaños';
+  const numeros = [...v.matchAll(/\d+/g)].map((m) => m[0]);
+  const tamanos = [...new Set(numeros.filter((n) => n === '10' || n === '12' || n === '20'))];
+  if (numeros.length > 1 && tamanos.length > 1) return 'varios tamaños';
+  if (numeros.length > 1 && tamanos.length === 1) return `${tamanos[0]} L`;
+  return numeros.length > 0 ? `${numeros[0]} L` : v;
 }
 
 function tramoDe(cantidad) {
@@ -146,7 +154,11 @@ function seccionCategorias(hoja) {
 
 function seccionCantidad(hoja, { celda, tiene, cliente }) {
   const L = ['### Cantidad y tamaño', ''];
-  if (!tiene('cantidad')) return [...L, '_No hay columna de cantidad reconocida._', ''];
+  if (!tiene('cantidad')) {
+    L.push('_No hay columna de cantidad reconocida._', '');
+    if (tiene('tamano')) L.push('**Tamaños** (el número que es 10, 12 o 20)', '', ...tabla(['Tamaño', 'Filas'], ordenado(contar(hoja.filas.map((f) => tamanoNormal(celda(f, 'tamano')))))), '');
+    return L;
+  }
   const valores = hoja.filas.map((f) => celda(f, 'cantidad'));
   const numeros = valores.map(aNumero);
   const validos = numeros.filter(Number.isFinite);
@@ -161,7 +173,7 @@ function seccionCantidad(hoja, { celda, tiene, cliente }) {
 
   if (tiene('tamano')) {
     const tamanos = hoja.filas.map((f) => tamanoNormal(celda(f, 'tamano')));
-    L.push('', '**Tamaños** (se toma el primer número del texto)', '', ...tabla(['Tamaño', 'Filas'], ordenado(contar(tamanos))));
+    L.push('', '**Tamaños** (el número que es 10, 12 o 20)', '', ...tabla(['Tamaño', 'Filas'], ordenado(contar(tamanos))));
     const combos = ordenado(contar(hoja.filas.map((f, n) => `${tamanos[n]} × ${Number.isFinite(numeros[n]) ? numeros[n] : '(texto o vacío)'}`))).slice(0, 15);
     L.push('', '**Combinaciones tamaño × cantidad más frecuentes**', '', ...tabla(['Combinación', 'Filas'], combos));
   }
