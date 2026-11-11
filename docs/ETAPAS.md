@@ -169,6 +169,10 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 
 ---
 
+## Plataforma de administración y reparto (D49)
+
+**Estado (2026-11-11):** diseño escrito en [DISENO_PLATAFORMA.md](DISENO_PLATAFORMA.md), a la espera de la aprobación de Franco. Fases: A (app con dos entradas), B (sin Excel), C (ruta del día), D (panel del repartidor), E (posición en vivo), F (ruta eficiente y fin de la plataforma de pago). Nada construido todavía.
+
 ## Etapa 6 — Comprobantes, audio y lista del día
 
 **Estado (2026-11-10):** la lista del día está en el panel (pestaña Reparto, `reparto.ts`, D42; columnas provisionales); decidido dónde guardar los comprobantes (en D1: D30 y D32), sin construir.
