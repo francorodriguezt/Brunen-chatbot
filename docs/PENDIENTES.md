@@ -3,19 +3,35 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Próxima sesión
-ACTUALIZACIÓN 2026-11-10 (tarde): subido a GitHub y desplegado el bot (versión `c9169ae0`, con tarea programada `*/5 * * * *`, migraciones 0005 y 0006 aplicadas, `/salud`, firma falsa y token falso comprobados), incluido el relevo para el número compartido (D46). Falta: medir el CPU, y los pasos 3 a 6 de abajo. Lo de "sin subir ni desplegar" más abajo ya no aplica.
-ACTUALIZACIÓN 2026-11-10 (noche): Franco trajo las respuestas del segundo cuestionario a Felipe y Constanza (ver sección 16 de `conocimiento_brunen.md`). Quedan por resolver, en este orden: (1) si el repartidor usa la app de la plataforma de rutas (decide integrar, reemplazar o construir el rastreo), (2) plan y costo de la plataforma de rutas, (3) cuántos bidones de cada tamaño caben en el furgón, (4) celular del repartidor, (5) precio de carga inicial de 10 L, (6) si todo minimarket es mayorista. Antes de construir: prueba de GPS de un día con el teléfono real. Los Excel reales no entran al repo.
-ACTUALIZACIÓN 2026-11-11 (4): Franco descartó D48. Dirección vigente: D49, una aplicación propia con entrada de administrador y de repartidor, que reemplaza los Excel y la plataforma de rutas. Diseño y fases A a F en `docs/DISENO_PLATAFORMA.md`, a la espera de su aprobación. Lo que dicen las actualizaciones (2) y (3) de abajo sobre mantener la plataforma de rutas ya no vale; siguen valiendo los hechos (el Word solo ordena el texto, la plataforma no tiene API).
-ACTUALIZACIÓN 2026-11-11 (3): Franco aclaró que el Word solo sirve para ordenar el texto; Constanza le escribe al repartidor un mensaje por parada, en el orden de la ruta, y que la plataforma de rutas no tiene API. El plan R1 incluye ahora "mensajes del repartidor listos para enviar" (ver la actualización de D48). La hora de llegada por el bot queda descartada mientras no haya de dónde leer la ruta en vivo. Pregunta nueva para Felipe y Constanza: ¿sigue existiendo la entrega el mismo día para pedidos antes de las 9:00?
-ACTUALIZACIÓN 2026-11-11 (2): Franco entregó el texto original de las respuestas. Resuelto: el repartidor ya usa la aplicación de la plataforma de rutas y el seguimiento en vivo existe, así que no se construye (D48, propuesta). Orden nuevo: (R0) correr el anonimizador sobre el Excel histórico, la plantilla de importación y una exportación de la plataforma; (R1) pedidos con tipo de pago, estado de pago, factura y tipo de cliente, clientes con historial de direcciones, carga del historial, archivo de importación generado por el panel y hoja del repartidor lista; (R2) aviso de carga sobre 65 bidones; (R3) hora de llegada por el bot, solo si la plataforma tiene API para eso. Preguntas que quedan para Felipe y Constanza: por qué se manda el Word si el repartidor tiene la aplicación; cómo entran a la ruta los pedidos del mismo día antes de las 9:00; carga inicial de 10 L ($4.000 según la respuesta nueva, $4.500 en el código); qué plan de la plataforma tienen y si incluye API. Para Franco: decidir entre proveedor o Tech Provider propio para la coexistencia.
-ACTUALIZACIÓN 2026-11-11: listo el anonimizador de datos reales (D47, `npm run anonimizar`, guía en `docs/ANONIMIZAR_DATOS.md`). Franco corre el script sobre el Excel histórico, la plantilla de importación de la plataforma de rutas y una exportación real; el resultado queda en `datos-anonimos/` (ignorada por git) y de ahí se analiza. Sigue pendiente la respuesta a si el repartidor usa la app de la plataforma de rutas.
-Estado al 2026-11-10: revisión completa del proyecto contra sus objetivos (D41). Construido y probado en local, **sin subir a GitHub ni desplegar todavía** (cada paso con el visto bueno de Franco): el reparto del día, los pedidos a mano y la búsqueda en el panel (D42), el vigía de mensajes sin atender (D43) y el registro en la planilla apagado (D44). En producción sigue la versión `16e04d3c`, con el flujo encendido solo para los números de prueba; el panel y Telegram siguen sin activar.
-1. Subir a GitHub y desplegar el bot, en este orden: anotar el punto de restauración (`wrangler d1 time-travel info brunen-chatbot`), aplicar la migración `0005` (`npx.cmd wrangler d1 migrations apply brunen-chatbot --remote`), `npm run deploy`, y comprobar `/salud`, la firma falsa y el token falso. En el panel de Cloudflare debe aparecer la tarea programada `*/5 * * * *` en el Worker.
-2. Medir el CPU con `wrangler tail` y un pedido desde el número de prueba (antes: 21 ms en caliente y 48 ms en frío; ahora sin el registro en la planilla y con una escritura más del vigía). De paso, las dos pruebas que siguen pendientes: el edificio (`quiero 2 de 20` → datos ficticios con depto → «No tiene nombre, gracias» no debe recibir respuesta) y D40 (el segundo pedido del mismo número no pregunta los datos).
-3. Franco: activar Zero Trust Free y crear el bot de Telegram; después se despliega el panel y se configura Access (pasos en `docs/ETAPAS.md`). Con eso Constanza y el dueño ya pueden usar el panel con pedidos de prueba.
-4. Número: se mantiene el actual (D36, reiterado el 2026-11-10). Franco cotiza dos o tres proveedores autorizados para la coexistencia, con las tres preguntas de D45; el dueño empieza las gestiones de Meta y responde los precios que faltan. En el bot, lo siguiente por construir es el manejo de los ecos (`smb_message_echoes`): no responder una conversación que una persona tomó desde la app.
-5. Con el archivo de importación de la app de rutas: ajustar las columnas del reparto (D42).
-6. Antes de abrir a clientes reales: aviso de privacidad, limpiar los pedidos de prueba de la base real (con el visto bueno de Franco), monitoreo de `/salud`, quién hace el respaldo semanal (D35) y la guía `docs/GUIA_PANEL.md` revisada con Constanza.
+Estado al 2026-11-11 (noche). El bot está desplegado (versión `c9169ae0`) y encendido solo para los números de prueba. El panel está construido y sin publicar. Hay commits locales sin subir a GitHub (desde `25a2a59`). La dirección vigente es D49: una aplicación propia con entrada de administrador y de repartidor, que reemplaza los Excel y la plataforma de rutas. Nada de D49 está construido.
+
+Para Franco, en este orden:
+1. Leer `docs/DISENO_PLATAFORMA.md` y aprobarlo o cambiarlo (fases A a G). Sin esa aprobación no se construye.
+2. Decidir dos cosas del diseño: si las direcciones nuevas pueden enviarse a un servicio externo para ubicarlas en el mapa, y cuántos días se guardan las posiciones del repartidor.
+3. Autorizar que se suban a GitHub los commits locales.
+4. Pedir al dueño y a la operadora los archivos y las respuestas de la lista de abajo.
+5. Activar Zero Trust Free en Cloudflare y crear el bot de Telegram: destraba publicar el panel.
+6. Número de WhatsApp: elegir entre un proveedor autorizado (cotizar con las tres preguntas de D45) o que Brunen sea su propio Tech Provider (D48 describe los requisitos). Es el bloqueo más grande: sin esto el bot no atiende clientes reales.
+7. Dos pruebas desde su número: dos pedidos seguidos (el segundo no debe pedir datos, D40) y el edificio («No tiene nombre, gracias» no debe recibir respuesta). De paso se mide el CPU con `wrangler tail`.
+
+Para pedir al dueño y a la operadora:
+- Archivos: el Excel histórico de pedidos (se analiza con `npm run anonimizar`, D47), una ruta exportada de la plataforma actual y su plantilla de importación.
+- Celular del repartidor: Android o iPhone, propio o de la empresa, si tiene datos móviles en la ruta, y un correo para su acceso.
+- Si el repartidor está de acuerdo con registrar su ubicación durante la jornada.
+- Si sigue existiendo la entrega el mismo día para pedidos antes de las 9:00 (el bot hoy la promete).
+- Carga inicial de 10 L: $4.000 (respuesta del 2026-11-10) o $4.500 (lo que tiene el bot).
+- Si todo minimarket paga precio mayorista.
+- Con más de 65 bidones: si se recarga a mitad de ruta o se parte desde la segunda planta, y si esa planta es propia.
+- Cuántos bidones de 10 y de 12 L caben en el furgón.
+- Dónde se anotan hoy los envases vacíos por retirar.
+- Cuánto tiempo al día toma hoy todo el proceso (para medir el ahorro).
+
+Cuando Franco apruebe el diseño, lo primero que se construye:
+- Fase A: portada con dos entradas, roles por correo y la aplicación instalable.
+- En el bot: mostrar "Entrega en: <dirección>" dentro del mismo mensaje cuando se reutiliza la dirección de un pedido anterior (hoy no se muestra y un cliente que se mudó no se entera).
+- Si confirma el precio: carga inicial de 10 L en `src/precios.ts`, con despliegue.
+
+Antes de abrir a clientes reales: aviso de privacidad (la ley rige desde el 2026-12-01 salvo postergación), limpiar los pedidos de prueba de la base real (con el visto bueno de Franco), monitoreo de `/salud`, quién hace el respaldo semanal (D35), bajar el CPU bajo el límite del plan gratis y la guía `docs/GUIA_PANEL.md` revisada con la operadora.
 
 ## Decide Franco
 Franco aceptó las recomendaciones el 2026-10-28 y delegó la del acceso al panel (D34); quedan abiertas las dos que dependen de Constanza.
