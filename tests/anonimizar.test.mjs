@@ -373,3 +373,34 @@ describe('anonimizarArchivo', () => {
     expect(aCsv(['a', 'b'], [['=1+1', 'x, y'], ['-5', 'ok']])).toBe("a,b\n'=1+1,\"x, y\"\n-5,ok\n");
   });
 });
+
+describe('ajustes por el Excel real de Brunen', () => {
+  it('"Pedido" es la cantidad y "20L - 12L" el tamaño', () => {
+    expect(clasificarColumnas(['Pedido', '20L - 12L'])).toEqual(['cantidad', 'tamano']);
+  });
+
+  it('una columna "Contacto" con números de teléfono se trata como teléfono', () => {
+    const r = anonimizarHoja([['Cliente', 'Contacto'], ['Ana Uno', '+56 9 1111 1111'], ['Beto Dos', '922222222'], ['Carla Tres', '933333333']]);
+    expect(r.columnas.map((c) => c.rol)).toEqual(['nombre', 'telefono']);
+    expect(JSON.stringify(r.filas)).not.toContain('1111');
+  });
+
+  it('una columna con nombres de contacto sigue siendo nombre', () => {
+    const r = anonimizarHoja([['Cliente', 'Contacto'], ['Ana Uno', 'Pedro'], ['Beto Dos', 'Marta']]);
+    expect(r.columnas.map((c) => c.rol)).toEqual(['nombre', 'nombre']);
+  });
+
+  it('las columnas vacías sin título se descartan', () => {
+    const r = anonimizarHoja([['Fecha', '', '', ''], ['2026-01-05', '', '', ''], ['2026-01-06', '', '', '']]);
+    expect(r.encabezados).toEqual(['Fecha']);
+  });
+});
+
+describe('categorías con datos personales adentro', () => {
+  it('una dirección escrita en la columna Comuna se tapa', () => {
+    const r = anonimizarHoja([['Direccion', 'Comuna'], ['Calle Falsa 123', 'Ñuñoa'], ['Av Otra 45', 'Calle Falsa 123'], ['Pasaje Uno 9', 'Macul']]);
+    expect(JSON.stringify(r.filas)).not.toContain('Falsa');
+    expect(r.filas[1][r.encabezados.indexOf('Comuna')]).toBe('[dato personal]');
+    expect(r.avisos.join(' ')).toMatch(/1 celdas/);
+  });
+});
