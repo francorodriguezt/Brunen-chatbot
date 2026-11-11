@@ -242,6 +242,9 @@ function decidirTratamiento(rol, valores) {
   if (rol === 'notas') return 'texto-libre';
   if (rol === 'fecha') return 'fecha';
   if (rol === 'cantidad' || rol === 'precio') return 'numero';
+  // "Cant bidones y tamaño" puede traer muchas combinaciones ("15 de 20lts"): se conservan los números y las
+  // palabras de una lista cerrada, y cualquier otra palabra se tapa.
+  if (rol === 'tamano' && !esCategoria(valores, rol)) return 'numero';
   if (ROLES_CATEGORICOS.has(rol)) return esCategoria(valores, rol) ? 'categoria' : 'texto-libre';
   // rol "otro": se mira el contenido
   if (valores.length === 0) return 'categoria';

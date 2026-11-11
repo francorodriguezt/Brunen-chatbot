@@ -28,6 +28,7 @@ Otras opciones: `--hoja "Nombre"` para una sola hoja, `--fila-encabezado 3` si l
 | Correo, RUT, latitud y longitud | Se ocultan |
 | Notas y cualquier texto libre | No se copia. Quedan si está vacío, su largo y cuáles de una lista cerrada de palabras aparecen (llamar, efectivo, depto, envase...) |
 | Comuna, tamaño, tipo de cliente, tipo y estado de pago, factura | Tal cual |
+| Columna combinada de cantidad y tamaño ("15 de 20lts") | Los números y las unidades quedan; cualquier otra palabra se tapa |
 | Cantidad, precio, fecha | Tal cual. Si una cantidad trae texto ("2 de Juan"), las palabras desconocidas se tapan: `2 de ?` |
 | Columna que no reconoce | Se mira el contenido: números y fechas pasan; pocas opciones cortas pasan (y avisa); texto variado no se copia |
 
@@ -42,4 +43,4 @@ Antes de escribir, revisa que ninguna celda sea igual a un nombre, teléfono o d
 
 ## Cómo se probó
 
-39 pruebas en `tests/anonimizar.test.mjs` (lector de xlsx y csv, roles, anonimizado, revisión de fugas e informe). Se comprobó que las pruebas fallan si el script deja pasar un nombre. Además se corrió sobre un .xlsx creado por Excel de verdad, con título sobre los encabezados, fechas con formato, teléfonos como número y una fórmula. No se ha probado todavía con el archivo real de Brunen.
+41 pruebas en `tests/anonimizar.test.mjs` (lector de xlsx y csv, roles, anonimizado, revisión de fugas e informe). Se comprobó que las pruebas fallan si el script deja pasar un nombre. Además se corrió sobre un .xlsx creado por Excel de verdad, con título sobre los encabezados, fechas con formato, teléfonos como número y una fórmula. No se ha probado todavía con el archivo real de Brunen.
