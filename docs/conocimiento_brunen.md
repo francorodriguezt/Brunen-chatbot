@@ -164,3 +164,17 @@ Contradicciones y huecos (por resolver antes de construir):
 - La plataforma de rutas no tiene API (lo confirmó Franco el 2026-11-11): los pedidos entran por archivo y la ruta sale por archivo.
 - Cómo se arma el reparto de mañana (Franco, 2026-11-11): con los pedidos que van llegando hoy más los que ya estaban agendados para ese día (alguien pide el lunes para el miércoles). Falta aclarar si eso deja sin efecto el corte de las 9:00 con entrega el mismo día de la sección 6.
 - El celular del repartidor: no se sabe si es de la empresa o personal, ni si es Android o iPhone. Cambia cómo se pide su consentimiento para el rastreo.
+
+## 17. Lo que muestran los archivos reales (2026-11-11; solo totales, calculados con el anonimizador, D47)
+**Excel de control de pedidos** (hoja PEDIDOS, 6.865 filas, de diciembre de 2024 a diciembre de 2026; algunas fechas son erróneas o futuras):
+- Columnas: Fecha, Cliente, Dirección, Comuna, Contacto (es el teléfono), Tipo de cliente, Pedido (la cantidad), "20L - 12L" (el tamaño), Monto, Forma de pago, Boleta - Factura, Estado, N° de factura, Comentarios e Importante. Tiene además otras hojas: CONTROL EFECTIVO, CONTROL BIDONES, CUOTAS y DETALLE HOTEL (falta saber qué controla cada una).
+- Una fila por pedido, con un solo tamaño. Los pedidos mezclados son raros (3 casos de mismo cliente y mismo día con tamaños distintos).
+- 653 clientes y 595 teléfonos. 90 clientes cambiaron de dirección (14 %). 61 teléfonos aparecen con más de un nombre y 19 nombres con más de un teléfono: la identidad del cliente no puede ser solo el teléfono ni solo el nombre. El 99 % de los teléfonos viene con 11 dígitos (569 más 8).
+- Tamaño: 20 L el 95 % de las filas (6.501), 12 L 209, 10 L 136. Cantidad por pedido: mediana 4, máximo 50. El tamaño se escribe de más de 15 formas ("20Lts", "20lts", "12 y 20"...).
+- Forma de pago: transferencia 73 %, efectivo 19 %, Redcompra 4 %, Webpay 3 %, y unos pocos "plan", "abono", "debe". La columna trae montos y palabras mezclados.
+- Volumen: unas 14 filas por día (máximo 30), de lunes a sábado. **Los bidones por día tienen mediana 67 y máximo 180: en 267 de 504 días se pasa de los 65 que caben en el furgón.** Recargar y hacer más de una carga en el día es lo normal, no la excepción.
+- Faltan datos: 178 filas sin monto, 30 sin teléfono, 20 con fecha ilegible, y la mayoría de las facturas sin completar (78 % vacío en Boleta - Factura).
+
+**Plantilla de importación de la plataforma de rutas** (17 columnas): nombre, dirección, departamento, extra, comuna, correo, teléfono, demanda, referencia_pedido, proveedor, habilidades, latitud, longitud, ventana_inicio, ventana_termino, tiempo_entrega, prioridad. "demanda" parece ser la cantidad de bidones. Hoy se suben nombre, dirección, departamento, comuna, teléfono y demanda; el resto va vacío.
+
+**Formato del Word del repartidor**, por parada, en cuatro líneas: número y nombre; dirección con comuna y notas (portería, departamento); teléfono; cantidad ("15 de 20lts") y, si paga en efectivo, el monto ("*efectivo 4.500*"). Se escribe a mano, y a veces falta el teléfono.

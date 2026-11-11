@@ -43,8 +43,8 @@ const REGLAS = [
   ['tipo_pago', /(tipo|forma|medio|metodo|modo).{0,12}pago|metodo/],
   ['estado_pago', /estado.{0,12}pago|pagado|pagada|pago.{0,12}(estado|pendiente)/],
   ['factura', /factura|boleta|\bdte\b|documento/],
-  ['tamano', /tamano|litro|capacidad|formato|\blts?\b/],
-  ['cantidad', /cantidad|\bcant\b|bidon|unidades/],
+  ['tamano', /tamano|litro|capacidad|formato|\blts?\b|\b(10|12|20) ?l\b/],
+  ['cantidad', /cantidad|\bcant\b|bidon|unidades|^pedido$/],
   ['precio', /precio|monto|total|valor|importe|cobrar|pagar/],
   ['telefono', /telefono|\btel\b|fono|celular|movil|whatsapp|\bcel\b/],
   ['direccion', /direccion|domicilio|\bcalle\b|\bdir\b|ubicacion/],
@@ -227,7 +227,6 @@ function esCategoria(valores, rol) {
   if (distintos.size > limite) return false;
   for (const v of distintos) {
     if (v.length > 40 || tienePII(v)) return false;
-    if (rol === 'comuna' && /\d/.test(v)) return false;
   }
   return true;
 }
@@ -285,6 +284,16 @@ export function anonimizarHoja(filas, opciones = {}) {
   const encabezados = encabezadosUnicos(filas[indiceEncabezado], ancho);
   const roles = clasificarColumnas(encabezados, opciones.sobrescrituras);
   const valor = (fila, i) => String(fila[i] ?? '').trim();
+  // Columnas sin título y sin ningún dato (las hojas de Excel arrastran decenas): no aportan nada.
+  encabezados.forEach((nombre, i) => {
+    if (/^columna_\d+$/.test(nombre) && !datos.some((f) => valor(f, i) !== '')) roles[i] = 'omitir';
+  });
+  // Una columna que se llama "contacto" pero trae números de teléfono es un teléfono.
+  roles.forEach((rol, i) => {
+    if (rol !== 'nombre' || opciones.sobrescrituras?.has(normalizar(encabezados[i]))) return;
+    const llenos = datos.map((f) => valor(f, i)).filter((v) => v !== '');
+    if (llenos.length > 0 && llenos.filter((v) => v.replace(/\D/g, '').length >= 8).length / llenos.length >= 0.6) roles[i] = 'telefono';
+  });
 
   const avisos = [];
   const columnas = encabezados.map((nombre, i) => {
@@ -410,6 +419,22 @@ export function anonimizarHoja(filas, opciones = {}) {
     });
     return nueva;
   });
+
+  // Una celda de categoría que en realidad es un nombre, una dirección o un teléfono de otra columna (una dirección
+  // escrita en "Comuna", por ejemplo) se tapa, porque la revisión final no deja pasar valores originales.
+  const claveDeCompara = (t) => normalizar(t).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  let tapadas = 0;
+  columnas.forEach((c) => {
+    if (c.tratamiento !== 'categoria') return;
+    const [indice] = c.salida;
+    for (const fila of filasSalida) {
+      if (fila[indice] !== '' && estado.sensibles.has(claveDeCompara(fila[indice]))) {
+        fila[indice] = '[dato personal]';
+        tapadas += 1;
+      }
+    }
+  });
+  if (tapadas > 0) avisos.push(`${tapadas} celdas de columnas de categorías eran en realidad un nombre, una dirección o un teléfono y quedaron como "[dato personal]".`);
 
   if (fechasSinReconocer > 0) avisos.push(`${fechasSinReconocer} fechas no se pudieron leer y quedaron como "?".`);
 

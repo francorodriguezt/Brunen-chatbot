@@ -165,7 +165,11 @@ function valorDeCelda(atributos, contenido, compartidas, estilos, es1904) {
 }
 
 function leerHoja(xml, compartidas, estilos, es1904) {
-  const filas = [];
+  // Una hoja de Excel suele arrastrar cientos de miles de filas vacías con formato (la de pedidos pesa 46 MB de XML
+  // y casi todo es eso). Las primeras se conservan en su posición, para que el número de fila del encabezado calce
+  // con el de Excel; de ahí en adelante solo se guardan las que tienen algún valor.
+  const FILAS_CON_POSICION = 30;
+  const completas = [];
   let siguiente = 0;
   for (const fila of xml.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
     const declarada = Number(atributo(fila[1], 'r')) - 1;
@@ -179,9 +183,12 @@ function leerHoja(xml, compartidas, estilos, es1904) {
       siguienteColumna = columna + 1;
       celdas[columna] = valorDeCelda(c[1], c[2] ?? '', compartidas, estilos, es1904);
     }
-    filas[indice] = celdas;
+    const dense = Array.from(celdas, (v) => v ?? '');
+    if (indice < FILAS_CON_POSICION) {
+      while (completas.length < indice) completas.push([]);
+      completas.push(dense);
+    } else if (dense.some((v) => v !== '')) completas.push(dense);
   }
-  const completas = Array.from(filas, (f) => Array.from(f ?? [], (v) => v ?? ''));
   while (completas.length > 0 && completas[completas.length - 1].every((v) => v === '')) completas.pop();
   return completas;
 }
