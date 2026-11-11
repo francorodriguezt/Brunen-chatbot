@@ -4,6 +4,8 @@
  * `textContent`, nunca como HTML, y la política de seguridad de `_headers` no deja correr scripts ni estilos en línea.
  */
 
+import { darFormatoAlRut, mostrarIngreso, pedir, registrarAplicacion } from '/ingreso.js';
+
 // Cada consulta es una solicitud al Worker (el plan gratis permite 100.000 al día): con la pestaña a la vista se consulta
 // seguido para enterarse rápido de un pedido, y con la pestaña oculta o la ventana tapada, más espaciado.
 const INTERVALO_MS = 8000;
@@ -12,7 +14,7 @@ const REFRESCO_FORZADO_MS = 60_000;
 const ZONA = 'America/Santiago';
 const MAX_LINEAS = 5; // el mismo tope que impone el servidor
 
-const VISTAS = ['pedidos', 'reparto', 'avisos'];
+const VISTAS = ['pedidos', 'reparto', 'avisos', 'equipo'];
 const ESPERA_AL_BUSCAR_MS = 350; // se busca cuando la persona deja de escribir, no en cada letra
 
 const GRUPOS = [
@@ -196,8 +198,9 @@ async function api(ruta, cuerpo) {
   const cabeceras = { 'x-requested-with': 'XMLHttpRequest' };
   let respuesta;
   try {
+    // Todo lo de administración vive bajo /admin, que es lo que protege Cloudflare Access.
     respuesta = await fetch(
-      ruta,
+      `/admin${ruta}`,
       cuerpo === undefined
         ? { headers: { ...cabeceras, accept: 'application/json' }, cache: 'no-store', redirect: 'manual' }
         : { method: 'POST', headers: { ...cabeceras, 'content-type': 'application/json', 'x-panel': '1' }, body: JSON.stringify(cuerpo), cache: 'no-store', redirect: 'manual' },
@@ -721,7 +724,7 @@ function pintarReparto({ reparto, texto, tsv }) {
       { clase: 'acciones' },
       boton('Copiar lista', 'boton boton-principal', () => copiar(texto, 'Lista copiada: pégala en WhatsApp.')),
       boton('Copiar para Excel', 'boton', () => copiar(tsv, 'Copiado: pégalo en Excel o en la app de rutas.')),
-      h('a', { clase: 'boton', href: `/api/reparto.csv?fecha=${encodeURIComponent(reparto.fecha)}`, download: `reparto-${reparto.fecha}.csv` }, 'Descargar archivo'),
+      h('a', { clase: 'boton', href: `/admin/api/reparto.csv?fecha=${encodeURIComponent(reparto.fecha)}`, download: `reparto-${reparto.fecha}.csv` }, 'Descargar archivo'),
     ),
   );
   lista.replaceChildren(...reparto.paradas.map(tarjetaDeParada));
@@ -916,7 +919,7 @@ function activarVista(nombre) {
 
 async function recargarVistaActual() {
   try {
-    await { pedidos: cargarPedidos, reparto: cargarReparto, avisos: cargarAvisos }[estado.vista]();
+    await { pedidos: cargarPedidos, reparto: cargarReparto, avisos: cargarAvisos, equipo: cargarEquipo }[estado.vista]();
     estado.ultimaCarga = Date.now();
   } catch (falla) {
     avisar(falla.message, true);
@@ -943,10 +946,9 @@ async function sondear({ silencioso = false } = {}) {
     estado.sondeando = true;
   }
   try {
-    const { correo, resumen } = await api('/api/estado');
+    const { resumen } = await api('/api/estado');
     const volvio = estado.sinConexion;
     marcarConexion(true);
-    $('usuario').textContent = correo;
     const anterior = estado.resumen;
     estado.resumen = resumen;
     pintarContadores(resumen);
@@ -967,6 +969,134 @@ function programarSondeo() {
     await sondear(); // no lanza: los fallos quedan en el aviso de conexión
     programarSondeo();
   }, document.hidden ? INTERVALO_OCULTO_MS : INTERVALO_MS);
+}
+
+// ---- Equipo: quién puede entrar y con qué clave ----
+
+const ROLES = { administrador: ['Administrador', 'azul'], repartidor: ['Repartidor', 'verde'] };
+let personaDelDialogo = null; // null = repartidor nuevo; si no, la persona a la que se le cambia la clave
+
+function tarjetaDePersona(persona) {
+  const [rol, color] = ROLES[persona.rol] ?? [persona.rol, ''];
+  const abiertos = persona.dispositivos === 0 ? 'Ningún dispositivo con la sesión abierta' : `${persona.dispositivos} ${persona.dispositivos === 1 ? 'dispositivo' : 'dispositivos'} con la sesión abierta`;
+  const situacion = !persona.activo
+    ? 'Desactivado: no puede entrar.'
+    : persona.bloqueadoHasta
+      ? `Bloqueado hasta las ${formatoHora.format(new Date(persona.bloqueadoHasta * 1000))} por varios intentos con una clave equivocada. Cambiarle la clave quita el bloqueo.`
+      : '';
+  const acciones = [];
+  if (persona.soyYo) {
+    acciones.push(boton('Cambiar mi clave', 'boton', () => abrirDialogoDeUsuario(persona)));
+    if (persona.dispositivos > 1) acciones.push(boton('Cerrar mis otros dispositivos', 'boton', () => void cerrarSesiones(persona)));
+  } else if (persona.rol === 'repartidor') {
+    acciones.push(boton('Cambiar clave', 'boton', () => abrirDialogoDeUsuario(persona)));
+    if (persona.dispositivos > 0) acciones.push(boton('Cerrar sus sesiones', 'boton', () => void cerrarSesiones(persona)));
+    acciones.push(persona.activo ? boton('Desactivar', 'boton boton-peligro', () => void cambiarEstadoDePersona(persona, false)) : boton('Activar', 'boton boton-principal', () => void cambiarEstadoDePersona(persona, true)));
+  }
+  return h(
+    'article',
+    { clase: 'tarjeta persona' },
+    h('div', { clase: 'tarjeta-cabecera' }, h('span', { clase: 'persona-nombre' }, persona.nombre, persona.soyYo ? ' (tú)' : ''), h('span', { clase: `insignia ${color}` }, rol)),
+    h('div', { clase: 'datos' }, h('span', {}, h('b', {}, 'RUT '), persona.rut), h('span', {}, abiertos), persona.ultimoUso ? h('span', {}, `Último uso: ${cuando(persona.ultimoUso)}`) : null),
+    situacion ? h('p', { clase: 'revision' }, situacion) : null,
+    acciones.length > 0 ? h('div', { clase: 'acciones' }, acciones) : h('p', { clase: 'suave' }, 'Su clave y sus dispositivos los administra esa persona.'),
+  );
+}
+
+async function cargarEquipo() {
+  const { usuarios } = await api('/api/usuarios');
+  $('lista-equipo').replaceChildren(...usuarios.map(tarjetaDePersona));
+}
+
+function abrirDialogoDeUsuario(persona = null) {
+  personaDelDialogo = persona;
+  const formulario = $('formulario-usuario');
+  formulario.reset();
+  for (const campo of formulario.querySelectorAll('.solo-alta')) campo.hidden = persona !== null;
+  $('titulo-usuario').textContent = persona === null ? 'Nuevo repartidor' : persona.soyYo ? 'Cambiar mi clave' : `Cambiar la clave de ${persona.nombre}`;
+  $('texto-usuario').textContent =
+    persona === null
+      ? 'Dile su clave en persona. Podrá entrar de inmediato desde la entrada "Repartidor".'
+      : persona.soyYo
+        ? 'Al guardar se cierra tu sesión en todos tus dispositivos y vuelves a entrar con la clave nueva.'
+        : 'Al guardar se cierra su sesión en todos sus dispositivos y se quita el bloqueo, si lo tenía.';
+  $('error-usuario').hidden = true;
+  $('dialogo-usuario').showModal();
+}
+
+async function guardarUsuario(evento) {
+  evento.preventDefault();
+  const formulario = $('formulario-usuario');
+  const fallar = (texto) => {
+    $('error-usuario').textContent = texto;
+    $('error-usuario').hidden = false;
+  };
+  const clave = formulario.elements.clave.value.trim();
+  if (!/^\d{4}$/.test(clave)) return fallar('La clave tiene que ser de 4 dígitos.');
+  $('guardar-usuario').disabled = true;
+  try {
+    if (personaDelDialogo === null) {
+      await api('/api/usuarios', { nombre: formulario.elements.nombre.value, rut: formulario.elements.rut.value, clave });
+      avisar('Repartidor creado.');
+    } else {
+      const { salir } = await api(`/api/usuarios/${personaDelDialogo.id}/clave`, { clave });
+      if (salir) return location.reload(); // era la clave propia: hay que volver a entrar
+      avisar('Clave cambiada.');
+    }
+    $('dialogo-usuario').close();
+    await cargarEquipo();
+  } catch (falla) {
+    fallar(falla.message);
+  } finally {
+    $('guardar-usuario').disabled = false;
+  }
+}
+
+async function cerrarSesiones(persona) {
+  const respuesta = await pedirConfirmacion({
+    titulo: persona.soyYo ? 'Cerrar mis otros dispositivos' : `Cerrar las sesiones de ${persona.nombre}`,
+    texto: persona.soyYo ? 'Los demás dispositivos donde entraste tendrán que volver a pedir tu RUT y tu clave. Este queda abierto.' : 'Tendrá que volver a entrar con su RUT y su clave en todos sus dispositivos.',
+    etiqueta: 'Cerrar sesiones',
+    clase: 'boton-peligro',
+    conMotivo: false,
+  });
+  if (!respuesta) return;
+  try {
+    await api(`/api/usuarios/${persona.id}/sesiones/cerrar`, {});
+    avisar('Sesiones cerradas.');
+    await cargarEquipo();
+  } catch (falla) {
+    avisar(falla.message, true);
+  }
+}
+
+async function cambiarEstadoDePersona(persona, activo) {
+  if (!activo) {
+    const respuesta = await pedirConfirmacion({
+      titulo: `Desactivar a ${persona.nombre}`,
+      texto: 'No podrá entrar y se cierran sus sesiones. Se puede volver a activar cuando quieras.',
+      etiqueta: 'Desactivar',
+      clase: 'boton-peligro',
+      conMotivo: false,
+    });
+    if (!respuesta) return;
+  }
+  try {
+    await api(`/api/usuarios/${persona.id}/estado`, { activo });
+    avisar(activo ? 'Usuario activado.' : 'Usuario desactivado.');
+    await cargarEquipo();
+  } catch (falla) {
+    avisar(falla.message, true);
+  }
+}
+
+async function salirDelPanel() {
+  try {
+    await api('/api/sesion/salir', {});
+  } catch {
+    /* si no hay conexión, igual se vuelve a la portada */
+  }
+  location.href = '/';
 }
 
 // ---- Avisos sonoros y del navegador ----
@@ -1061,6 +1191,17 @@ function iniciar() {
     });
   });
 
+  $('salir').addEventListener('click', () => void salirDelPanel());
+  $('nuevo-repartidor').addEventListener('click', () => abrirDialogoDeUsuario());
+  $('formulario-usuario').addEventListener('submit', (evento) => void guardarUsuario(evento));
+  $('cancelar-usuario').addEventListener('click', () => $('dialogo-usuario').close());
+  $('formulario-usuario').elements.rut.addEventListener('input', (evento) => {
+    evento.currentTarget.value = darFormatoAlRut(evento.currentTarget.value);
+  });
+  $('formulario-usuario').elements.clave.addEventListener('input', (evento) => {
+    evento.currentTarget.value = evento.currentTarget.value.replace(/\D/g, '').slice(0, 4);
+  });
+
   $('nuevo-pedido').addEventListener('click', abrirNuevoPedido);
   $('buscar-pedidos').addEventListener('input', alEscribirEnElBuscador);
   $('formulario-editar').elements.telefono.addEventListener('change', () => void reconocerCliente());
@@ -1093,4 +1234,54 @@ function iniciar() {
   programarSondeo();
 }
 
-iniciar();
+function fallarAlArrancar(texto) {
+  $('ingreso').replaceChildren(h('div', { clase: 'ingreso' }, h('h1', { clase: 'ingreso-titulo' }, 'Brunen'), h('p', { clase: 'error-formulario' }, texto), boton('Reintentar', 'boton', () => location.reload())));
+  $('ingreso').hidden = false;
+}
+
+/** Recarga la página para que Cloudflare Access vuelva a pedir el código por correo, sin quedar en un ciclo si eso falla. */
+function recargarUnaVez() {
+  let ultima = 0;
+  try {
+    ultima = Number(sessionStorage.getItem('brunen-recarga') ?? 0);
+    sessionStorage.setItem('brunen-recarga', String(Date.now()));
+  } catch {
+    /* sin almacenamiento: se recarga igual */
+  }
+  if (Date.now() - ultima < 15_000) return fallarAlArrancar('No se pudo comprobar tu acceso. Cierra esta ventana y vuelve a abrir Brunen.');
+  location.reload();
+}
+
+/**
+ * Antes de mostrar nada se comprueba quién es. Llegar hasta aquí ya significa haber pasado por Cloudflare Access; falta
+ * el RUT y la clave (o, la primera vez, elegirlos).
+ */
+async function arrancar() {
+  registrarAplicacion();
+  let sesion;
+  try {
+    sesion = await pedir('/admin/api/sesion');
+  } catch {
+    return fallarAlArrancar('Sin conexión. Revisa tu internet e intenta de nuevo.');
+  }
+  if (sesion.redirigida || sesion.estado === 401) return recargarUnaVez();
+  if (sesion.estado !== 200 || !sesion.datos) return fallarAlArrancar('El panel no está disponible en este momento. Intenta de nuevo en un rato.');
+
+  const { usuario, primerIngreso, correo } = sesion.datos;
+  if (usuario) {
+    $('usuario').textContent = usuario.nombre;
+    $('barra').hidden = false;
+    $('aplicacion').hidden = false;
+    return iniciar();
+  }
+  mostrarIngreso({
+    contenedor: $('ingreso'),
+    titulo: primerIngreso ? 'Crea tu clave' : 'Administrador',
+    descripcion: primerIngreso ? `Es tu primer ingreso con ${correo}. Elige el RUT y la clave con los que vas a entrar.` : 'Entra con tu RUT y tu clave.',
+    rutaEntrar: primerIngreso ? '/admin/api/sesion/primer-ingreso' : '/admin/api/sesion/entrar',
+    primerIngreso,
+    alEntrar: () => location.reload(),
+  });
+}
+
+void arrancar();

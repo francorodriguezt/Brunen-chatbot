@@ -57,9 +57,9 @@ Por qué no instalar un ERP existente: los gratuitos no lo son para este caso (u
 
 ## Cómo entra cada persona
 
-Cloudflare Access pide el correo y manda un código de un solo uso; el Worker ya valida ese acceso (`src/panel/acceso.ts`). Lo nuevo:
+Decidido y construido (D51): cada entrada pide el RUT y una clave de 4 dígitos, y el dispositivo se puede recordar. El administrador pasa antes por Cloudflare Access (código al correo); el repartidor no.
 
-- Cada correo tiene un rol: `administrador` o `repartidor`. Los correos van en secretos de Cloudflare, no en el repositorio.
+- Cada usuario tiene un rol: `administrador` o `repartidor`. Los administradores son los correos autorizados en Access; a los repartidores los crea un administrador.
 - El Worker decide qué puede pedir cada rol. El repartidor solo puede leer la ruta publicada de hoy y marcar sus paradas; no ve otros días, ni la lista de clientes, ni los avisos.
 - Un administrador puede abrir la entrada del repartidor para ver lo mismo que ve él.
 
@@ -113,7 +113,7 @@ Cada una se puede probar sola y deja algo usable.
 
 | Fase | Qué queda funcionando | Depende de |
 |---|---|---|
-| A. App con dos entradas | Portada, roles por correo, instalable en el celular | Nada para construir; Zero Trust para publicar |
+| A. App con dos entradas | Portada, ingreso con RUT y clave, roles, instalable en el celular. **Construida (D51), sin publicar** | Zero Trust para publicar |
 | B. Sin Excel | Pedidos con pago, factura y tipo de cliente; clientes con historial de direcciones; carga del Excel histórico | El Excel histórico (anonimizado) para la carga |
 | C. Ruta del día | Ordenar, mover paradas, aviso sobre la capacidad del furgón, publicar | B |
 | D. Panel del repartidor | Tarjetas, navegar, llamar, entregado, no se pudo; avance en vivo para el administrador | C |

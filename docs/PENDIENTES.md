@@ -3,6 +3,7 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Próxima sesión
+ACTUALIZACIÓN 2026-11-11 (tarde): Franco aprobó el diseño y eligió el ingreso con RUT y clave de 4 dígitos, con Cloudflare Access además para el administrador y el dispositivo recordado (D51). La fase A quedó construida y probada en local (1.215 pruebas), sin subir ni desplegar. Para publicarla faltan, con su aprobación: la migración `0007` en la base real, el secreto `PANEL_SECRETO`, Zero Trust activado y la aplicación de Access sobre `/admin` (pasos en `docs/ETAPAS.md`). Lo siguiente por construir: fase B (sin Excel).
 Estado al 2026-11-11 (noche). El bot está desplegado (versión `c9169ae0`) y encendido solo para los números de prueba. El panel está construido y sin publicar. Hay commits locales sin subir a GitHub (desde `25a2a59`). La dirección vigente es D49: una aplicación propia con entrada de administrador y de repartidor, que reemplaza los Excel y la plataforma de rutas. Nada de D49 está construido.
 
 Para Franco, en este orden:

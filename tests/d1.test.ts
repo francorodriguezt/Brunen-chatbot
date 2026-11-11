@@ -75,11 +75,14 @@ describe('migraciones', () => {
       { name: 'conversaciones' },
       { name: 'conversaciones_tomadas' },
       { name: 'historial_pedidos' },
+      { name: 'intentos_de_ingreso' },
       { name: 'mensajes_pendientes' },
       { name: 'mensajes_procesados' },
       { name: 'pedidos' },
+      { name: 'sesiones' },
       { name: 'ultimos_pedidos' },
       { name: 'uso_llm' },
+      { name: 'usuarios' },
     ]);
   });
 });

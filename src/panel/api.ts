@@ -42,16 +42,16 @@ const MENSAJES_DE_ERROR: Readonly<Record<ErrorDeRepositorio, { estado: number; m
   pedido_cerrado: { estado: 409, mensaje: 'Un pedido entregado o cancelado ya no se puede editar.' },
 };
 
-function json(datos: unknown, estado = 200): Response {
+export function json(datos: unknown, estado = 200): Response {
   return new Response(JSON.stringify(datos), {
     status: estado,
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' },
   });
 }
 
-const error = (estado: number, mensaje: string): Response => json({ error: mensaje }, estado);
+export const error = (estado: number, mensaje: string): Response => json({ error: mensaje }, estado);
 
-function esperadoComoEscritura(request: Request, url: URL): Response | null {
+export function esperadoComoEscritura(request: Request, url: URL): Response | null {
   if (!(request.headers.get('content-type') ?? '').toLowerCase().startsWith('application/json') || request.headers.get('x-panel') !== '1') {
     return error(400, 'Solicitud no válida.');
   }
@@ -60,7 +60,7 @@ function esperadoComoEscritura(request: Request, url: URL): Response | null {
   return null;
 }
 
-async function leerCuerpo(request: Request): Promise<Record<string, unknown> | null> {
+export async function leerCuerpo(request: Request): Promise<Record<string, unknown> | null> {
   const texto = await request.text();
   if (texto.length > MAX_CUERPO_BYTES) return null;
   try {
