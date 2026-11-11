@@ -23,6 +23,24 @@ La referencia de uso es un sistema que Franco usa en otro trabajo: portada con d
 
 No es un sistema nuevo: es el panel que ya existe (`src/panel/`, `panel/`), que hoy tiene Pedidos, Reparto y Avisos, más lo que falta.
 
+## Esto es un ERP pequeño, hecho a medida (D50)
+
+Un ERP ("planificación de recursos de la empresa") es un sistema donde cada área del negocio es un módulo y todos los módulos leen y escriben en una misma base de datos, de modo que un dato se anota una sola vez y queda disponible para los demás. Lo que se está planeando ya tiene esa forma.
+
+| Idea de un ERP | Cómo queda aquí |
+|---|---|
+| Una sola base de datos | D1: el bot, el panel del administrador y el del repartidor leen lo mismo |
+| Módulos por área | Pedidos (ventas), Clientes, Ruta (reparto), Pagos (cobranza), Envases (inventario) |
+| Datos maestros | Clientes, productos y precios en un solo lugar, no repetidos en cada pedido |
+| Roles y permisos | Administrador y repartidor; cada uno ve solo lo suyo |
+| Rastro de cambios | Quién cambió qué y cuándo (ya existe para los pedidos) |
+
+Lo que este enfoque agrega al plan: tratar los **envases y bidones como un inventario** (lo que sale de la planta, lo que sobra, los vacíos que debe cada cliente) y la **cobranza del día** (lo que el repartidor debía cobrar contra lo que cobró). El dueño ya había pedido ambas cosas; quedan como fase G.
+
+Lo que no se toma: contabilidad, remuneraciones, compras y facturación electrónica. Para un negocio de tres personas sería más sistema que negocio.
+
+Por qué no instalar un ERP existente: los gratuitos no lo son para este caso (uno ofrece gratis una sola aplicación y sin código propio; otro es de código abierto pero necesita un servidor propio o un hospedaje de pago), ninguno trae el bot de WhatsApp ni el reparto de bidones retornables, y habría que adaptar el negocio al programa. Fuentes en D50.
+
 ## Metas, no metas y lo que sería un fracaso
 
 - **Metas**: que un pedido se escriba una sola vez (lo anota el bot o una persona en el panel) y de ahí salga todo lo demás; que el repartidor no dependa de mensajes escritos a mano; que el dueño vea el avance del reparto sin preguntar.
@@ -101,6 +119,7 @@ Cada una se puede probar sola y deja algo usable.
 | D. Panel del repartidor | Tarjetas, navegar, llamar, entregado, no se pudo; avance en vivo para el administrador | C |
 | E. Posición en vivo | Última posición y aviso si se pierde; prueba con el teléfono real | D |
 | F. Ruta eficiente y fin de la plataforma de pago | Puntos aprendidos de las entregas, orden calculado, dos semanas en paralelo y cancelación | E y la decisión sobre direcciones nuevas |
+| G. Envases y caja del día | Bidones que salen y sobran, vacíos que debe cada cliente, y lo cobrado contra lo que había que cobrar | D |
 
 Durante el paralelo de la fase F, el panel puede generar el archivo que hoy se sube a la plataforma, para no digitar dos veces. Para eso sirve su plantilla de importación.
 
