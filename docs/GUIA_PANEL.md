@@ -27,6 +27,7 @@ Para quien confirma los pedidos y arma el reparto. El panel es una página priva
 - **Observaciones** (recuadro amarillo): por qué el bot pide que lo revises.
 - **Fuera de zona**: la comuna no se atiende. Se puede cancelar o "Confirmar igual".
 - **Cancelar pedido**: pide un motivo, que es opcional. Si fue un error, después se puede reabrir.
+- **Pago y documento**: en "Cambiar" se elige la forma de pago, si está pagado o pendiente, si lleva boleta o factura y su número, y el tipo de cliente. Un pedido ya entregado todavía se puede marcar pagado o anotarle la factura.
 - **Historial**: quién hizo cada cambio y cuándo.
 - **Buscar**: por nombre, teléfono, dirección o número de pedido.
 - Si aparece "Otra persona cambió este pedido hace un momento", no se perdió nada: la página se recarga con lo último y lo vuelves a intentar.

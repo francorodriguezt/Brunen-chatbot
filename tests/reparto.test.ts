@@ -24,6 +24,11 @@ function pedido(id: string, cambios: Partial<PedidoGuardado> = {}): PedidoGuarda
     confirmadoPor: 'operadora@brunen.test',
     actualizadoEn: 1793000000,
     mensajeCliente: '',
+    formaPago: '',
+    estadoPago: 'pendiente',
+    documento: '',
+    numeroDocumento: '',
+    tipoCliente: '',
     ...cambios,
   };
 }

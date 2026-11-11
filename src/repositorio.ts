@@ -48,6 +48,49 @@ export interface PedidoGuardado {
   actualizadoEn: number;
   /** Lo que escribió el cliente, tomado del aviso del pedido (vacío si ya pasaron 90 días o no hubo texto). */
   mensajeCliente: string;
+  /** Vacío = todavía no se sabe. Valores posibles en `OPCIONES_DE_PEDIDO`. */
+  formaPago: FormaDePago | '';
+  estadoPago: EstadoDePago;
+  documento: Documento | '';
+  numeroDocumento: string;
+  tipoCliente: TipoDeCliente | '';
+}
+
+/**
+ * Lo que el Excel de control de pedidos guarda y antes no estaba en la base (D52). Listas cerradas, sacadas de los
+ * valores que de verdad aparecen en el Excel: allí la forma de pago se escribía de 16 maneras distintas.
+ */
+export const OPCIONES_DE_PEDIDO = {
+  formaPago: ['transferencia', 'efectivo', 'redcompra', 'webpay', 'plan', 'otro'],
+  estadoPago: ['pendiente', 'pagado'],
+  documento: ['boleta', 'factura'],
+  tipoCliente: ['hogar', 'minimarket', 'empresa'],
+} as const;
+export type FormaDePago = (typeof OPCIONES_DE_PEDIDO.formaPago)[number];
+export type EstadoDePago = (typeof OPCIONES_DE_PEDIDO.estadoPago)[number];
+export type Documento = (typeof OPCIONES_DE_PEDIDO.documento)[number];
+export type TipoDeCliente = (typeof OPCIONES_DE_PEDIDO.tipoCliente)[number];
+
+/** Datos de pago y documento de un pedido; todos opcionales al cambiar o al anotar. */
+export interface DatosDePago {
+  formaPago?: FormaDePago | '';
+  estadoPago?: EstadoDePago;
+  documento?: Documento | '';
+  numeroDocumento?: string;
+  tipoCliente?: TipoDeCliente | '';
+}
+
+const DE_LA_LISTA = (lista: readonly string[], valor: unknown, vacioPermitido = true): boolean =>
+  typeof valor === 'string' && ((vacioPermitido && valor === '') || lista.includes(valor));
+
+/** null si algún valor no está en su lista o el número de documento es raro. */
+function datosDePagoValidos(d: DatosDePago): boolean {
+  if (d.formaPago !== undefined && !DE_LA_LISTA(OPCIONES_DE_PEDIDO.formaPago, d.formaPago)) return false;
+  if (d.estadoPago !== undefined && !DE_LA_LISTA(OPCIONES_DE_PEDIDO.estadoPago, d.estadoPago, false)) return false;
+  if (d.documento !== undefined && !DE_LA_LISTA(OPCIONES_DE_PEDIDO.documento, d.documento)) return false;
+  if (d.tipoCliente !== undefined && !DE_LA_LISTA(OPCIONES_DE_PEDIDO.tipoCliente, d.tipoCliente)) return false;
+  if (d.numeroDocumento !== undefined && (typeof d.numeroDocumento !== 'string' || !/^[0-9A-Za-z -]{0,20}$/.test(d.numeroDocumento.trim()))) return false;
+  return true;
 }
 
 export interface AvisoGuardado {
@@ -72,7 +115,7 @@ export interface LineaEditable {
   precioUnitario: number | null;
 }
 
-export interface CambiosDePedido {
+export interface CambiosDePedido extends DatosDePago {
   fechaConfirmada?: string | null;
   comuna?: string;
   direccion?: string;
@@ -82,7 +125,7 @@ export interface CambiosDePedido {
 }
 
 /** Un pedido que una persona anota en el panel: el que llegó por teléfono, por un audio o de una empresa con plan mensual. */
-export interface PedidoManual {
+export interface PedidoManual extends DatosDePago {
   /** Solo dígitos, con código de país, o vacío si todavía no se sabe. */
   telefono: string;
   nombre: string;
@@ -109,6 +152,7 @@ export type ErrorDeRepositorio =
 export type ResultadoRepo<T> = { ok: true; valor: T } | { ok: false; error: ErrorDeRepositorio };
 
 const TIPOS: ReadonlySet<string> = new Set<TipoBidon>(['10L', '12L', '20L']);
+const CLAVES_DE_PAGO: ReadonlySet<string> = new Set(['formaPago', 'estadoPago', 'documento', 'numeroDocumento']);
 const MAX_TEXTO = 500;
 const MAX_LINEAS = 5;
 const INTENTOS_DE_ID = 5;
@@ -194,6 +238,11 @@ function aPedido(fila: Record<string, unknown>): PedidoGuardado {
     confirmadoPor: typeof fila.confirmado_por === 'string' ? fila.confirmado_por : null,
     actualizadoEn: numero(fila.actualizado_en),
     mensajeCliente: texto(fila.mensaje_cliente),
+    formaPago: texto(fila.forma_pago) as FormaDePago | '',
+    estadoPago: fila.estado_pago === 'pagado' ? 'pagado' : 'pendiente',
+    documento: texto(fila.documento) as Documento | '',
+    numeroDocumento: texto(fila.numero_documento),
+    tipoCliente: texto(fila.tipo_cliente) as TipoDeCliente | '',
   };
 }
 
@@ -220,6 +269,7 @@ const TIPOS_DE_PEDIDO_SQL = TIPOS_DE_AVISO_DE_PEDIDO.map((tipo) => `'${tipo}'`).
 
 // `mensaje_cliente`: lo que escribió al hacer el pedido, del aviso que nació con él (no de un reclamo o pago posterior).
 const COLUMNAS_PEDIDO = `id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, fecha_confirmada, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, confirmado_por, actualizado_en,
+  forma_pago, estado_pago, documento, numero_documento, tipo_cliente,
   (SELECT texto FROM avisos WHERE avisos.id_pedido = pedidos.id AND avisos.tipo IN (${TIPOS_DE_PEDIDO_SQL}) AND avisos.texto != '' ORDER BY avisos.id LIMIT 1) AS mensaje_cliente`;
 
 export interface FiltroDePedidos {
@@ -410,17 +460,19 @@ export class RepositorioD1 {
     const lineas = aLineasValidadas(p.lineas);
     const telefonoOk = p.telefono === '' || /^\d{8,15}$/.test(p.telefono);
     const envasesOk = Number.isInteger(p.envasesARetirar) && p.envasesARetirar >= 0 && p.envasesARetirar <= 999;
-    if (!lineas || !telefonoOk || !envasesOk) return { ok: false, error: 'datos_invalidos' };
+    if (!lineas || !telefonoOk || !envasesOk || !datosDePagoValidos(p)) return { ok: false, error: 'datos_invalidos' };
 
     const total = calcularTotal(lineas);
     const prefijo = `P${hoyLocal.slice(2, 4)}${hoyLocal.slice(5, 7)}${hoyLocal.slice(8, 10)}-`;
     for (let intento = 0; intento < INTENTOS_DE_ID; intento++) {
       const id = prefijo + Array.from({ length: 5 }, () => Math.min(35, Math.floor(this.azar() * 36)).toString(36).toUpperCase()).join('');
       const creado = await this.cambios(
-        `INSERT INTO pedidos (id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, actualizado_en)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'Pendiente_Confirmacion', ?8, ?9, ?10, ?11, 'Anotado a mano en el panel.', ?2) ON CONFLICT(id) DO NOTHING`,
+        `INSERT INTO pedidos (id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, actualizado_en,
+                              forma_pago, estado_pago, documento, numero_documento, tipo_cliente)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'Pendiente_Confirmacion', ?8, ?9, ?10, ?11, 'Anotado a mano en el panel.', ?2, ?12, ?13, ?14, ?15, ?16) ON CONFLICT(id) DO NOTHING`,
         id, ahoraSegundos, p.telefono, p.nombre.trim().slice(0, 80), p.comuna.trim().slice(0, 80), p.direccion.trim().slice(0, 200), p.fecha,
         JSON.stringify(lineas), total, p.notasRepartidor.trim().slice(0, MAX_TEXTO), p.envasesARetirar,
+        p.formaPago ?? '', p.estadoPago ?? 'pendiente', p.documento ?? '', (p.numeroDocumento ?? '').trim(), p.tipoCliente ?? '',
       );
       if (creado === 0) continue; // ese número ya existe: se sortea otro
       await this.anotarHistorial(id, ahoraSegundos, quien, 'creado', 'a mano en el panel');
@@ -478,7 +530,10 @@ export class RepositorioD1 {
     const actual = await this.obtenerPedido(id);
     if (!actual) return { ok: false, error: 'no_existe' };
     if (versionVista !== undefined && versionVista !== actual.actualizadoEn) return { ok: false, error: 'conflicto' };
-    if (actual.estado === 'Entregado' || actual.estado === 'Cancelado') return { ok: false, error: 'pedido_cerrado' };
+    if (!datosDePagoValidos(cambios)) return { ok: false, error: 'datos_invalidos' };
+    const soloPago = Object.keys(cambios).every((clave) => CLAVES_DE_PAGO.has(clave));
+    // Un pedido entregado todavía se puede marcar pagado o anotarle la factura: eso pasa después de entregar.
+    if (actual.estado === 'Cancelado' || (actual.estado === 'Entregado' && !soloPago)) return { ok: false, error: 'pedido_cerrado' };
 
     const fechaConfirmada = cambios.fechaConfirmada === undefined ? actual.fechaConfirmada : cambios.fechaConfirmada;
     if (fechaConfirmada !== null && !fechaValida(fechaConfirmada)) return { ok: false, error: 'fecha_invalida' };
@@ -496,9 +551,12 @@ export class RepositorioD1 {
     if (!Number.isInteger(envases) || envases < 0 || envases > 999) return { ok: false, error: 'datos_invalidos' };
 
     const hecho = await this.cambios(
-      `UPDATE pedidos SET fecha_confirmada = ?1, comuna = ?2, direccion = ?3, notas_repartidor = ?4, lineas = ?5, total = ?6, actualizado_en = MAX(actualizado_en + 1, ?7), envases_a_retirar = ?10
+      `UPDATE pedidos SET fecha_confirmada = ?1, comuna = ?2, direccion = ?3, notas_repartidor = ?4, lineas = ?5, total = ?6, actualizado_en = MAX(actualizado_en + 1, ?7), envases_a_retirar = ?10,
+         forma_pago = ?11, estado_pago = ?12, documento = ?13, numero_documento = ?14, tipo_cliente = ?15
        WHERE id = ?8 AND actualizado_en = ?9`,
       fechaConfirmada, comuna, direccion, notas, JSON.stringify(lineas), calcularTotal(lineas), ahoraSegundos, id, actual.actualizadoEn, envases,
+      cambios.formaPago ?? actual.formaPago, cambios.estadoPago ?? actual.estadoPago, cambios.documento ?? actual.documento,
+      (cambios.numeroDocumento ?? actual.numeroDocumento).trim(), cambios.tipoCliente ?? actual.tipoCliente,
     );
     if (hecho === 0) return { ok: false, error: 'conflicto' };
     const partes = [
@@ -508,6 +566,11 @@ export class RepositorioD1 {
       cambios.direccion !== undefined ? 'dirección' : '',
       cambios.notasRepartidor !== undefined ? 'notas' : '',
       cambios.envasesARetirar !== undefined ? 'envases' : '',
+      cambios.formaPago !== undefined ? `forma de pago: ${cambios.formaPago || 'sin definir'}` : '',
+      cambios.estadoPago !== undefined ? `pago: ${cambios.estadoPago}` : '',
+      cambios.documento !== undefined ? `documento: ${cambios.documento || 'ninguno'}` : '',
+      cambios.numeroDocumento !== undefined ? 'número de documento' : '',
+      cambios.tipoCliente !== undefined ? `tipo de cliente: ${cambios.tipoCliente || 'sin definir'}` : '',
     ].filter(Boolean);
     await this.anotarHistorial(id, ahoraSegundos, quien, 'editado', partes.join(', '));
     return { ok: true, valor: (await this.obtenerPedido(id)) as PedidoGuardado };

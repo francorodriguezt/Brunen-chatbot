@@ -697,3 +697,60 @@ describe('la API: envases por retirar al editar', () => {
     expect((await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo: { envasesARetirar: 'tres' } })).status).toBe(400);
   });
 });
+
+describe('la API: pago, documento y tipo de cliente (D52)', () => {
+  it('las opciones traen las listas cerradas', async () => {
+    const { env } = await entornoPanel();
+    const datos = (await (await pedir(env, '/api/opciones')).json()) as Record<string, unknown>;
+    expect(datos.formaPago).toEqual(['transferencia', 'efectivo', 'redcompra', 'webpay', 'plan', 'otro']);
+    expect(datos.estadoPago).toEqual(['pendiente', 'pagado']);
+    expect(datos.documento).toEqual(['boleta', 'factura']);
+    expect(datos.tipoCliente).toEqual(['hogar', 'minimarket', 'empresa']);
+  });
+
+  it('se cambian en un pedido y quedan en el historial', async () => {
+    const { env, repositorio } = await entornoPanel();
+    const r = await pedir(env, '/api/pedidos/P261028-AAAAA/editar', {
+      metodo: 'POST',
+      cuerpo: { formaPago: 'efectivo', estadoPago: 'pagado', documento: 'factura', numeroDocumento: ' 1234 ', tipoCliente: 'minimarket' },
+    });
+    expect(r.status).toBe(200);
+    expect(await repositorio.obtenerPedido('P261028-AAAAA')).toMatchObject({ formaPago: 'efectivo', estadoPago: 'pagado', documento: 'factura', numeroDocumento: '1234', tipoCliente: 'minimarket' });
+    const [, editado] = await repositorio.historialDe('P261028-AAAAA');
+    expect(editado?.detalle).toContain('forma de pago: efectivo');
+    expect(editado?.detalle).toContain('tipo de cliente: minimarket');
+  });
+
+  it.each([
+    [{ formaPago: 'cheque' }],
+    [{ estadoPago: '' }],
+    [{ documento: 'recibo' }],
+    [{ tipoCliente: 'hotel' }],
+    [{ numeroDocumento: '<script>' }],
+    [{ formaPago: 3 }],
+  ])('rechaza %j', async (cuerpo) => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo })).status).toBeGreaterThanOrEqual(400);
+  });
+
+  it('un pedido entregado todavía se puede marcar pagado o con factura, pero no cambiar sus bidones', async () => {
+    const { env, repositorio } = await entornoPanel();
+    await repositorio.cambiarEstado('P261028-AAAAA', 'Confirmado', 'x', AHORA);
+    await repositorio.cambiarEstado('P261028-AAAAA', 'Entregado', 'x', AHORA + 1);
+    expect((await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo: { estadoPago: 'pagado', documento: 'boleta', numeroDocumento: '88' } })).status).toBe(200);
+    expect((await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo: { tipoCliente: 'hogar' } })).status).toBe(409);
+    expect((await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo: { comuna: 'Macul' } })).status).toBe(409);
+  });
+
+  it('un pedido anotado a mano guarda su forma de pago y su tipo de cliente', async () => {
+    const { env } = await entornoPanel();
+    const r = await pedir(env, '/api/pedidos', {
+      metodo: 'POST',
+      cuerpo: { telefono: '', nombre: 'Minimarket Demo', comuna: 'Macul', direccion: 'Calle 1', fecha: '2026-10-30', lineas: [{ tipo: '20L', cantidad: 10, precioUnitario: 1250 }], formaPago: 'transferencia', tipoCliente: 'minimarket' },
+    });
+    expect(r.status).toBe(201);
+    const { pedido } = (await r.json()) as { pedido: Record<string, unknown> };
+    expect(pedido).toMatchObject({ formaPago: 'transferencia', estadoPago: 'pendiente', tipoCliente: 'minimarket' });
+    expect((await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: { telefono: '', fecha: '2026-10-30', lineas: [{ tipo: '20L', cantidad: 1, precioUnitario: 4500 }], formaPago: 'cheque' } })).status).toBe(422);
+  });
+});

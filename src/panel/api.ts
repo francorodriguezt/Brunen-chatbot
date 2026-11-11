@@ -13,7 +13,7 @@
 import { COMUNAS_ATENDIDAS } from '../comunas';
 import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
 import { armarReparto, csvDeReparto, textoDeReparto, tsvDeReparto } from '../reparto';
-import { ESTADOS_DE_PEDIDO, type CambiosDePedido, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type PedidoManual, type RepositorioD1 } from '../repositorio';
+import { ESTADOS_DE_PEDIDO, OPCIONES_DE_PEDIDO, type CambiosDePedido, type DatosDePago, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type PedidoManual, type RepositorioD1 } from '../repositorio';
 import { normalizarTelefono } from '../whatsapp';
 
 export interface ContextoApi {
@@ -105,12 +105,27 @@ function aPedidoManual(cuerpo: Record<string, unknown>): PedidoManual | 'telefon
     if (!normalizado) return 'telefono';
     telefono = normalizado;
   }
-  return { ...textos, telefono, fecha: cuerpo.fecha, lineas: cuerpo.lineas as LineaEditable[], envasesARetirar: envases, confirmar };
+  const pago = aDatosDePago(cuerpo);
+  if (!pago) return null;
+  return { ...textos, ...pago, telefono, fecha: cuerpo.fecha, lineas: cuerpo.lineas as LineaEditable[], envasesARetirar: envases, confirmar };
+}
+
+/** Los datos de pago y documento que vengan en el cuerpo. Su valor lo valida el repositorio; aquí solo el tipo. */
+function aDatosDePago(cuerpo: Record<string, unknown>): DatosDePago | null {
+  const datos: Record<string, string> = {};
+  for (const campo of ['formaPago', 'estadoPago', 'documento', 'numeroDocumento', 'tipoCliente'] as const) {
+    if (!(campo in cuerpo)) continue;
+    if (!esTexto(cuerpo[campo])) return null;
+    datos[campo] = cuerpo[campo];
+  }
+  return datos as DatosDePago;
 }
 
 /** Convierte lo que manda la pantalla en cambios del repositorio. Lo que no viene, no se toca. */
 function aCambios(cuerpo: Record<string, unknown>): CambiosDePedido | null {
-  const cambios: CambiosDePedido = {};
+  const pago = aDatosDePago(cuerpo);
+  if (!pago) return null;
+  const cambios: CambiosDePedido = { ...pago };
   if ('fechaConfirmada' in cuerpo) {
     if (cuerpo.fechaConfirmada !== null && !esTexto(cuerpo.fechaConfirmada)) return null;
     cambios.fechaConfirmada = cuerpo.fechaConfirmada as string | null;
@@ -152,7 +167,7 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       // La fecha sugerida aplica el corte de las 9:00 y salta los domingos, pero no conoce los feriados (viven en la
       // planilla y el panel no tiene acceso a Google): la persona la revisa antes de guardar.
       const sugerida = calcularFechaEntrega(new Date(ahoraSegundos * 1000), { feriados: SIN_FERIADOS });
-      return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha });
+      return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha, ...OPCIONES_DE_PEDIDO });
     }
 
     if ((ruta === '/api/reparto' || ruta === '/api/reparto.csv') && metodo === 'GET') {

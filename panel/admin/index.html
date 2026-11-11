@@ -83,7 +83,17 @@
         <label class="ancho">Dirección <input type="text" name="direccion" maxlength="200" autocomplete="off"></label>
         <label class="ancho">Notas para el repartidor <textarea name="notas" rows="2" maxlength="500"></textarea></label>
         <label>Envases por retirar <input type="number" name="envases" min="0" max="999" step="1" inputmode="numeric" value="0"></label>
+        <label>Tipo de cliente <select name="tipoCliente"></select></label>
       </div>
+      <fieldset>
+        <legend>Pago</legend>
+        <div class="campos">
+          <label>Forma de pago <select name="formaPago"></select></label>
+          <label>Estado del pago <select name="estadoPago"></select></label>
+          <label>Boleta o factura <select name="documento"></select></label>
+          <label>Número <input type="text" name="numeroDocumento" maxlength="20" autocomplete="off" inputmode="numeric"></label>
+        </div>
+      </fieldset>
       <datalist id="lista-comunas"></datalist>
       <fieldset>
         <legend>Bidones</legend>

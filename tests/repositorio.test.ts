@@ -70,6 +70,12 @@ describe('guardar lo que decide el bot', () => {
       confirmadoPor: null,
       actualizadoEn: AHORA,
       mensajeCliente: '',
+      // Lo que no sabe el bot queda vacío: lo completa una persona en el panel (D52).
+      formaPago: '',
+      estadoPago: 'pendiente',
+      documento: '',
+      numeroDocumento: '',
+      tipoCliente: '',
     });
     expect(await r.historialDe('P261028-AAAAA')).toEqual([{ en: AHORA, quien: 'bot', accion: 'creado', detalle: '' }]);
   });

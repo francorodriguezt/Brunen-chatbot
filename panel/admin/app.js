@@ -60,6 +60,15 @@ const TIPOS_BIDON = [
 const TAMANOS_DE_MAYOR_A_MENOR = [...TIPOS_BIDON].reverse(); // para el reparto: primero los de 20 L
 const NOMBRE_BIDON = Object.fromEntries(TIPOS_BIDON.map(([valor, texto]) => [valor, `Bidón ${texto}`]));
 
+// Cómo se muestra cada valor de pago, documento y tipo de cliente (D52). Las listas vienen del servidor.
+const ETIQUETAS = {
+  formaPago: { '': 'Sin definir', transferencia: 'Transferencia', efectivo: 'Efectivo', redcompra: 'Redcompra', webpay: 'Webpay', plan: 'Plan mensual', otro: 'Otro' },
+  estadoPago: { pendiente: 'Pendiente', pagado: 'Pagado' },
+  documento: { '': 'Ninguno', boleta: 'Boleta', factura: 'Factura' },
+  tipoCliente: { '': 'Sin definir', hogar: 'Hogar', minimarket: 'Minimarket', empresa: 'Empresa' },
+};
+const CAMPOS_DE_PAGO = ['formaPago', 'estadoPago', 'documento', 'tipoCliente'];
+
 const MENSAJE_DE_CAMBIO = {
   Confirmado: 'Pedido confirmado.',
   En_Ruta: 'Pedido en ruta.',
@@ -293,6 +302,9 @@ function datosDelPedido(pedido) {
     dato('Entrega', `${fechaLarga(pedido.fechaConfirmada ?? pedido.fechaEntrega)}${pedido.fechaConfirmada ? '' : ' (propuesta)'}`),
     dato('Comuna', pedido.comuna || 'falta', !pedido.comuna),
     dato('Dirección', pedido.direccion || 'falta', !pedido.direccion),
+    pedido.tipoCliente ? dato('Tipo', ETIQUETAS.tipoCliente[pedido.tipoCliente] ?? pedido.tipoCliente) : null,
+    dato('Pago', [ETIQUETAS.formaPago[pedido.formaPago] ?? pedido.formaPago, ETIQUETAS.estadoPago[pedido.estadoPago]].join(' · '), pedido.estadoPago !== 'pagado'),
+    pedido.documento ? dato(ETIQUETAS.documento[pedido.documento], pedido.numeroDocumento || 'sin número', !pedido.numeroDocumento) : null,
     pedido.envasesARetirar > 0 ? dato('Envases por retirar', pedido.envasesARetirar) : null,
     pedido.notasRepartidor ? dato('Notas', pedido.notasRepartidor) : null,
     pedido.confirmadoPor ? dato('Confirmó', pedido.confirmadoPor) : null,
@@ -517,6 +529,8 @@ function abrirEditor(pedido) {
   formulario.elements.direccion.value = pedido.direccion;
   formulario.elements.notas.value = pedido.notasRepartidor;
   formulario.elements.envases.value = pedido.envasesARetirar;
+  for (const campo of CAMPOS_DE_PAGO) formulario.elements[campo].value = pedido[campo];
+  formulario.elements.numeroDocumento.value = pedido.numeroDocumento;
   $('editar-lineas').replaceChildren(...pedido.lineas.map(filaDeLinea));
   actualizarTotalDelEditor();
   $('dialogo-editar').showModal();
@@ -582,6 +596,10 @@ function cambiosDeLaEdicion(pedido, formulario, lineas) {
   }
   const envases = Number(formulario.elements.envases.value || 0);
   if (envases !== pedido.envasesARetirar) cambios.envasesARetirar = envases;
+  for (const campo of [...CAMPOS_DE_PAGO, 'numeroDocumento']) {
+    const valor = formulario.elements[campo].value.trim();
+    if (valor !== pedido[campo]) cambios[campo] = valor;
+  }
   const originales = pedido.lineas.map(({ tipo, cantidad, precioUnitario }) => ({ tipo, cantidad, precioUnitario }));
   if (JSON.stringify(lineas) !== JSON.stringify(originales)) cambios.lineas = lineas;
   return cambios;
@@ -599,6 +617,7 @@ async function guardarNuevoPedido(formulario, lineas) {
     notasRepartidor: campo('notas'),
     envasesARetirar: Number(formulario.elements.envases.value || 0),
     confirmar: formulario.elements.confirmar.checked,
+    ...Object.fromEntries([...CAMPOS_DE_PAGO, 'numeroDocumento'].map((nombre) => [nombre, campo(nombre)])),
   };
   $('guardar-editar').disabled = true;
   try {
@@ -1164,11 +1183,23 @@ function mostrarBotonDeAvisos() {
 
 // ---- Arranque ----
 
+/** Llena los desplegables de pago, documento y tipo de cliente. Los que admiten "sin definir" empiezan con esa opción. */
+function llenarListasDePago(opciones = {}) {
+  const formulario = $('formulario-editar');
+  for (const campo of CAMPOS_DE_PAGO) {
+    const valores = opciones[campo] ?? Object.keys(ETIQUETAS[campo]).filter(Boolean);
+    const conVacio = campo === 'estadoPago' ? valores : ['', ...valores];
+    formulario.elements[campo].replaceChildren(...conVacio.map((valor) => h('option', { value: valor }, ETIQUETAS[campo][valor] ?? valor)));
+  }
+}
+
 /** Las comunas que se atienden (para escribirlas siempre igual) y la fecha de entrega sugerida para un pedido nuevo. */
 async function cargarOpciones() {
   try {
-    const { comunas, fechaSugerida } = await api('/api/opciones');
+    const opciones = await api('/api/opciones');
+    const { comunas, fechaSugerida } = opciones;
     estado.opciones = { comunas: comunas ?? [], fechaSugerida: fechaSugerida ?? '' };
+    llenarListasDePago(opciones);
     $('lista-comunas').replaceChildren(...estado.opciones.comunas.map((comuna) => h('option', { value: comuna })));
   } catch {
     /* sin opciones el formulario funciona igual: la comuna y la fecha se escriben a mano */
@@ -1177,6 +1208,7 @@ async function cargarOpciones() {
 
 function iniciar() {
   construirFiltros();
+  llenarListasDePago(); // con las listas conocidas, por si las opciones del servidor tardan
   mostrarBotonDeAvisos();
 
   VISTAS.forEach((vista, i) => {
