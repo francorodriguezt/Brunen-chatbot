@@ -109,7 +109,7 @@ function tokenDeLaSolicitud(request: Request): string | null {
   return cookie?.[1] ?? null;
 }
 
-const esLocal = (host: string): boolean => host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+export const esLocal = (host: string): boolean => host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
 
 export async function autenticar(
   request: Request,

@@ -1,13 +1,15 @@
 # Worker del panel de administración (D32). El bot de WhatsApp tiene su propia configuración en wrangler.toml.
 # Despliegue: `npm run deploy:panel`. Desarrollo local: `npm run dev:panel`.
 #
-# NO se despliega sin Cloudflare Access: el panel muestra datos personales y falla cerrado (503) mientras
-# ACCESS_TEAM_DOMAIN y ACCESS_AUD estén vacíos. Pasos en docs/ETAPAS.md (sección "Panel de administración").
+# La administración (/admin) NO funciona sin Cloudflare Access: muestra datos personales y falla cerrado (503)
+# mientras ACCESS_TEAM_DOMAIN y ACCESS_AUD estén vacíos. Además, nadie entra sin el secreto PANEL_SECRETO (D51), que se
+# carga con `wrangler secret put PANEL_SECRETO -c wrangler.panel.toml` y nunca se escribe aquí.
+# Pasos en docs/ETAPAS.md (sección "Plataforma de administración y reparto").
 name = "brunen-panel"
 main = "src/panel/index.ts"
 compatibility_date = "2026-09-01"
-# Sin direcciones de versión (`<versión>-brunen-panel.<subdominio>.workers.dev`): Access protege la dirección del panel
-# y esas otras quedarían fuera de su aplicación (https://developers.cloudflare.com/workers/configuration/previews/).
+# Sin direcciones de versión (`<versión>-brunen-panel.<subdominio>.workers.dev`): Access protege /admin en la dirección
+# del panel y esas otras quedarían fuera de su aplicación (https://developers.cloudflare.com/workers/configuration/previews/).
 preview_urls = false
 
 [vars]

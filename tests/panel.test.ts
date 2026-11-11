@@ -3,6 +3,7 @@ import type { PedidoARegistrar } from '../src/pedidos';
 import { autenticar, olvidarClavesDeAcceso, type EntornoAcceso } from '../src/panel/acceso';
 import panel, { type EntornoPanel } from '../src/panel';
 import { manejarApi } from '../src/panel/api';
+import { Cuentas } from '../src/panel/cuentas';
 import { RepositorioD1 } from '../src/repositorio';
 import { AUD, DOMINIO, crearAccesoFalso, type AccesoFalso } from './acceso-falso';
 import { crearBaseSqlite } from './ayudas';
@@ -186,8 +187,19 @@ function pedido(cambios: Partial<PedidoARegistrar> = {}): PedidoARegistrar {
   };
 }
 
+const SECRETO = 'secreto-de-prueba-con-mas-de-32-caracteres';
+/** La cookie de la administradora de prueba que deja abierta `entornoPanel`. */
+let sesionDePrueba = '';
+const cookieDePrueba = (): string => `brunen_sesion=${sesionDePrueba}`;
+
 async function entornoPanel(cambios: Partial<EntornoPanel> = {}) {
   const db = crearBaseSqlite();
+  // Desde D51 la administración pide, además de Access, la sesión de un administrador con su RUT y su clave.
+  const cuentas = new Cuentas(db, SECRETO);
+  await cuentas.crearUsuario({ rut: '11.111.111-1', nombre: 'Operadora Demo', rol: 'administrador', clave: '2580', correo: 'operadora@brunen.test' }, 'prueba', AHORA - 1000);
+  const ingreso = await cuentas.entrar({ rol: 'administrador', rut: '11.111.111-1', clave: '2580', recordar: false, origen: 'prueba', dispositivo: 'Prueba', correo: 'operadora@brunen.test' }, AHORA - 900);
+  if (!ingreso.ok) throw new Error('la administradora de prueba no pudo entrar');
+  sesionDePrueba = ingreso.token;
   const repositorio = new RepositorioD1(db, () => 1);
   await repositorio.guardarPedido(pedido(), AHORA - 600);
   await repositorio.guardarPedido(pedido({ idPedido: 'P261028-BBBBB', lineas: [{ tipo: '12L', cantidad: 2, precioUnitario: null, subtotal: null }], nombre: '' }), AHORA - 300);
@@ -196,6 +208,7 @@ async function entornoPanel(cambios: Partial<EntornoPanel> = {}) {
   const env: EntornoPanel = {
     ...ENTORNO_ACCESS,
     DB: db,
+    PANEL_SECRETO: SECRETO,
     ASSETS: { fetch: async (solicitud) => (archivos.push(new URL(solicitud.url).pathname), new Response('<html>panel</html>', { status: 200 })) },
     ...cambios,
   };
@@ -204,10 +217,11 @@ async function entornoPanel(cambios: Partial<EntornoPanel> = {}) {
 
 async function pedir(env: EntornoPanel, ruta: string, opciones: { metodo?: string; cuerpo?: unknown; cabeceras?: Record<string, string>; token?: string | null } = {}) {
   const token = opciones.token === undefined ? await acceso.token() : opciones.token;
-  const cabeceras: Record<string, string> = { ...(token ? { 'cf-access-jwt-assertion': token } : {}), ...opciones.cabeceras };
+  const cabeceras: Record<string, string> = { ...(token ? { 'cf-access-jwt-assertion': token } : {}), cookie: cookieDePrueba(), ...opciones.cabeceras };
   const escribe = opciones.metodo === 'POST';
   if (escribe) Object.assign(cabeceras, { 'content-type': 'application/json', 'x-panel': '1', ...opciones.cabeceras });
-  return panel.fetch(new Request(`https://panel.example${ruta}`, { method: opciones.metodo ?? 'GET', headers: cabeceras, body: escribe ? JSON.stringify(opciones.cuerpo ?? {}) : undefined }), env);
+  // La administración vive bajo /admin: `/api/pedidos` es `/admin/api/pedidos`, y la pantalla es `/admin/`.
+  return panel.fetch(new Request(`https://panel.example/admin${ruta}`, { method: opciones.metodo ?? 'GET', headers: cabeceras, body: escribe ? JSON.stringify(opciones.cuerpo ?? {}) : undefined }), env);
 }
 
 describe('el Worker del panel', () => {
@@ -236,7 +250,7 @@ describe('el Worker del panel', () => {
     const r = await pedir(env, '/');
     expect(r.status).toBe(200);
     expect(await r.text()).toContain('panel');
-    expect(archivos).toEqual(['/']);
+    expect(archivos).toEqual(['/admin/']);
   });
 
   it('la pantalla solo se pide con GET', async () => {
@@ -412,8 +426,8 @@ describe('la API: protección de las escrituras', () => {
     const { env, repositorio } = await entornoPanel();
     const token = await acceso.token();
     const base = { method: 'POST', body: '{"estado":"Cancelado"}' };
-    const sinMarca = await panel.fetch(new Request('https://panel.example/api/pedidos/P261028-AAAAA/estado', { ...base, headers: { 'cf-access-jwt-assertion': token, 'content-type': 'application/json' } }), env);
-    const sinJson = await panel.fetch(new Request('https://panel.example/api/pedidos/P261028-AAAAA/estado', { ...base, headers: { 'cf-access-jwt-assertion': token, 'x-panel': '1', 'content-type': 'application/x-www-form-urlencoded' } }), env);
+    const sinMarca = await panel.fetch(new Request('https://panel.example/admin/api/pedidos/P261028-AAAAA/estado', { ...base, headers: { 'cf-access-jwt-assertion': token, cookie: cookieDePrueba(), 'content-type': 'application/json' } }), env);
+    const sinJson = await panel.fetch(new Request('https://panel.example/admin/api/pedidos/P261028-AAAAA/estado', { ...base, headers: { 'cf-access-jwt-assertion': token, cookie: cookieDePrueba(), 'x-panel': '1', 'content-type': 'application/x-www-form-urlencoded' } }), env);
     expect([sinMarca.status, sinJson.status]).toEqual([400, 400]);
     expect((await repositorio.obtenerPedido('P261028-AAAAA'))?.estado).toBe('Pendiente_Confirmacion');
   });
@@ -434,7 +448,7 @@ describe('la API: protección de las escrituras', () => {
     const { env } = await entornoPanel();
     expect((await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo: { notasRepartidor: 'x'.repeat(30_000) } })).status).toBe(400);
     const token = await acceso.token();
-    const roto = await panel.fetch(new Request('https://panel.example/api/pedidos/P261028-AAAAA/editar', { method: 'POST', headers: { 'cf-access-jwt-assertion': token, 'content-type': 'application/json', 'x-panel': '1' }, body: '{no es json' }), env);
+    const roto = await panel.fetch(new Request('https://panel.example/admin/api/pedidos/P261028-AAAAA/editar', { method: 'POST', headers: { 'cf-access-jwt-assertion': token, cookie: cookieDePrueba(), 'content-type': 'application/json', 'x-panel': '1' }, body: '{no es json' }), env);
     expect(roto.status).toBe(400);
   });
 

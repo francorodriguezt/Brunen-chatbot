@@ -171,7 +171,17 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 
 ## Plataforma de administración y reparto (D49)
 
-**Estado (2026-11-11):** diseño escrito en [DISENO_PLATAFORMA.md](DISENO_PLATAFORMA.md), a la espera de la aprobación de Franco. Fases: A (app con dos entradas), B (sin Excel), C (ruta del día), D (panel del repartidor), E (posición en vivo), F (ruta eficiente y fin de la plataforma de pago). Nada construido todavía.
+**Estado (2026-11-11):** Franco aprobó el diseño ([DISENO_PLATAFORMA.md](DISENO_PLATAFORMA.md)). **Fase A construida y probada en local, sin desplegar** (D51): portada con dos entradas, ingreso con RUT y clave de 4 dígitos, administrador con Cloudflare Access además, dispositivo recordado, pestaña Equipo y aplicación instalable. Siguen: B (sin Excel), C (ruta del día), D (panel del repartidor), E (posición en vivo), F (ruta eficiente y fin de la plataforma de pago), G (envases y caja).
+
+**Probar la fase A en tu computador:** `npm run datos-locales` y luego `npm run dev:panel -- --port 8788 --var PANEL_DEV_CORREO:tu@correo.test --var PANEL_SECRETO:cualquier-texto-de-mas-de-32-caracteres`. Abre http://localhost:8788: la primera vez, la entrada Administrador te pide elegir tu RUT y tu clave; desde Equipo creas un repartidor y entras con él por la otra entrada.
+
+**Para publicarla** (cada paso con aprobación de Franco; reemplaza los pasos 3 a 6 de la sección del panel, más abajo):
+1. Migración `0007` en la base real (`npx.cmd wrangler d1 migrations apply brunen-chatbot --remote`), con el punto de restauración anotado antes.
+2. Secreto de las claves: `npx.cmd wrangler secret put PANEL_SECRETO -c wrangler.panel.toml`, con un texto al azar de 48 caracteres o más que no se guarda en ningún otro lado. Si se pierde o se cambia, todas las claves dejan de servir y hay que crearlas de nuevo.
+3. `npm run deploy:panel`.
+4. En Zero Trust, la aplicación de Access cubre solo `<dirección del panel>/admin` y `/admin/*`, con la política de los correos de los administradores (el repartidor no va en esa lista) y la duración de sesión más larga que ofrezca. Si `workers.dev` no permite proteger solo una ruta, ver la alternativa en D51.
+5. `ACCESS_TEAM_DOMAIN` y `ACCESS_AUD` en `wrangler.panel.toml` y volver a desplegar.
+6. Comprobar: la portada abre sin pedir nada; `/admin/` pide el código por correo y después el RUT y la clave; `/admin/api/pedidos` sin sesión responde 401; un repartidor entra por su entrada y no puede abrir `/admin/`; instalar la aplicación en un teléfono y ver que no vuelve a pedir la clave.
 
 ## Etapa 6 — Comprobantes, audio y lista del día
 

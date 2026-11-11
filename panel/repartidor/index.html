@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0b6cb0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Brunen">
+  <title>Brunen · Reparto</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/iconos/icono-192.png">
+  <link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png">
+  <link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+  <header class="barra" id="barra" hidden>
+    <div class="barra-contenido">
+      <h1 class="marca">Brunen <span>Reparto</span></h1>
+      <div class="barra-derecha">
+        <span id="usuario" class="usuario"></span>
+        <button type="button" id="salir" class="boton boton-chico">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="ingreso" class="zona-ingreso" hidden></section>
+
+    <section id="otra-sesion" class="zona-ingreso" hidden>
+      <div class="ingreso">
+        <h1 class="ingreso-titulo">Repartidor</h1>
+        <p class="suave">Este dispositivo tiene abierta una sesión de administrador.</p>
+        <a class="boton boton-principal" href="/admin/">Ir a la administración</a>
+        <button type="button" id="cambiar-sesion" class="boton">Salir y entrar como repartidor</button>
+      </div>
+    </section>
+
+    <section id="ruta" hidden>
+      <div class="resumen-reparto">
+        <h2 class="titulo-reparto">Ruta de hoy</h2>
+        <p class="suave" id="fecha-de-hoy"></p>
+      </div>
+      <p class="vacio">Todavía no hay una ruta publicada para hoy. Cuando la publiquen, aparece aquí.</p>
+    </section>
+  </main>
+
+  <div id="mensaje" class="mensaje" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="sin-js">Brunen necesita JavaScript para funcionar.</p></noscript>
+  <script src="/repartidor/app.js" type="module"></script>
+</body>
+</html>

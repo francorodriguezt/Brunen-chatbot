@@ -3,10 +3,21 @@
 Para quien confirma los pedidos y arma el reparto. El panel es una página privada que muestra lo que anota el bot de WhatsApp y lo que se anota a mano. El bot registra y propone; una persona confirma.
 
 ## Entrar
-1. Abre la dirección del panel (te la entrega Franco) en el computador o en el celular.
-2. Escribe tu correo: te llega un código para entrar. Solo entran los correos autorizados.
-3. La sesión dura 24 horas. Si aparece "Se cerró tu sesión", toca "Volver a entrar".
-4. La primera vez, toca "Activar avisos del navegador": así suena y avisa cuando llega un pedido aunque estés en otra pestaña. La página tiene que quedar abierta.
+1. Abre la dirección de Brunen (te la entrega Franco) en el computador o en el celular. Aparecen dos entradas: **Administrador** y **Repartidor**.
+2. Administrador: escribe tu correo y el código que te llega (solo entran los correos autorizados). Después, tu RUT y tu clave de 4 dígitos. La primera vez eliges tú el RUT y la clave.
+3. Repartidor: su RUT y la clave que le dio un administrador.
+4. Deja marcado "Recordar este dispositivo" en tu teléfono o tu computador: no vuelve a pedir la clave mientras lo sigas usando. No lo marques en un equipo que use otra gente.
+5. Cinco intentos con una clave equivocada bloquean el ingreso por 15 minutos (y cada vez por más tiempo). Un administrador lo destraba cambiando la clave en Equipo.
+6. Para tenerla como aplicación en el celular: en el menú del navegador, "Agregar a la pantalla de inicio" o "Instalar aplicación".
+7. Si aparece "Se cerró tu sesión", toca "Volver a entrar".
+8. La primera vez, toca "Activar avisos del navegador": así suena y avisa cuando llega un pedido aunque estés en otra pestaña. La página tiene que quedar abierta.
+
+## Equipo
+- Lista de quienes pueden entrar, con cuántos dispositivos tienen la sesión abierta.
+- **Nuevo repartidor**: su nombre, su RUT y una clave de 4 dígitos, que se le dice en persona.
+- **Cambiar clave**: cierra su sesión en todos sus dispositivos. Es lo que hay que hacer si pierde el teléfono.
+- **Desactivar**: deja de poder entrar; se puede volver a activar.
+- De tu propia cuenta puedes cambiar tu clave y cerrar tus otros dispositivos.
 
 ## Pedidos
 - **Por confirmar** es lo primero que se ve: cada pedido nuevo, con lo que escribió el cliente, los bidones, el total y la fecha de entrega que propuso el bot.

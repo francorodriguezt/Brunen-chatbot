@@ -181,3 +181,44 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.3rem; }
   .usuario { display: none; }
   .acciones .boton { flex: 1 1 8rem; }
 }
+
+/* ---- Portada: las dos entradas ---- */
+body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; }
+.portada-contenido { width: min(34rem, 100%); padding: 2rem 1.25rem; text-align: center; }
+.portada-logo { border-radius: 18px; }
+.portada-marca { margin: 0.75rem 0 0; font-size: 2rem; letter-spacing: -0.02em; }
+.portada-lema { margin: 0.25rem 0 1.75rem; color: var(--suave); }
+.entradas { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+.entrada {
+  display: grid; gap: 0.3rem; text-align: left; text-decoration: none; color: var(--texto); background: var(--superficie);
+  border: 1px solid var(--borde); border-top: 4px solid var(--acento); border-radius: 14px; padding: 1.25rem 1.1rem 1.4rem; box-shadow: var(--sombra);
+}
+.entrada:hover { background: var(--acento-suave); }
+.entrada-reparto { border-top-color: var(--ok); }
+.entrada-reparto:hover { background: var(--ok-suave); }
+.entrada-titulo { font-size: 1.15rem; font-weight: 700; }
+.entrada-detalle { color: var(--suave); font-size: 0.9rem; }
+
+/* ---- Ingreso con RUT y clave ---- */
+.zona-ingreso { display: grid; place-items: center; min-height: 70vh; padding: 1rem 0; }
+.ingreso {
+  display: grid; gap: 0.85rem; width: min(22rem, 100%); background: var(--superficie); border: 1px solid var(--borde);
+  border-radius: 16px; padding: 1.5rem 1.25rem; box-shadow: var(--sombra);
+}
+.ingreso-titulo { margin: 0; font-size: 1.35rem; }
+.ingreso .suave { margin: -0.4rem 0 0; }
+.ingreso input[type="text"], .ingreso input[type="password"] { font-size: 1.1rem; padding: 0.65rem 0.7rem; }
+.ingreso input.clave { letter-spacing: 0.5em; text-align: center; font-size: 1.4rem; }
+.ingreso label.casilla { margin-top: 0; }
+.ingreso .ayuda { margin: -0.6rem 0 0; color: var(--suave); font-size: 0.8rem; }
+.ingreso .error-formulario { margin: 0; }
+.ingreso .volver { text-align: center; color: var(--suave); font-size: 0.9rem; }
+
+/* ---- Equipo: quién puede entrar ---- */
+.persona .tarjeta-cabecera { justify-content: flex-start; }
+.persona .insignia { margin-left: auto; }
+.persona-nombre { font-size: 1.05rem; font-weight: 700; }
+
+@media (max-width: 26rem) {
+  .entradas { grid-template-columns: 1fr; }
+}

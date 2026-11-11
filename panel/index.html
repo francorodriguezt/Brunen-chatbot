@@ -2,112 +2,36 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="robots" content="noindex, nofollow">
-  <title>Brunen · Panel</title>
-  <link rel="icon" href="data:,">
+  <meta name="theme-color" content="#0b6cb0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Brunen">
+  <title>Brunen</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/iconos/icono-192.png">
+  <link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png">
   <link rel="stylesheet" href="/estilos.css">
 </head>
-<body>
-  <header class="barra">
-    <div class="barra-contenido">
-      <h1 class="marca">Brunen <span>Panel</span></h1>
-      <div class="barra-derecha">
-        <button type="button" id="activar-avisos" class="boton boton-chico" hidden>Activar avisos del navegador</button>
-        <span id="usuario" class="usuario"></span>
-      </div>
-    </div>
-    <nav class="pestanas" role="tablist" aria-label="Secciones">
-      <button type="button" role="tab" id="pestana-pedidos" aria-selected="true" aria-controls="vista-pedidos">
-        Pedidos <span class="contador" id="cuenta-pedidos" hidden></span>
-      </button>
-      <button type="button" role="tab" id="pestana-reparto" aria-selected="false" aria-controls="vista-reparto" tabindex="-1">Reparto</button>
-      <button type="button" role="tab" id="pestana-avisos" aria-selected="false" aria-controls="vista-avisos" tabindex="-1">
-        Avisos <span class="contador" id="cuenta-avisos" hidden></span>
-      </button>
+<body class="portada">
+  <main id="portada" class="portada-contenido" hidden>
+    <img class="portada-logo" src="/iconos/icono-192.png" alt="" width="72" height="72">
+    <h1 class="portada-marca">Brunen</h1>
+    <p class="portada-lema">Pedidos y reparto, en un solo lugar.</p>
+    <nav class="entradas" aria-label="Elige cómo entrar">
+      <a class="entrada entrada-admin" href="/admin/">
+        <span class="entrada-titulo">Administrador</span>
+        <span class="entrada-detalle">Pedidos, clientes, ruta y avisos</span>
+      </a>
+      <a class="entrada entrada-reparto" href="/repartidor/">
+        <span class="entrada-titulo">Repartidor</span>
+        <span class="entrada-detalle">La ruta de hoy</span>
+      </a>
     </nav>
-  </header>
-
-  <div id="conexion" class="conexion" role="status" hidden></div>
-
-  <main>
-    <section id="vista-pedidos" role="tabpanel" aria-labelledby="pestana-pedidos">
-      <div class="barra-acciones">
-        <button type="button" id="nuevo-pedido" class="boton boton-principal">+ Nuevo pedido</button>
-        <input type="search" id="buscar-pedidos" class="buscador" placeholder="Buscar por nombre, teléfono o dirección" aria-label="Buscar pedidos" autocomplete="off" maxlength="60">
-      </div>
-      <div class="filtros" role="group" aria-label="Qué pedidos mostrar" id="filtros-pedidos"></div>
-      <div id="lista-pedidos" class="lista"></div>
-    </section>
-    <section id="vista-reparto" role="tabpanel" aria-labelledby="pestana-reparto" hidden>
-      <div class="filtros" role="group" aria-label="Qué día mostrar">
-        <button type="button" id="reparto-hoy" aria-pressed="false">Hoy</button>
-        <button type="button" id="reparto-manana" aria-pressed="false">Mañana</button>
-        <label class="filtro-fecha">Otro día <input type="date" id="fecha-reparto"></label>
-      </div>
-      <div id="resumen-reparto" class="resumen-reparto" hidden></div>
-      <div id="lista-reparto" class="lista"></div>
-    </section>
-    <section id="vista-avisos" role="tabpanel" aria-labelledby="pestana-avisos" hidden>
-      <div class="filtros" role="group" aria-label="Qué avisos mostrar" id="filtros-avisos"></div>
-      <div id="lista-avisos" class="lista"></div>
-    </section>
   </main>
-
-  <dialog id="dialogo-editar" aria-labelledby="titulo-editar">
-    <form method="dialog" id="formulario-editar">
-      <h2 id="titulo-editar">Cambiar pedido</h2>
-      <div class="campos">
-        <label class="solo-nuevo">Teléfono <input type="tel" name="telefono" maxlength="20" autocomplete="off" inputmode="tel" placeholder="9 1234 5678"></label>
-        <label class="solo-nuevo">Nombre <input type="text" name="nombre" maxlength="80" autocomplete="off"></label>
-        <p class="ancho pista solo-nuevo" id="cliente-reconocido" role="status" hidden></p>
-        <label>Fecha de entrega <input type="date" name="fecha" required></label>
-        <label>Comuna <input type="text" name="comuna" maxlength="80" autocomplete="off" list="lista-comunas"></label>
-        <label class="ancho">Dirección <input type="text" name="direccion" maxlength="200" autocomplete="off"></label>
-        <label class="ancho">Notas para el repartidor <textarea name="notas" rows="2" maxlength="500"></textarea></label>
-        <label>Envases por retirar <input type="number" name="envases" min="0" max="999" step="1" inputmode="numeric" value="0"></label>
-      </div>
-      <datalist id="lista-comunas"></datalist>
-      <fieldset>
-        <legend>Bidones</legend>
-        <div id="editar-lineas"></div>
-        <div class="fila-total"><button type="button" id="agregar-linea" class="boton boton-chico">Agregar línea</button><strong id="editar-total"></strong></div>
-      </fieldset>
-      <label class="casilla solo-nuevo"><input type="checkbox" name="confirmar" checked> Dejarlo confirmado (necesita el precio de todos los bidones)</label>
-      <p class="error-formulario" id="error-editar" role="alert" hidden></p>
-      <div class="acciones-dialogo">
-        <button type="button" class="boton" id="cancelar-editar">Cerrar</button>
-        <button type="submit" class="boton boton-principal" id="guardar-editar">Guardar</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="dialogo-accion" aria-labelledby="titulo-accion">
-    <form method="dialog" id="formulario-accion">
-      <h2 id="titulo-accion"></h2>
-      <p id="texto-accion" class="suave"></p>
-      <label class="ancho" id="campo-motivo">Motivo (opcional) <textarea name="motivo" rows="2" maxlength="300"></textarea></label>
-      <div class="acciones-dialogo">
-        <button type="button" class="boton" id="volver-accion">Volver</button>
-        <button type="submit" class="boton" id="confirmar-accion"></button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="dialogo-copiar" aria-labelledby="titulo-copiar">
-    <form method="dialog">
-      <h2 id="titulo-copiar">Copia el texto</h2>
-      <p class="suave">El navegador no dejó copiarlo solo: ya está seleccionado, cópialo con Ctrl + C (o manteniendo el dedo encima).</p>
-      <textarea id="texto-copiar" rows="10" readonly></textarea>
-      <div class="acciones-dialogo">
-        <button type="submit" class="boton">Cerrar</button>
-      </div>
-    </form>
-  </dialog>
-
-  <div id="mensaje" class="mensaje" role="status" aria-live="polite" hidden></div>
-  <noscript><p class="sin-js">El panel necesita JavaScript para funcionar.</p></noscript>
-  <script src="/app.js" type="module"></script>
+  <noscript><p class="sin-js">Brunen necesita JavaScript para funcionar.</p></noscript>
+  <script src="/portada.js" type="module"></script>
 </body>
 </html>
