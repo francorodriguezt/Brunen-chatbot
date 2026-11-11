@@ -343,3 +343,10 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Límite conocido: si Meta no entrega el teléfono del cliente (usa nombre de usuario), ese aviso se salta y el bot no se calla con él.
 - Si la base falla al revisar la pausa, el bot atiende: es mejor responder de más que dejar a alguien sin respuesta.
 - Sin probar con Meta real: requiere que el número esté conectado con un proveedor. Desplegado el 2026-11-10 (versión `c9169ae0`) con las migraciones 0005 y 0006 aplicadas; solo actúa cuando lleguen ecos.
+
+### D47 · 2026-11-11 · Tomada (Franco eligió el script en vez de quitar la regla de bloqueo)
+**Los datos reales de clientes se analizan solo en una copia seudonimizada, hecha por un script propio sin dependencias.**
+- Contexto: llegan el Excel histórico de pedidos y la plantilla de la plataforma de rutas, con nombres, teléfonos y direcciones de clientes. La configuración del proyecto bloquea la lectura de `datos/` en las sesiones de trabajo, a propósito.
+- Decisión: `scripts/anonimizar-excel.mjs` (guía en `docs/ANONIMIZAR_DATOS.md`) cambia nombres, teléfonos y direcciones por códigos, oculta correos, RUT y coordenadas, no copia texto libre y calcula el informe de patrones sobre la copia ya anonimizada, nunca sobre el original. La clave de los códigos no se guarda. Antes de escribir, busca fugas y, si encuentra una, no escribe nada.
+- Alternativas descartadas: quitar la regla de bloqueo (los datos reales pasarían por la conversación) y usar una librería de Excel (código de terceros leyendo datos reales, y más cosas que mantener). Un .xlsx es un zip con XML: el lector propio tiene unas 150 líneas.
+- Límites: es seudonimización, no anonimato total; las columnas que no reconoce y tienen pocas opciones quedan visibles y el script lo avisa; probado con un archivo creado por Excel pero no con el archivo real de Brunen.

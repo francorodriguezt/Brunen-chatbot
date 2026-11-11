@@ -17,7 +17,8 @@
     "datos-locales": "wrangler d1 migrations apply brunen-chatbot --local && wrangler d1 execute brunen-chatbot --local --file scripts/datos-de-prueba.sql",
     "verificar-config": "node scripts/verificar-config.mjs",
     "simular-mensaje": "node scripts/simular-mensaje.mjs",
-    "preparar-planilla": "node scripts/preparar-planilla.mjs"
+    "preparar-planilla": "node scripts/preparar-planilla.mjs",
+    "anonimizar": "node scripts/anonimizar-excel.mjs"
   },
   "engines": {
     "node": ">=22.13"

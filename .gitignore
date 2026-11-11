@@ -20,6 +20,9 @@ datos/
 *.xlsx
 *.csv
 
+# Copias seudonimizadas de esos datos y su informe (scripts/anonimizar-excel.mjs): tampoco se suben
+datos-anonimos/
+
 # Sistema
 .DS_Store
 Thumbs.db
