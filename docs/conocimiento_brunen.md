@@ -142,18 +142,18 @@ Lo que el dueño quiere ver en el panel (2026-10-29): pedidos por confirmar (con
 - Franco pidió que el bot pregunte el nombre, la dirección y, si es un departamento, el edificio, (hecho, D37), y que dé una referencia de la hora de llegada según la programación de la ruta (por diseñar con la plataforma propia, D38).
 - PENDIENTE: nombre exacto y plan de Optiroute (¿es OptimoRoute?) y qué funciones usan; el archivo que suben hoy y quién lo arma; si los sobrantes siempre quedan en el furgón y si la carga lleva margen; qué pasa con un vacío que falta después de justificarlo; a quién se le da la hora de llegada y por qué canal; dirección de la planta (la ruta parte y termina ahí).
 
-## 16. Segundo cuestionario a Felipe y Constanza (2026-11-10, lo recogió Franco)
+## 16. Segundo cuestionario al dueño y a Constanza (2026-11-10, lo recogió Franco)
 Confirmado:
 - El historial de pedidos vive en un Excel con: fecha de entrega, nombre, dirección, comuna, teléfono, tipo de cliente (hogar, minimarket o empresa), cantidad, tamaño (10, 12 o 20 L), precio, tipo de pago, si pide factura y estado del pago (pagado o pendiente). Falta revisar el archivo real: puede haber cantidad y tamaño duplicados o mezclados.
 - Un cliente puede cambiar de dirección. Hoy se recupera buscando su último pedido. Debe conservarse el historial de direcciones y no asignar una antigua si hay duda de cuál vale.
 - Del Excel principal sale otro Excel que se importa a la plataforma de rutas; su exportación trae datos que sobran, se limpia a mano, se pasa a Word y se le envía al repartidor una instrucción por vez.
 - El furgón carga como máximo 65 bidones. Si el pedido del día supera eso, se usa una segunda planta (Actum, en Las Condes). Falta saber cuántos bidones de cada tamaño caben y la carga máxima permitida (65 bidones de 20 L pesan más de 1,3 toneladas solo en agua).
 - Jornada: el repartidor retira el furgón donde se guarda, carga en la planta, reparte, vuelve a la planta a dejar los vacíos y devuelve el furgón.
-- Felipe quiere ver la ubicación del repartidor en vivo, con los puntos entregados y pendientes. Avisos urgentes por Telegram. Constanza usará el panel en computador y celular. La cuenta administrativa será el correo de Brunen.
+- El dueño quiere ver la ubicación del repartidor en vivo, con los puntos entregados y pendientes. Avisos urgentes por Telegram. Constanza usará el panel en computador y celular. La cuenta administrativa será el correo de Brunen.
 - Carga inicial (texto original): "10L: 4000 · 12L: 4500 y 2X8000". La promoción de 2 por $8.000 va escrita junto a los 12 L.
 - El Excel del día siguiente se va armando el mismo día (el día anterior al reparto).
 - La hoja del repartidor que arman hoy trae, por parada: nombre, dirección con comuna, teléfono, pedido ("15 de 20lts") y forma de pago; si paga en efectivo, el monto a cobrar. No trae el tipo de cliente, y debería.
-- Cuando la ruta está lista se le avisa al repartidor, que la inicia desde la aplicación de la plataforma de rutas en su celular; desde ahí se ve en vivo dónde está y los puntos. Felipe necesita seguir viéndolo sí o sí, sobre todo para responderle a un cliente cuándo llega su pedido; Franco quiere que el bot pueda dar esa respuesta.
+- Cuando la ruta está lista se le avisa al repartidor, que la inicia desde la aplicación de la plataforma de rutas en su celular; desde ahí se ve en vivo dónde está y los puntos. El dueño necesita seguir viéndolo sí o sí, sobre todo para responderle a un cliente cuándo llega su pedido; Franco quiere que el bot pueda dar esa respuesta.
 - Constanza recibe los avisos urgentes por Telegram.
 - Franco quiere hacer por su cuenta todo lo posible en Meta: la gestión y los documentos.
 

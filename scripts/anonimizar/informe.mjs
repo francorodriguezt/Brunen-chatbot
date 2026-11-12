@@ -2,7 +2,7 @@
  * Informe de estructura y patrones, calculado SOLO sobre la copia ya anonimizada (nunca sobre el archivo original).
  * Así lo que sale de aquí no puede traer nombres, teléfonos ni direcciones: no los tiene.
  *
- * Todo lo que dice son patrones observados en los datos, no reglas confirmadas por Felipe o Constanza.
+ * Todo lo que dice son patrones observados en los datos, no reglas confirmadas por el dueño o Constanza.
  */
 
 import { normalizar } from './nucleo.mjs';
@@ -417,7 +417,7 @@ export function construirInforme({ archivo, hojas }) {
     `# Informe de estructura y patrones: ${archivo}`,
     '',
     'Lo generó `scripts/anonimizar-excel.mjs` en el computador de Franco. Se calculó sobre la copia anonimizada: no tiene nombres, teléfonos ni direcciones reales, solo códigos.',
-    'Todo lo que dice son **patrones observados en los datos**, no reglas confirmadas por Felipe o Constanza.',
+    'Todo lo que dice son **patrones observados en los datos**, no reglas confirmadas por el dueño o Constanza.',
     '',
   ];
   for (const hoja of hojas) {
