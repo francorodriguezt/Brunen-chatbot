@@ -226,7 +226,8 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       return json({ pedidos: await repositorio.listarPedidos({ estados: GRUPOS[grupo], fecha }) });
     }
 
-    const pedido = /^\/api\/pedidos\/(P\d{6}-[0-9A-Z]{5})(?:\/(estado|editar))?$/.exec(ruta);
+    // P = anotado por el bot o a mano, H = cargado del historial (D54), F = creado por un pedido fijo (D59).
+    const pedido = /^\/api\/pedidos\/([PHF]\d{6}-[0-9A-Z]{5})(?:\/(estado|editar))?$/.exec(ruta);
     if (pedido) {
       const id = pedido[1] as string;
       if (pedido[2] === undefined && metodo === 'GET') {

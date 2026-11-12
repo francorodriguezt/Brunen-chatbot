@@ -170,3 +170,40 @@ describe('buscar clientes', () => {
     expect((await nombres('a')).length).toBe(2);
   });
 });
+
+describe('a quién le toca pedir (D58)', () => {
+  /** Pedidos de un cliente en esas fechas de entrega. */
+  async function conPedidos(b: Awaited<ReturnType<typeof base>>, telefono: string, nombre: string, fechas: string[], estado = 'Entregado') {
+    let n = 0;
+    for (const fecha of fechas) {
+      n += 1;
+      await b.pedidos.guardarPedido(pedido(`P26${telefono.slice(-4)}-${String(n).padStart(5, '0')}`, { telefono, nombre, fechaEntrega: fecha, estado: estado as PedidoARegistrar['estado'] }), AHORA - 100 * DIA + n);
+    }
+  }
+
+  it('avisa del cliente que pide cada 7 días y lleva 12 sin pedir; no del que pidió hace poco', async () => {
+    const b = await base();
+    await conPedidos(b, '56911111111', 'Ana Prueba', ['2026-10-01', '2026-10-08', '2026-10-15', '2026-10-22']);
+    await conPedidos(b, '56922222222', 'Beto Prueba', ['2026-10-10', '2026-10-17', '2026-10-24', '2026-10-31']);
+    await vincularTodo(b.clientes);
+    const { clientes } = await b.clientes.porPedir('2026-11-03');
+    expect(clientes.map((c) => c.nombre)).toEqual(['Ana Prueba']);
+    expect(clientes[0]).toMatchObject({ cadaDias: 7, ultimo: '2026-10-22', diasSinPedir: 12, telefonos: ['56911111111'] });
+  });
+
+  it('no avisa con menos de 4 pedidos (no hay ritmo), ni si ya tiene un pedido para hoy o adelante', async () => {
+    const b = await base();
+    await conPedidos(b, '56911111111', 'Ana Prueba', ['2026-10-01', '2026-10-08', '2026-10-15']);
+    await conPedidos(b, '56922222222', 'Beto Prueba', ['2026-09-01', '2026-09-08', '2026-09-15', '2026-09-22', '2026-11-05']);
+    await vincularTodo(b.clientes);
+    expect((await b.clientes.porPedir('2026-11-03')).clientes).toEqual([]);
+  });
+
+  it('los cancelados no cuentan, y quien lleva más de 4 meses sin pedir se cuenta aparte como inactivo', async () => {
+    const b = await base();
+    await conPedidos(b, '56911111111', 'Ana Prueba', ['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22']);
+    await conPedidos(b, '56922222222', 'Beto Prueba', ['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29'], 'Cancelado');
+    await vincularTodo(b.clientes);
+    expect(await b.clientes.porPedir('2026-11-03')).toEqual({ clientes: [], inactivos: 1 });
+  });
+});
