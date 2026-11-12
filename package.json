@@ -18,7 +18,8 @@
     "verificar-config": "node scripts/verificar-config.mjs",
     "simular-mensaje": "node scripts/simular-mensaje.mjs",
     "preparar-planilla": "node scripts/preparar-planilla.mjs",
-    "anonimizar": "node scripts/anonimizar-excel.mjs"
+    "anonimizar": "node scripts/anonimizar-excel.mjs",
+    "cargar-historial": "node --max-old-space-size=3000 scripts/cargar-historial.mjs"
   },
   "engines": {
     "node": ">=22.13"
