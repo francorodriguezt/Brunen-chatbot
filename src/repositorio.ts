@@ -13,7 +13,7 @@
 import { TIPOS_DE_AVISO_DE_PEDIDO, type Alerta, type TipoAlerta } from './alertas';
 import type { BaseDatos } from './almacen';
 import type { CompletarPedido, DatosPrevios, LineaPedido, PedidoARegistrar } from './pedidos';
-import type { TipoBidon } from './precios';
+import type { ItemPedido, TipoBidon } from './precios';
 
 export type EstadoDePedido = 'Pendiente_Confirmacion' | 'Fuera_de_zona' | 'Confirmado' | 'En_Ruta' | 'Entregado' | 'Cancelado';
 
@@ -390,15 +390,59 @@ export class RepositorioD1 {
   async datosDelUltimoPedido(telefono: string, ahoraSegundos: number = Math.floor(Date.now() / 1000)): Promise<DatosPrevios | null> {
     // Solo pedidos del último año: las compañías reasignan los números que dejan de usarse, y con el historial
     // cargado (D54) quien reciba un número reciclado vería la dirección del dueño anterior en "Entrega en" (D55).
+    // Con ficha (fase B, D57) también cuentan los pedidos de los otros teléfonos del cliente, pero solo si este número
+    // se agregó a la ficha hace menos de un año: un número viejo de la ficha pudo pasar a otra persona.
+    const desde = ahoraSegundos - VIGENCIA_DEL_PEDIDO_ANTERIOR_SEGUNDOS;
     const [fila] = await this.filas(
-      `SELECT id, nombre, direccion, comuna, notas_repartidor FROM pedidos
-       WHERE telefono = ?1 AND direccion != '' AND estado != 'Cancelado' AND creado_en >= ?2 ORDER BY creado_en DESC, rowid DESC LIMIT 1`,
+      `SELECT p.id, p.nombre, p.direccion, p.comuna, p.notas_repartidor, p.creado_en,
+              c.nombre AS ficha_nombre, d.direccion AS ficha_direccion, d.comuna AS ficha_comuna,
+              d.notas_repartidor AS ficha_notas, d.ultimo_uso AS ficha_uso
+       FROM pedidos p
+       LEFT JOIN telefonos_cliente t ON t.telefono = ?1
+       LEFT JOIN clientes c ON c.id = t.cliente_id
+       LEFT JOIN direcciones_cliente d ON d.id = (
+         SELECT x.id FROM direcciones_cliente x WHERE x.cliente_id = t.cliente_id ORDER BY x.ultimo_uso DESC, x.id DESC LIMIT 1)
+       WHERE (p.telefono = ?1 OR (t.cliente_id IS NOT NULL AND p.cliente_id = t.cliente_id AND t.agregado_en >= ?2))
+         AND p.direccion != '' AND p.estado != 'Cancelado' AND p.creado_en >= ?2
+       ORDER BY p.creado_en DESC, p.rowid DESC LIMIT 1`,
+      telefono,
+      desde,
+    );
+    if (!fila) return null;
+    // La ficha manda si su dirección se usó después de ese pedido (una persona la corrigió en el panel).
+    const fichaMasNueva = texto(fila.ficha_direccion) !== '' && numero(fila.ficha_uso) > numero(fila.creado_en);
+    return {
+      idPedido: texto(fila.id),
+      nombre: texto(fila.ficha_nombre).trim() || texto(fila.nombre),
+      direccion: fichaMasNueva ? texto(fila.ficha_direccion) : texto(fila.direccion),
+      comuna: fichaMasNueva ? texto(fila.ficha_comuna) : texto(fila.comuna),
+      notasRepartidor: fichaMasNueva ? texto(fila.ficha_notas) : texto(fila.notas_repartidor),
+    };
+  }
+
+  /**
+   * Lo que pidió en su último pedido (no cancelado ni fuera de zona) del último año, para "lo de siempre" (D57). Con el
+   * mismo límite de un año que `datosDelUltimoPedido`: un número reciclado no hereda los pedidos del dueño anterior.
+   */
+  async itemsDelUltimoPedido(telefono: string, ahoraSegundos: number = Math.floor(Date.now() / 1000)): Promise<ItemPedido[] | null> {
+    const [fila] = await this.filas(
+      `SELECT lineas FROM pedidos WHERE telefono = ?1 AND estado NOT IN ('Cancelado', 'Fuera_de_zona') AND creado_en >= ?2
+       ORDER BY creado_en DESC, rowid DESC LIMIT 1`,
       telefono,
       ahoraSegundos - VIGENCIA_DEL_PEDIDO_ANTERIOR_SEGUNDOS,
     );
-    return fila
-      ? { idPedido: texto(fila.id), nombre: texto(fila.nombre), direccion: texto(fila.direccion), comuna: texto(fila.comuna), notasRepartidor: texto(fila.notas_repartidor) }
-      : null;
+    if (!fila) return null;
+    let lineas: unknown;
+    try {
+      lineas = JSON.parse(texto(fila.lineas));
+    } catch {
+      return null;
+    }
+    const items = (Array.isArray(lineas) ? lineas : [])
+      .map((l) => l as { tipo?: unknown; cantidad?: unknown })
+      .filter((l): l is ItemPedido => (l.tipo === '20L' || l.tipo === '12L' || l.tipo === '10L') && Number.isInteger(l.cantidad) && (l.cantidad as number) > 0)
+      .map((l) => ({ tipo: l.tipo, cantidad: l.cantidad }));
+    return items.length > 0 ? items : null;
   }
 
   // ---- Lo que lee y cambia el panel ----

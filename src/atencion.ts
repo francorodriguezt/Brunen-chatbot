@@ -68,7 +68,10 @@ function puertosReales(env: EntornoAtencion, ahora: Date): Puertos {
   return {
     memoria: db ? new MemoriaConversaciones(db) : null,
     buscarCliente: (telefono) => buscarCliente(env, telefono),
-    ...(db && { buscarPedidoAnterior: (telefono: string) => new RepositorioD1(db).datosDelUltimoPedido(telefono) }),
+    ...(db && {
+      buscarPedidoAnterior: (telefono: string) => new RepositorioD1(db).datosDelUltimoPedido(telefono),
+      buscarUltimoPedidoGuardado: (telefono: string) => new RepositorioD1(db).itemsDelUltimoPedido(telefono),
+    }),
     cargarPrecios: () => cargarTablaPrecios(env),
     proponerEntrega: (solicitada) => proponerEntrega(env, ahora, { solicitada }),
     servicio: () => leerServicio(env),
@@ -146,6 +149,12 @@ export async function atenderNoTexto(mensaje: MensajeEntrante, env: EntornoAtenc
   if (mensaje.tipo === 'audio') {
     // El dueño pidió que los audios los responda siempre Constanza (D36): el bot no contesta, solo deja el aviso.
     efectos = { respuesta: null, alerta: aviso('escalamiento', 'Envió un audio: lo responde Constanza (el bot no responde audios).'), textoDelCliente: '' };
+  } else if (mensaje.tipo === 'system') {
+    // Aviso de WhatsApp, no del cliente (por ejemplo, que cambió de número): no se le responde; una persona revisa la ficha.
+    efectos = { respuesta: null, alerta: aviso('escalamiento', 'WhatsApp avisa un cambio en este contacto (por ejemplo, que cambió de número): revisa su chat y agrega el número nuevo a su ficha.'), textoDelCliente: '' };
+  } else if (mensaje.tipo === 'document') {
+    // Los bancos chilenos suelen mandar el comprobante de transferencia como PDF.
+    efectos = { respuesta: textos.archivoRecibido(), alerta: aviso('pago', 'Envió un archivo (posible comprobante de pago en PDF). Todavía no se guarda en el panel.'), textoDelCliente: '' };
   } else if (mensaje.tipo === 'image') {
     // PENDIENTE (D30): guardar la imagen en D1 para verla en el panel; hoy solo se avisa que llegó.
     efectos = {

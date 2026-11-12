@@ -159,10 +159,9 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
   if (falta) return preguntar(e, items, falta);
   const completos = items as ItemCompleto[];
 
-  // No se sabe quién escribe: no se puede decir si es un cliente nuevo ni qué precio le toca.
-  if (e.cliente.estado === 'no_disponible') {
-    return escalar(e, 'error', 'No se pudo leer la hoja CLIENTES, así que no se sabe quién escribe. Revisar el pedido y contestarle');
-  }
+  // Sin la hoja CLIENTES no se sabe si tiene condiciones especiales: el pedido se anota igual, como el de alguien sin
+  // ficha (sin prometer precio), y una persona lo revisa. Una caída de Google no deja de tomar pedidos (D57).
+  const sinHoja = e.cliente.estado === 'no_disponible';
   const cliente = e.cliente.estado === 'encontrado' ? e.cliente.cliente : null;
   if (cliente?.estado === 'bloqueado') {
     return escalar(e, 'escalamiento', 'Cliente bloqueado intenta hacer un pedido', textos.recibidoEscalar(), BORRAR);
@@ -196,6 +195,7 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
     precioSeguro = false;
     motivos.push(...cliente.avisos.map((aviso) => `Ficha del cliente: ${aviso}`));
   }
+  if (sinHoja) motivos.push('No se pudo leer la hoja CLIENTES: revisar si tiene precio especial, si es mayorista o empresa, o si está bloqueado, antes de confirmar.');
   if (previo) motivos.push(`Sin ficha en CLIENTES (se conoce por su pedido ${previo.idPedido}): confirmar el precio y el tipo de cliente.`);
   const grandes = completos.filter((item) => item.cantidad > POLITICAS.cantidadInusual);
   if (grandes.length > 0) {

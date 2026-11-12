@@ -162,15 +162,15 @@ describe('el flujo de pedido conectado al Worker', () => {
     expect(pedidosEn(env)[0]).toMatchObject({ nombre: '', estado: 'Pendiente_Confirmacion' });
   });
 
-  it('si no se puede leer la hoja de clientes: aviso de error por Telegram, nada se promete y no se anota el pedido', async () => {
+  it('si no se puede leer la hoja de clientes: el pedido se anota igual, sin prometer precio, y queda para revisión (D57)', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const mundo = stubMundo({ hojas: { ...HOJAS, CLIENTES: 'falla' } });
     const env = await entorno({ TELEGRAM_BOT_TOKEN: '1:TOKEN', TELEGRAM_CHAT_ID: '777' });
     await enviarAviso(env, texto('quiero 2 de 20'));
-    expect(mundo.enviados[0]?.texto).toBe('Recibimos tu mensaje. Una persona del equipo te responderá en breve.');
-    expect(pedidosEn(env)).toEqual([]);
-    expect(avisosEn(env)).toEqual([{ tipo: 'error', telefono: CLIENTE, estado: 'abierto' }]);
-    expect(mundo.telegram).toHaveLength(1);
+    expect(mundo.enviados[0]?.texto).toContain('Anotamos tu pedido');
+    expect(mundo.enviados[0]?.texto).not.toContain('$');
+    expect(pedidosEn(env)).toHaveLength(1);
+    expect(avisosEn(env)).toHaveLength(1);
   });
 });
 
@@ -290,6 +290,22 @@ describe('lo que no es texto', () => {
     await enviarAviso(env, { id: 'wamid.IM1', from: CLIENTE, timestamp: '1793000000', type: 'image' });
     expect(mundo.enviados[0]?.texto).toBe('Recibimos tu imagen. Una persona del equipo la revisará.');
     expect(avisosEn(env)).toEqual([{ tipo: 'pago', telefono: CLIENTE, estado: 'abierto' }]);
+  });
+
+  it('un documento (los bancos mandan el comprobante en PDF): se responde y queda un aviso de posible comprobante', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno();
+    await enviarAviso(env, { id: 'wamid.DO1', from: CLIENTE, timestamp: '1793000000', type: 'document' });
+    expect(mundo.enviados[0]?.texto).toBe('Recibimos tu archivo. Una persona del equipo lo revisará.');
+    expect(avisosEn(env)).toEqual([{ tipo: 'pago', telefono: CLIENTE, estado: 'abierto' }]);
+  });
+
+  it('un aviso de sistema de WhatsApp (el cliente cambió de número) no se le responde al cliente: queda para revisar su ficha', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno();
+    await enviarAviso(env, { id: 'wamid.SY1', from: CLIENTE, timestamp: '1793000000', type: 'system' });
+    expect(mundo.enviados).toEqual([]);
+    expect(avisosEn(env)).toEqual([{ tipo: 'escalamiento', telefono: CLIENTE, estado: 'abierto' }]);
   });
 
   it('una reacción o un sticker no se responden ni generan aviso', async () => {

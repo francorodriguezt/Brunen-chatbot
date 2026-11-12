@@ -267,3 +267,19 @@ export function sentencias({ pedidos, clientes }, ahora) {
   }
   return `${lineas.join('\n')}\n`;
 }
+
+/**
+ * Filas que la carga escribe en D1 contando los índices, que también cuentan como escrituras (D57). El plan gratis
+ * permite 100.000 al día y, desde el 2026-09-01, las consultas fallan al pasarse. Por pedido: la fila y sus índices
+ * (hasta 6); por cliente: el alta y la limpieza de la marca; por teléfono: la fila y 2 índices; por dirección: la fila
+ * y su índice único. Es una cota alta, no la cuenta exacta.
+ */
+export function escriturasEstimadas({ pedidos, clientes }) {
+  const direcciones = clientes.reduce((total, c) => total + c.direcciones.size, 0);
+  return pedidos.length * 7 + clientes.length * 2 + clientes.length * 3 + direcciones * 2;
+}
+
+/** Cuántas direcciones distintas parecen traer notas internas: algo entre paréntesis o un texto muy largo. Solo se cuentan. */
+export function direccionesConNotas(pedidos) {
+  return new Set(pedidos.map((p) => p.direccion).filter((d) => d && (d.includes('(') || d.length > 80))).size;
+}

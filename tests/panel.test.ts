@@ -239,6 +239,31 @@ describe('el Worker del panel', () => {
     expect(archivos).toEqual([]);
   });
 
+  describe('con la administración en otra dirección (D56, opción 1)', () => {
+    const ADMIN = 'https://brunen-admin.ejemplo.workers.dev';
+
+    it('la dirección pública manda la pantalla de administración a la otra dirección', async () => {
+      const { env, archivos } = await entornoPanel({ PANEL_ADMIN_URL: ADMIN });
+      for (const ruta of ['/', '']) {
+        const r = await pedir(env, ruta, { token: null });
+        expect([r.status, r.headers.get('location')]).toEqual([302, `${ADMIN}/admin/`]);
+      }
+      expect(archivos).toEqual([]);
+    });
+
+    it('la dirección pública nunca atiende datos de administración, ni con un token de Access válido', async () => {
+      const { env } = await entornoPanel({ PANEL_ADMIN_URL: ADMIN });
+      expect((await pedir(env, '/api/pedidos')).status).toBe(404);
+      expect((await pedir(env, '/api/pedidos', { metodo: 'POST' })).status).toBe(404);
+      expect((await pedir(env, '/app.js')).status).toBe(404);
+    });
+
+    it('una dirección mal escrita se ignora: la administración sigue exigiendo Access aquí', async () => {
+      const { env } = await entornoPanel({ PANEL_ADMIN_URL: 'http://sin-https.example/ruta' });
+      expect((await pedir(env, '/', { token: null })).status).toBe(401);
+    });
+  });
+
   it('sin la configuración de Access falla cerrado', async () => {
     const { env } = await entornoPanel({ ACCESS_TEAM_DOMAIN: '', ACCESS_AUD: '' });
     expect((await pedir(env, '/api/pedidos')).status).toBe(503);

@@ -29,6 +29,17 @@ export interface EntornoPanel extends EntornoAcceso {
   ASSETS: { fetch(request: Request): Promise<Response> };
   /** Secreto con el que se calculan las huellas de las claves. Se carga con `wrangler secret put`, nunca en el repositorio. */
   PANEL_SECRETO?: string;
+  /**
+   * Solo en la dirección pública, cuando la administración vive en otra dirección entera detrás de Access (D56,
+   * opción 1): por ejemplo `https://brunen-admin.<subdominio>.workers.dev`. Vacío = la administración está aquí en `/admin`.
+   */
+  PANEL_ADMIN_URL?: string;
+}
+
+/** La otra dirección de la administración, si está bien escrita (https y sin ruta); si no, null. */
+function administracionAparte(env: EntornoPanel): string | null {
+  const valor = env.PANEL_ADMIN_URL?.trim() ?? '';
+  return /^https:\/\/[a-z0-9.-]+$/i.test(valor) ? valor : null;
 }
 
 /**
@@ -127,6 +138,12 @@ async function atender(request: Request, env: EntornoPanel): Promise<Response> {
   const ahoraSegundos = Math.floor(Date.now() / 1000);
 
   if (ruta === '/admin' || ruta.startsWith('/admin/')) {
+    // Dirección pública con la administración aparte (D56, opción 1): aquí nunca se sirve nada de administración.
+    const aparte = administracionAparte(env);
+    if (aparte) {
+      if ((ruta === '/admin' || ruta === '/admin/') && esLectura(request)) return Response.redirect(`${aparte}/admin/`, 302);
+      return texto(404, 'No existe.');
+    }
     const acceso = await autenticar(request, env, ahoraSegundos);
     if (!acceso.ok) return texto(acceso.estado, acceso.motivo);
     if (ruta.startsWith('/admin/api/')) return apiDeAdministracion(request, url, env, acceso.correo, ahoraSegundos);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Alerta } from '../src/alertas';
 import type { PedidoARegistrar } from '../src/pedidos';
+import { RepositorioClientes } from '../src/fichas';
 import { RepositorioD1, SQL_RESUMEN, calcularTotal } from '../src/repositorio';
 import { crearBaseSqlite } from './ayudas';
 
@@ -530,6 +531,50 @@ describe('datos de un cliente por sus pedidos anteriores (D40)', () => {
   });
 });
 
+describe('datos de un cliente por su ficha (fase B: el bot lee las fichas)', () => {
+  it('un teléfono que una persona agregó a la ficha reconoce al cliente con su último pedido, aunque lo hiciera desde otro número', async () => {
+    const { db, r } = repo();
+    const clientes = new RepositorioClientes(db);
+    await r.guardarPedido(pedido({ idPedido: 'P261020-AAAAA', direccion: 'Calle Uno 1', comuna: 'Macul' }), AHORA - 1000);
+    await clientes.vincularPendientes(AHORA - 900);
+    const ana = (await clientes.clienteDeTelefono('56911111111')) as number;
+    expect(await r.datosDelUltimoPedido('56922222222', AHORA)).toBeNull();
+    await clientes.agregarTelefono(ana, '56922222222', AHORA - 100);
+    expect(await r.datosDelUltimoPedido('56922222222', AHORA)).toMatchObject({ idPedido: 'P261020-AAAAA', direccion: 'Calle Uno 1', comuna: 'Macul' });
+  });
+
+  it('un número viejo de la ficha no reconoce al cliente por los pedidos de su número nuevo: pudo pasar a otra persona', async () => {
+    const { db, r } = repo();
+    const clientes = new RepositorioClientes(db);
+    const dosAnios = 2 * 365 * 24 * 3600;
+    await r.guardarPedido(pedido({ idPedido: 'P241020-AAAAA', direccion: 'Calle Antigua 1' }), AHORA - dosAnios);
+    await clientes.vincularPendientes(AHORA - dosAnios + 10);
+    const ana = (await clientes.clienteDeTelefono('56911111111')) as number;
+    await clientes.agregarTelefono(ana, '56922222222', AHORA - dosAnios + 20);
+    await r.guardarPedido(pedido({ idPedido: 'P261020-BBBBB', telefono: '56922222222', direccion: 'Calle Nueva 2' }), AHORA - 1000);
+    await clientes.vincularPendientes(AHORA - 900);
+    expect((await r.datosDelUltimoPedido('56922222222', AHORA))?.direccion).toBe('Calle Nueva 2');
+    expect(await r.datosDelUltimoPedido('56911111111', AHORA)).toBeNull();
+  });
+
+  it('si la ficha tiene una dirección usada después del último pedido, manda la de la ficha, y su nombre si lo tiene', async () => {
+    const { db, r } = repo();
+    const clientes = new RepositorioClientes(db);
+    await r.guardarPedido(pedido({ idPedido: 'P261020-AAAAA', nombre: 'ana', direccion: 'Calle Vieja 1', comuna: 'Macul' }), AHORA - 1000);
+    await clientes.vincularPendientes(AHORA - 900);
+    const ana = (await clientes.clienteDeTelefono('56911111111')) as number;
+    await clientes.editar(ana, { nombre: 'Ana Prueba' }, AHORA - 800);
+    await clientes.registrarDireccion(ana, 'Calle Nueva 9', 'Ñuñoa', 'Casa azul', AHORA - 500);
+    expect(await r.datosDelUltimoPedido('56911111111', AHORA)).toEqual({
+      idPedido: 'P261020-AAAAA',
+      nombre: 'Ana Prueba',
+      direccion: 'Calle Nueva 9',
+      comuna: 'Ñuñoa',
+      notasRepartidor: 'Casa azul',
+    });
+  });
+});
+
 describe('los pedidos de un día, para el reparto', () => {
   it('trae los de ese día por su fecha confirmada o, si no la hay, por la propuesta, sin los cancelados', async () => {
     const { r } = repo();
@@ -733,5 +778,16 @@ describe('editar los envases por retirar', () => {
     const { r } = repo();
     await r.guardarPedido(pedido(), AHORA);
     expect(await r.editarPedido('P261028-AAAAA', { envasesARetirar }, OPERADORA, AHORA + 1)).toEqual({ ok: false, error: 'datos_invalidos' });
+  });
+});
+
+describe('lo que pidió la última vez, para "lo de siempre" (D57)', () => {
+  it('devuelve los tipos y cantidades de su último pedido del último año, sin los cancelados ni fuera de zona', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ idPedido: 'P261020-AAAAA', lineas: [{ tipo: '20L', cantidad: 4, precioUnitario: 2750, subtotal: 11000 }] }), AHORA - 2000);
+    await r.guardarPedido(pedido({ idPedido: 'P261027-AAAAA', estado: 'Fuera_de_zona', lineas: [{ tipo: '12L', cantidad: 9, precioUnitario: null, subtotal: null }] }), AHORA - 1000);
+    expect(await r.itemsDelUltimoPedido('56911111111', AHORA)).toEqual([{ tipo: '20L', cantidad: 4 }]);
+    expect(await r.itemsDelUltimoPedido('56922222222', AHORA)).toBeNull();
+    expect(await r.itemsDelUltimoPedido('56911111111', AHORA + 2 * 365 * 24 * 3600)).toBeNull();
   });
 });

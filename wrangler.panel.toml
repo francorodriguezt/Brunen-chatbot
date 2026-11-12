@@ -16,6 +16,9 @@ preview_urls = false
 # Se llenan al activar Access (no son secretos): el dominio del equipo de Zero Trust y el "AUD tag" de la aplicación.
 ACCESS_TEAM_DOMAIN = ""
 ACCESS_AUD = ""
+# D56, opción 1: esta es la dirección pública (portada y repartidor). Con la dirección de la administración aquí
+# (https://brunen-admin.<subdominio>.workers.dev), /admin manda allá y esta dirección nunca sirve datos de administración.
+PANEL_ADMIN_URL = ""
 # Opcional, segunda barrera con los correos autorizados (PANEL_CORREOS, separados por coma): se carga con
 # `wrangler secret put PANEL_CORREOS -c wrangler.panel.toml`, no aquí. Son correos de personas y este repositorio es público.
 
@@ -33,3 +36,19 @@ database_id = "9d7c66b0-679b-47d3-8d38-a0223b3eab63"
 
 [observability]
 enabled = true
+
+# D56, opción 1: la administración en su propia dirección (brunen-admin.<subdominio>.workers.dev), entera detrás de
+# Cloudflare Access: `npm run deploy:panel-admin`. Mismo código y misma base; las variables y la base no se heredan.
+[env.admin]
+name = "brunen-admin"
+preview_urls = false
+
+[env.admin.vars]
+ACCESS_TEAM_DOMAIN = ""
+ACCESS_AUD = ""
+PANEL_ADMIN_URL = ""
+
+[[env.admin.d1_databases]]
+binding = "DB"
+database_name = "brunen-chatbot"
+database_id = "9d7c66b0-679b-47d3-8d38-a0223b3eab63"

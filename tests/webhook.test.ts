@@ -135,6 +135,16 @@ describe('recepción de mensajes (POST)', () => {
     errores.mockRestore();
   });
 
+  it('un aviso firmado con una forma inesperada igual recibe 200 (Meta no lo reintenta en bucle)', async () => {
+    const errores = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { ctx, terminar } = contexto();
+    const raro = { object: 'whatsapp_business_account', entry: [null, { changes: [{ field: 'messages', value: { messages: { id: 'x' } } }] }] };
+    const res = await worker.fetch(await postFirmado(raro), ENV, ctx);
+    expect(res.status).toBe(200);
+    await terminar();
+    errores.mockRestore();
+  });
+
   it('ignora notificaciones de estado (statuses) sin mensajes', () => {
     const soloEstados = {
       object: 'whatsapp_business_account',
@@ -158,6 +168,46 @@ describe('versión de la Graph API', () => {
       const config = { token: 't', phoneNumberId: '0', graphApiVersion: version };
       await expect(enviarTexto(config, '56900000001', 'hola')).rejects.toThrow(ErrorWhatsApp);
     }
+  });
+});
+
+describe('reintento del envío (D57)', () => {
+  const config = { token: 't', phoneNumberId: '123', graphApiVersion: 'v22.0' };
+
+  it('si Meta falla por su lado (5xx), reintenta una vez y el cliente recibe su respuesta', async () => {
+    const respuestas = [new Response('{"error":{"code":2}}', { status: 503 }), new Response('{}', { status: 200 })];
+    const fetchFalso = vi.fn(async () => respuestas.shift() as Response);
+    vi.stubGlobal('fetch', fetchFalso);
+    await enviarTexto(config, '56900000001', 'hola', { esperarMs: 0 });
+    expect(fetchFalso).toHaveBeenCalledTimes(2);
+  });
+
+  it('si la conexión se corta antes de llegar a Meta, también reintenta una vez', async () => {
+    let llamadas = 0;
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      llamadas += 1;
+      if (llamadas === 1) throw new TypeError('Network connection lost');
+      return new Response('{}', { status: 200 });
+    }));
+    await enviarTexto(config, '56900000001', 'hola', { esperarMs: 0 });
+    expect(llamadas).toBe(2);
+  });
+
+  it('un error del pedido (4xx, como el token vencido) o una espera agotada no se reintentan: podrían duplicar el mensaje o no servir de nada', async () => {
+    const fetch401 = vi.fn(async () => new Response('{"error":{"code":190}}', { status: 401 }));
+    vi.stubGlobal('fetch', fetch401);
+    await expect(enviarTexto(config, '56900000001', 'hola', { esperarMs: 0 })).rejects.toThrow(ErrorWhatsApp);
+    expect(fetch401).toHaveBeenCalledTimes(1);
+
+    const fetchLento = vi.fn(async () => { throw new DOMException('The operation timed out.', 'TimeoutError'); });
+    vi.stubGlobal('fetch', fetchLento);
+    await expect(enviarTexto(config, '56900000001', 'hola', { esperarMs: 0 })).rejects.toThrow();
+    expect(fetchLento).toHaveBeenCalledTimes(1);
+  });
+
+  it('si el reintento también falla, el error llega a quien llamó (que avisa a una persona)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 500 })));
+    await expect(enviarTexto(config, '56900000001', 'hola', { esperarMs: 0 })).rejects.toThrow(ErrorWhatsApp);
   });
 });
 

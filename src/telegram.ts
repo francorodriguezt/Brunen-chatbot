@@ -127,7 +127,11 @@ async function llamarApi(config: ConfigTelegram, metodo: string, cuerpo: Record<
 
 /** Envía el aviso. Nunca lanza errores: un aviso que no sale no debe romper la atención al cliente. */
 export async function enviarAlerta(config: ConfigTelegram | null, alerta: Alerta): Promise<boolean> {
-  if (!config) return false;
+  if (!config) {
+    // Sin Telegram lo urgente queda solo en los avisos del panel: al menos que se vea en los registros de Cloudflare.
+    console.warn(`Telegram no está configurado: el aviso urgente (${alerta.tipo}) queda solo en el panel.`);
+    return false;
+  }
   const { texto, botones } = formatearAlerta(alerta);
   return llamarApi(config, 'sendMessage', {
     chat_id: config.chatId,
