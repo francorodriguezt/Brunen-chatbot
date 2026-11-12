@@ -54,6 +54,29 @@ describe('textos al cliente', () => {
     expect(texto.split('\n').length).toBeLessThanOrEqual(5);
   });
 
+  describe('Entrega en (D55)', () => {
+    const base = { lineas: [{ tipo: '20L' as const, cantidad: 2, subtotal: 6600 }], total: 6600, entrega: { fecha: '2026-10-29', mismoDia: false, feriadosAlDia: true }, fechaSegura: true };
+
+    it('muestra la dirección y la comuna, e invita a escribir la nueva si cambió', () => {
+      expect(textos.pedidoAnotado({ ...base, direccion: 'Calle Falsa 123', comuna: 'Ñuñoa' })).toContain('Entrega en: Calle Falsa 123, Ñuñoa. Si cambiaste de dirección, escríbenos la nueva.');
+    });
+
+    it('no repite la comuna si ya viene en la dirección, aunque cambien las tildes', () => {
+      expect(textos.pedidoAnotado({ ...base, direccion: 'Av. Grecia 12, Nunoa.', comuna: 'Ñuñoa' })).toContain('Entrega en: Av. Grecia 12, Nunoa. Si cambiaste');
+    });
+
+    it('sin dirección no dice nada de la entrega', () => {
+      expect(textos.pedidoAnotado({ ...base, direccion: '  ', comuna: 'Ñuñoa' })).not.toContain('Entrega en');
+      expect(textos.pedidoAnotado(base)).not.toContain('Entrega en');
+    });
+
+    it('sigue siendo un solo mensaje, corto', () => {
+      const texto = textos.pedidoAnotado({ ...base, direccion: 'Calle Falsa 123', comuna: 'Ñuñoa' });
+      expect(texto.split('\n').length).toBeLessThanOrEqual(6);
+      expect(texto.length).toBeLessThan(400);
+    });
+  });
+
   it('nunca supera el máximo de WhatsApp aun con muchas líneas', () => {
     const lineas = (['20L', '12L', '10L'] as const).map((tipo) => ({ tipo, cantidad: 999, subtotal: 999000 }));
     const texto = textos.pedidoAnotado({ lineas, total: 2997000, entrega: { fecha: '2026-10-29', mismoDia: false, feriadosAlDia: true }, fechaSegura: true });
