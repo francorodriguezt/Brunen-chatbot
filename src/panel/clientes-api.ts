@@ -6,7 +6,9 @@
  * pestaña está al día aunque la tarea programada todavía no haya pasado.
  */
 
+import { fechaHoraLocal } from '../despacho';
 import type { RepositorioClientes } from '../fichas';
+import type { RepositorioFijos } from '../fijos';
 import type { RepositorioD1 } from '../repositorio';
 import { normalizarTelefono } from '../whatsapp';
 import { error, esperadoComoEscritura, json, leerCuerpo } from './api';
@@ -14,6 +16,8 @@ import { error, esperadoComoEscritura, json, leerCuerpo } from './api';
 export interface ContextoClientes {
   clientes: RepositorioClientes;
   repositorio: RepositorioD1;
+  /** Pedidos fijos (D59). */
+  fijos: RepositorioFijos;
   ahoraSegundos: number;
 }
 
@@ -52,12 +56,17 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
     return json({ clientes: await clientes.listar() });
   }
 
+  // A quién le toca pedir según su ritmo (D58). Lee los pedidos una vez: se pide con un botón, no al abrir la pestaña.
+  if (ruta === '/api/clientes/por-pedir' && request.method === 'GET') {
+    return json(await clientes.porPedir(fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha));
+  }
+
   const ficha = /^\/api\/clientes\/(\d{1,9})$/.exec(ruta);
   if (ficha && request.method === 'GET') {
     const id = Number(ficha[1]);
     const datos = await clientes.ficha(id);
     if (!datos) return errorDeCliente('no_existe');
-    return json({ cliente: datos, pedidos: await ctx.repositorio.pedidosDeCliente(id, 30) });
+    return json({ cliente: datos, pedidos: await ctx.repositorio.pedidosDeCliente(id, 30), fijo: await ctx.fijos.deCliente(id) });
   }
 
   if (request.method !== 'POST') return error(404, 'No encontrado.');
@@ -73,9 +82,15 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
     return json({ clientes: await clientes.listar(cuerpo.texto) });
   }
 
-  const accion = /^\/api\/clientes\/(\d{1,9})\/(editar|telefonos|unir)$/.exec(ruta);
+  const accion = /^\/api\/clientes\/(\d{1,9})\/(editar|telefonos|unir|fijo)$/.exec(ruta);
   if (!accion) return error(404, 'No encontrado.');
   const id = Number(accion[1]);
+
+  if (accion[2] === 'fijo') {
+    const r = await ctx.fijos.guardar(id, cuerpo, ahoraSegundos);
+    if (r.ok) return json({ ok: true, fijo: r.fijo });
+    return error(422, r.error === 'sin_telefono' ? 'Ese cliente no tiene teléfono: agrégale uno primero.' : 'Revisa el tamaño, la cantidad (1 a 200), cada cuántos días (1 a 60) y la próxima fecha.');
+  }
 
   if (accion[2] === 'editar') {
     const r = await clientes.editar(id, { nombre: cuerpo.nombre, tipoCliente: cuerpo.tipoCliente, notas: cuerpo.notas }, ahoraSegundos);

@@ -197,6 +197,17 @@ describe('la tarea programada del Worker (cada 5 minutos)', () => {
     expect(avisosEn(env.DB)).toHaveLength(1);
   });
 
+  it('crea los pedidos fijos que tocan (D59)', async () => {
+    stubMundo({ hojas: HOJAS });
+    const env = await entorno();
+    env.DB.sql(`INSERT INTO clientes (id, nombre, creado_en, actualizado_en) VALUES (1, 'Empresa Prueba', ${T}, ${T})`);
+    env.DB.sql(`INSERT INTO telefonos_cliente (telefono, cliente_id, agregado_en) VALUES ('${ANA}', 1, ${T})`);
+    env.DB.sql(`INSERT INTO pedidos_fijos (cliente_id, telefono, lineas, cada_dias, proxima_fecha, activo, creado_en, actualizado_en)
+                VALUES (1, '${ANA}', '[{"tipo":"20L","cantidad":10}]', 7, '2026-11-11', 1, ${T}, ${T})`);
+    await correr(env, AHORA);
+    expect(env.DB.sql("SELECT fecha_entrega, estado FROM pedidos WHERE id LIKE 'F%'")).toEqual([{ fecha_entrega: '2026-11-11', estado: 'Pendiente_Confirmacion' }]);
+  });
+
   it('una falla dentro de la tarea no la deja caída', async () => {
     stubMundo({ hojas: HOJAS });
     const rota = { prepare: () => ({ bind: () => ({ run: async () => { throw new Error('D1 caída'); } }) }) };

@@ -348,6 +348,17 @@ describe('la API: lectura', () => {
     expect((await pedir(env, '/api/pedidos/P000000-ZZZZZ')).status).toBe(404);
   });
 
+  it('los pedidos del historial (H…) y los fijos (F…) también se abren y se cambian, no solo los del bot (P…)', async () => {
+    const { env, repositorio } = await entornoPanel();
+    await repositorio.guardarPedido(pedido({ idPedido: 'H261110-7K2QZ', estado: 'Confirmado' as never }), AHORA - 50);
+    await repositorio.guardarPedido(pedido({ idPedido: 'F261111-0000C' }), AHORA - 40);
+    for (const id of ['H261110-7K2QZ', 'F261111-0000C']) {
+      const r = await pedir(env, `/api/pedidos/${id}`);
+      expect([id, r.status]).toEqual([id, 200]);
+    }
+    expect((await pedir(env, '/api/pedidos/X261110-7K2QZ')).status).toBe(404);
+  });
+
   it('un identificador con formato raro ni llega a la base', async () => {
     const { env } = await entornoPanel();
     expect((await pedir(env, "/api/pedidos/P261028-AAAAA'%20OR%201=1--")).status).toBe(404);
@@ -786,6 +797,25 @@ describe('la API: clientes (D53)', () => {
     const { clientes } = (await (await pedir(env, '/api/clientes')).json()) as { clientes: Array<Record<string, unknown>> };
     expect(clientes).toHaveLength(1);
     expect(clientes[0]).toMatchObject({ nombre: 'Ana Prueba', telefonos: ['56911111111'], pedidos: 2 });
+  });
+
+  it('dice a quién le toca pedir (D58), solo a un administrador con sesión', async () => {
+    const { env } = await entornoPanel();
+    const r = await pedir(env, '/api/clientes/por-pedir');
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ clientes: [], inactivos: 0 }); // con 2 pedidos todavía no hay ritmo
+    expect((await pedir(env, '/api/clientes/por-pedir', { token: null })).status).toBe(401);
+  });
+
+  it('guarda el pedido fijo de un cliente y lo muestra en su ficha (D59)', async () => {
+    const { env } = await entornoPanel();
+    const { clientes } = (await (await pedir(env, '/api/clientes')).json()) as { clientes: Array<{ id: number }> };
+    const id = clientes[0]?.id as number;
+    expect(((await (await pedir(env, `/api/clientes/${id}`)).json()) as { fijo: unknown }).fijo).toBeNull();
+    const fijo = { tipo: '20L', cantidad: 10, cadaDias: 7, proximaFecha: '2026-11-16', activo: true, notas: '' };
+    expect((await pedir(env, `/api/clientes/${id}/fijo`, { metodo: 'POST', cuerpo: fijo })).status).toBe(200);
+    expect(((await (await pedir(env, `/api/clientes/${id}`)).json()) as { fijo: Record<string, unknown> }).fijo).toMatchObject({ cadaDias: 7, proximaFecha: '2026-11-16', activo: true });
+    expect((await pedir(env, `/api/clientes/${id}/fijo`, { metodo: 'POST', cuerpo: { ...fijo, cantidad: 0 } })).status).toBe(422);
   });
 
   it('busca por POST y muestra la ficha con sus pedidos', async () => {

@@ -55,6 +55,35 @@ export const VINCULAR_POR_PASADA = 4;
 
 export { claveDeDireccion };
 
+/** Un cliente que, por su ritmo de pedidos, ya debería haber pedido (D58). */
+export interface ClientePorPedir {
+  id: number;
+  nombre: string;
+  telefonos: string[];
+  /** Cada cuántos días pide, normalmente (la mediana de sus últimos pedidos). */
+  cadaDias: number;
+  /** Fecha de entrega de su último pedido (YYYY-MM-DD). */
+  ultimo: string;
+  diasSinPedir: number;
+}
+
+/** Con menos pedidos no hay un ritmo confiable; los últimos 6 pesan más que los de hace un año. */
+const MINIMO_DE_PEDIDOS = 4;
+const PEDIDOS_QUE_CUENTAN = 6;
+/** Se avisa cuando lleva una vez y media su ritmo sin pedir (y al menos dos días de atraso). */
+const ATRASO_PARA_AVISAR = 1.5;
+/** Más de esto sin pedir ya no es "le toca": es un cliente inactivo, que se cuenta aparte. */
+const DIAS_PARA_INACTIVO = 120;
+const MAXIMO_EN_LA_LISTA = 30;
+
+const diasEntre = (desde: string, hasta: string): number => Math.round((Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86_400_000);
+
+function mediana(valores: number[]): number {
+  const orden = [...valores].sort((a, b) => a - b);
+  const medio = Math.floor(orden.length / 2);
+  return orden.length % 2 === 1 ? (orden[medio] as number) : Math.round(((orden[medio - 1] as number) + (orden[medio] as number)) / 2);
+}
+
 const texto = (v: unknown): string => (typeof v === 'string' ? v : '');
 const numero = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0) || 0);
 
@@ -160,6 +189,53 @@ export class RepositorioClientes {
       vinculados += 1;
     }
     return vinculados;
+  }
+
+  /**
+   * A quién le toca pedir (D58): clientes con al menos 4 pedidos que llevan una vez y media su ritmo sin pedir, y sin un
+   * pedido para hoy o adelante. Los que llevan más de 4 meses solo se cuentan (`inactivos`). Lee los pedidos una vez.
+   */
+  async porPedir(hoy: string): Promise<{ clientes: ClientePorPedir[]; inactivos: number }> {
+    const filas = await this.filas(
+      `SELECT cliente_id, fecha FROM (
+         SELECT cliente_id, fecha, ROW_NUMBER() OVER (PARTITION BY cliente_id ORDER BY fecha DESC) AS n FROM (
+           SELECT DISTINCT cliente_id, COALESCE(NULLIF(fecha_confirmada, ''), fecha_entrega) AS fecha FROM pedidos
+           WHERE cliente_id IS NOT NULL AND estado NOT IN ('Cancelado', 'Fuera_de_zona'))
+         WHERE fecha IS NOT NULL AND fecha != '')
+       WHERE n <= ?1 ORDER BY cliente_id, fecha DESC`,
+      PEDIDOS_QUE_CUENTAN,
+    );
+    const fechasPorCliente = new Map<number, string[]>();
+    for (const f of filas) fechasPorCliente.set(numero(f.cliente_id), [...(fechasPorCliente.get(numero(f.cliente_id)) ?? []), texto(f.fecha)]);
+
+    let inactivos = 0;
+    const atrasados: Array<Omit<ClientePorPedir, 'nombre' | 'telefonos'>> = [];
+    for (const [id, fechas] of fechasPorCliente) {
+      const ultimo = fechas[0] as string;
+      if (fechas.length < MINIMO_DE_PEDIDOS || ultimo >= hoy) continue;
+      const cadaDias = mediana(fechas.slice(1).map((fecha, i) => diasEntre(fecha, fechas[i] as string)));
+      const diasSinPedir = diasEntre(ultimo, hoy);
+      if (diasSinPedir > DIAS_PARA_INACTIVO) inactivos += 1;
+      else if (cadaDias >= 2 && diasSinPedir >= Math.max(cadaDias * ATRASO_PARA_AVISAR, cadaDias + 2)) atrasados.push({ id, cadaDias, ultimo, diasSinPedir });
+    }
+    atrasados.sort((a, b) => b.diasSinPedir / b.cadaDias - a.diasSinPedir / a.cadaDias);
+    const elegidos = atrasados.slice(0, MAXIMO_EN_LA_LISTA);
+    if (elegidos.length === 0) return { clientes: [], inactivos };
+
+    const datos = await this.filas(
+      `SELECT c.id, c.nombre, (SELECT GROUP_CONCAT(t.telefono) FROM telefonos_cliente t WHERE t.cliente_id = c.id) AS telefonos
+       FROM clientes c WHERE c.id IN (${elegidos.map((_, i) => `?${i + 1}`).join(', ')})`,
+      ...elegidos.map((e) => e.id),
+    );
+    const porId = new Map(datos.map((d) => [numero(d.id), d]));
+    return {
+      clientes: elegidos.map((e) => ({
+        ...e,
+        nombre: texto(porId.get(e.id)?.nombre),
+        telefonos: texto(porId.get(e.id)?.telefonos).split(',').filter(Boolean),
+      })),
+      inactivos,
+    };
   }
 
   /** Crea la ficha con ese teléfono. Si otro proceso la creó recién, devuelve la de él (el teléfono es único). */

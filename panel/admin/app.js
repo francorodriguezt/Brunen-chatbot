@@ -1026,6 +1026,35 @@ async function cargarClientes() {
   else lista.replaceChildren(...clientes.map(tarjetaDeCliente));
 }
 
+/** A quién le toca pedir (D58). Se carga al abrir el desplegable: lee todos los pedidos, así que no va con cada recarga. */
+async function cargarPorPedir() {
+  const lista = $('lista-por-pedir');
+  lista.replaceChildren(h('p', { clase: 'suave' }, 'Revisando los pedidos…'));
+  try {
+    const { clientes, inactivos } = await api('/api/clientes/por-pedir');
+    const nota = inactivos > 0 ? h('p', { clase: 'suave' }, `Además, ${inactivos} ${inactivos === 1 ? 'cliente frecuente lleva' : 'clientes frecuentes llevan'} más de 4 meses sin pedir.`) : null;
+    if (clientes.length === 0) {
+      lista.replaceChildren(...[h('p', { clase: 'vacio' }, 'Nadie está atrasado según su ritmo de pedidos.'), nota].filter(Boolean));
+      return;
+    }
+    lista.replaceChildren(
+      ...clientes.map((c) =>
+        h(
+          'article',
+          { clase: 'tarjeta persona' },
+          h('div', { clase: 'tarjeta-cabecera' }, h('span', { clase: 'persona-nombre' }, c.nombre || 'Sin nombre'), h('span', { clase: 'insignia ambar' }, `${c.diasSinPedir} días sin pedir`)),
+          h('div', { clase: 'cliente' }, ...c.telefonos.map(enlaceWhatsApp)),
+          h('div', { clase: 'datos' }, h('span', {}, h('b', {}, 'Suele pedir: '), `cada ${c.cadaDias} días`), h('span', {}, h('b', {}, 'Último: '), fechaLarga(c.ultimo))),
+          h('div', { clase: 'acciones' }, boton('Ver ficha', 'boton', () => void abrirCliente(c.id))),
+        ),
+      ),
+      ...(nota ? [nota] : []),
+    );
+  } catch (falla) {
+    lista.replaceChildren(h('p', { clase: 'vacio' }, 'No se pudo revisar ahora. Intenta de nuevo en un rato.'));
+  }
+}
+
 function alBuscarClientes(evento) {
   clearTimeout(esperaDeClientes);
   const texto = evento.currentTarget.value.trim();
@@ -1035,7 +1064,7 @@ function alBuscarClientes(evento) {
   }, ESPERA_AL_BUSCAR_MS);
 }
 
-function fichaDelCliente(cliente, pedidos) {
+function fichaDelCliente(cliente, pedidos, fijo) {
   const direcciones = cliente.direcciones.map((d, i) =>
     h('li', {}, direccionLegible(d), d.notasRepartidor ? ` · ${d.notasRepartidor}` : '', h('span', { clase: 'suave' }, ` · ${d.usos} ${d.usos === 1 ? 'pedido' : 'pedidos'}${i === 0 ? ' · la vigente' : ''}`)),
   );
@@ -1056,22 +1085,59 @@ function fichaDelCliente(cliente, pedidos) {
     direcciones.length > 0 ? h('ul', { clase: 'historial-lista' }, direcciones) : h('p', { clase: 'suave' }, 'Sin direcciones todavía.'),
     h('h3', {}, `Pedidos (${cliente.pedidos})`),
     ultimos.length > 0 ? h('ul', { clase: 'historial-lista' }, ultimos) : h('p', { clase: 'suave' }, 'Sin pedidos.'),
+    ...seccionDePedidoFijo(cliente, fijo),
     h('h3', {}, 'Unir con otro cliente'),
     h('p', { clase: 'suave' }, 'Si este cliente aparece dos veces (por ejemplo, pidió desde otro teléfono), escribe un teléfono de la otra ficha: todo pasa a esta.'),
     h('div', { clase: 'fila-ficha' }, campoUnir, boton('Unir', 'boton boton-chico', () => void unirClientes(cliente, campoUnir.value))),
   );
 }
 
+/**
+ * Pedido fijo (D59): "10 de 20 L cada 7 días, el próximo el lunes". El sistema crea el pedido dos días antes de la
+ * entrega, pendiente de confirmar y sin precio: lo confirma una persona.
+ */
+function seccionDePedidoFijo(cliente, fijo) {
+  const linea = fijo?.lineas?.[0];
+  const tipo = h('select', { 'aria-label': 'Tamaño' }, ...['20L', '12L', '10L'].map((t) => h('option', { value: t, selected: (linea?.tipo ?? '20L') === t }, NOMBRE_BIDON[t] ?? t)));
+  const cantidad = h('input', { type: 'number', min: 1, max: 200, value: linea?.cantidad ?? 1, 'aria-label': 'Cantidad de bidones', clase: 'campo-corto' });
+  const cada = h('input', { type: 'number', min: 1, max: 60, value: fijo?.cadaDias ?? 7, 'aria-label': 'Cada cuántos días', clase: 'campo-corto' });
+  const proxima = h('input', { type: 'date', value: fijo?.proximaFecha ?? '', 'aria-label': 'Próxima entrega' });
+  const activo = h('input', { type: 'checkbox', checked: fijo ? fijo.activo : true });
+  const notas = h('input', { type: 'text', maxlength: 200, value: fijo?.notas ?? '', placeholder: 'Notas (opcional)', 'aria-label': 'Notas del pedido fijo' });
+  const guardar = () =>
+    void guardarFijo(cliente, { tipo: tipo.value, cantidad: Number(cantidad.value), cadaDias: Number(cada.value), proximaFecha: proxima.value, activo: activo.checked, notas: notas.value });
+  let estado = 'Si siempre pide lo mismo cada cierta cantidad de días, el pedido se crea solo dos días antes, para que lo confirmes.';
+  if (fijo) estado = fijo.activo ? `Activo: el próximo se entrega el ${fechaLarga(fijo.proximaFecha)}.` : 'En pausa: no se crean pedidos.';
+  return [
+    h('h3', {}, 'Pedido fijo'),
+    h('p', { clase: 'suave' }, estado),
+    h('div', { clase: 'fila-ficha' }, cantidad, tipo, h('span', {}, 'cada'), cada, h('span', {}, 'días')),
+    h('div', { clase: 'fila-ficha' }, h('label', {}, 'Próxima entrega ', proxima), h('label', {}, activo, ' Activo')),
+    h('div', { clase: 'fila-ficha' }, notas, boton('Guardar pedido fijo', 'boton boton-chico', guardar)),
+  ];
+}
+
+async function guardarFijo(cliente, datos) {
+  if (!datos.proximaFecha) return errorDeCliente('Elige la fecha de la próxima entrega.');
+  try {
+    await api(`/api/clientes/${cliente.id}/fijo`, datos);
+    avisar('Pedido fijo guardado.');
+    await abrirCliente(cliente.id);
+  } catch (falla) {
+    errorDeCliente(falla.message);
+  }
+}
+
 async function abrirCliente(id) {
   try {
-    const { cliente, pedidos } = await api(`/api/clientes/${id}`);
+    const { cliente, pedidos, fijo } = await api(`/api/clientes/${id}`);
     clienteAbierto = cliente;
     const formulario = $('formulario-cliente');
     formulario.elements.nombre.value = cliente.nombre;
     formulario.elements.tipoCliente.value = cliente.tipoCliente;
     formulario.elements.notas.value = cliente.notas;
     $('titulo-cliente').textContent = cliente.nombre || 'Cliente sin nombre';
-    $('ficha-cliente').replaceChildren(fichaDelCliente(cliente, pedidos));
+    $('ficha-cliente').replaceChildren(fichaDelCliente(cliente, pedidos, fijo));
     $('error-cliente').hidden = true;
     if (!$('dialogo-cliente').open) $('dialogo-cliente').showModal();
   } catch (falla) {
@@ -1379,6 +1445,9 @@ function iniciar() {
   });
 
   $('buscar-clientes').addEventListener('input', alBuscarClientes);
+  $('por-pedir').addEventListener('toggle', (evento) => {
+    if (evento.currentTarget.open) void cargarPorPedir();
+  });
   $('formulario-cliente').addEventListener('submit', (evento) => void guardarCliente(evento));
   $('cerrar-cliente').addEventListener('click', () => $('dialogo-cliente').close());
 

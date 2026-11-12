@@ -19,6 +19,7 @@ import { RepositorioD1 } from '../repositorio';
 import { autenticar, esLocal, type EntornoAcceso } from './acceso';
 import { error, manejarApi } from './api';
 import { RepositorioClientes } from '../fichas';
+import { RepositorioFijos } from '../fijos';
 import { manejarClientes } from './clientes-api';
 import { Cuentas } from './cuentas';
 import { cookieDeSesion, esDelAdministrador, manejarSesionAdmin, manejarSesionPublica, manejarUsuarios, tokenDeCookie, type ContextoDeIngreso } from './ingreso';
@@ -121,7 +122,7 @@ async function apiDeAdministracion(request: Request, url: URL, env: EntornoPanel
     const clientes = new RepositorioClientes(env.DB as BaseDatos);
     const respuesta =
       (await manejarUsuarios(request, interna, { ...ctx, yo: sesion.usuario })) ??
-      (await manejarClientes(request, interna, { clientes, repositorio: ctx.repositorio, ahoraSegundos })) ??
+      (await manejarClientes(request, interna, { clientes, repositorio: ctx.repositorio, fijos: new RepositorioFijos(env.DB as BaseDatos), ahoraSegundos })) ??
       (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes }));
     if (sesion?.renovada && token) respuesta.headers.append('set-cookie', cookieDeSesion(token, true, ctx.cookieSegura));
     return respuesta;

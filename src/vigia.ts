@@ -21,6 +21,7 @@ import { FALLA_DEL_TOKEN, avisarFalla, type EntornoAtencion } from './atencion';
 import { leerConfiguracion } from './configuracion';
 import { fechaHoraLocal } from './despacho';
 import { RepositorioClientes } from './fichas';
+import { RepositorioFijos } from './fijos';
 import { cerrarPausasVencidas } from './relevo';
 import { RepositorioD1 } from './repositorio';
 import { configTelegram, enviarAlerta } from './telegram';
@@ -155,6 +156,13 @@ export async function tareaProgramada(env: EntornoAtencion, ahora: Date): Promis
         await new RepositorioClientes(env.DB).vincularPendientes(Math.floor(ahora.getTime() / 1000));
       } catch (falla) {
         console.error('No se pudieron asociar pedidos a clientes:', falla instanceof Error ? falla.message : falla);
+      }
+      // Pedidos fijos (D59): se crean unos días antes de la entrega, pendientes de confirmar.
+      try {
+        const creados = await new RepositorioFijos(env.DB).crearLosQueTocan(fechaHoraLocal(ahora).fecha, Math.floor(ahora.getTime() / 1000));
+        if (creados > 0) console.log(`Se crearon ${creados} pedido(s) fijo(s) para confirmar.`);
+      } catch (falla) {
+        console.error('No se pudieron crear los pedidos fijos:', falla instanceof Error ? falla.message : falla);
       }
     }
     const local = fechaHoraLocal(ahora);
