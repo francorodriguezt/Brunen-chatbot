@@ -421,6 +421,13 @@ export class RepositorioD1 {
   }
 
   /** Los pedidos de un día (por su fecha confirmada o, si no la hay, la propuesta), sin los cancelados: de aquí sale el reparto. */
+  /** Los pedidos de una ficha de cliente (D53), del más nuevo al más antiguo. */
+  async pedidosDeCliente(clienteId: number, limite = 30): Promise<PedidoGuardado[]> {
+    const tope = Math.min(Math.max(Math.trunc(limite), 1), 100);
+    const filas = await this.filas(`SELECT ${COLUMNAS_PEDIDO} FROM pedidos WHERE cliente_id = ?1 ORDER BY creado_en DESC, rowid DESC LIMIT ${tope}`, clienteId);
+    return filas.map(aPedido);
+  }
+
   async pedidosDelDia(fecha: string): Promise<PedidoGuardado[]> {
     const filas = await this.filas(
       `SELECT ${COLUMNAS_PEDIDO} FROM pedidos WHERE COALESCE(fecha_confirmada, fecha_entrega) = ?1 AND estado != 'Cancelado' ORDER BY creado_en, rowid LIMIT 500`,

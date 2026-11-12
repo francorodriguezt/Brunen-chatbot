@@ -60,7 +60,8 @@ export function crearBaseSqlite(): BaseDatos & { sql(sentencia: string, ...valor
   const db = new DatabaseSync(':memory:');
   const carpeta = fileURLToPath(new URL('../migrations/', import.meta.url));
   for (const archivo of readdirSync(carpeta).sort()) db.exec(readFileSync(carpeta + archivo, 'utf8'));
-  const esConsulta = (sql: string) => /^\s*(select|with)\b/i.test(sql);
+  // Como D1: un SELECT, o una escritura con RETURNING, devuelve sus filas en `results`.
+  const esConsulta = (sql: string) => /^\s*(select|with)\b/i.test(sql) || /\breturning\b/i.test(sql);
   return {
     prepare: (sql) => ({
       bind: (...valores) => ({

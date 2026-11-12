@@ -72,14 +72,17 @@ describe('migraciones', () => {
     const tablas = crearBaseSqlite().sql("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
     expect(tablas).toEqual([
       { name: 'avisos' },
+      { name: 'clientes' },
       { name: 'conversaciones' },
       { name: 'conversaciones_tomadas' },
+      { name: 'direcciones_cliente' },
       { name: 'historial_pedidos' },
       { name: 'intentos_de_ingreso' },
       { name: 'mensajes_pendientes' },
       { name: 'mensajes_procesados' },
       { name: 'pedidos' },
       { name: 'sesiones' },
+      { name: 'telefonos_cliente' },
       { name: 'ultimos_pedidos' },
       { name: 'uso_llm' },
       { name: 'usuarios' },

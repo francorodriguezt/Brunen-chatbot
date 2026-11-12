@@ -12,6 +12,12 @@ Para quien confirma los pedidos y arma el reparto. El panel es una página priva
 7. Si aparece "Se cerró tu sesión", toca "Volver a entrar".
 8. La primera vez, toca "Activar avisos del navegador": así suena y avisa cuando llega un pedido aunque estés en otra pestaña. La página tiene que quedar abierta.
 
+## Clientes
+- Cada cliente reúne sus teléfonos, sus direcciones y sus pedidos. Las fichas se crean solas con los pedidos que llegan (por teléfono).
+- **Buscar**: por nombre, parte del teléfono, dirección o comuna.
+- **Ver ficha**: cambiar el nombre, el tipo de cliente y las notas; agregar otro teléfono; ver todas sus direcciones (la primera es la vigente) y sus últimos pedidos.
+- **Unir con otro cliente**: si alguien aparece dos veces, escribe un teléfono de la otra ficha y todo pasa a esta. No se puede deshacer.
+
 ## Equipo
 - Lista de quienes pueden entrar, con cuántos dispositivos tienen la sesión abierta.
 - **Nuevo repartidor**: su nombre, su RUT y una clave de 4 dígitos, que se le dice en persona.

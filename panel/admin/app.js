@@ -14,7 +14,7 @@ const REFRESCO_FORZADO_MS = 60_000;
 const ZONA = 'America/Santiago';
 const MAX_LINEAS = 5; // el mismo tope que impone el servidor
 
-const VISTAS = ['pedidos', 'reparto', 'avisos', 'equipo'];
+const VISTAS = ['pedidos', 'clientes', 'reparto', 'avisos', 'equipo'];
 const ESPERA_AL_BUSCAR_MS = 350; // se busca cuando la persona deja de escribir, no en cada letra
 
 const GRUPOS = [
@@ -938,7 +938,7 @@ function activarVista(nombre) {
 
 async function recargarVistaActual() {
   try {
-    await { pedidos: cargarPedidos, reparto: cargarReparto, avisos: cargarAvisos, equipo: cargarEquipo }[estado.vista]();
+    await { pedidos: cargarPedidos, clientes: cargarClientes, reparto: cargarReparto, avisos: cargarAvisos, equipo: cargarEquipo }[estado.vista]();
     estado.ultimaCarga = Date.now();
   } catch (falla) {
     avisar(falla.message, true);
@@ -988,6 +988,148 @@ function programarSondeo() {
     await sondear(); // no lanza: los fallos quedan en el aviso de conexión
     programarSondeo();
   }, document.hidden ? INTERVALO_OCULTO_MS : INTERVALO_MS);
+}
+
+// ---- Clientes (D53): una ficha por cliente, con sus teléfonos, direcciones y pedidos ----
+
+let clienteAbierto = null;
+let busquedaDeClientes = '';
+let esperaDeClientes;
+
+function direccionLegible(direccion) {
+  if (!direccion) return 'sin dirección';
+  return [direccion.direccion, direccion.comuna].filter(Boolean).join(', ');
+}
+
+function tarjetaDeCliente(cliente) {
+  const tipo = ETIQUETAS.tipoCliente[cliente.tipoCliente];
+  return h(
+    'article',
+    { clase: 'tarjeta persona' },
+    h('div', { clase: 'tarjeta-cabecera' }, h('span', { clase: 'persona-nombre' }, cliente.nombre || 'Sin nombre'), cliente.tipoCliente ? h('span', { clase: 'insignia azul' }, tipo) : null),
+    h('div', { clase: 'cliente' }, ...cliente.telefonos.map(enlaceWhatsApp)),
+    h(
+      'div',
+      { clase: 'datos' },
+      h('span', {}, h('b', {}, 'Dirección: '), direccionLegible(cliente.direccion)),
+      h('span', {}, h('b', {}, 'Pedidos: '), cliente.pedidos),
+      cliente.ultimoPedido ? h('span', {}, h('b', {}, 'Último: '), fechaLarga(cliente.ultimoPedido)) : null,
+    ),
+    h('div', { clase: 'acciones' }, boton('Ver ficha', 'boton', () => void abrirCliente(cliente.id))),
+  );
+}
+
+async function cargarClientes() {
+  const { clientes } = busquedaDeClientes ? await api('/api/clientes/buscar', { texto: busquedaDeClientes }) : await api('/api/clientes');
+  const lista = $('lista-clientes');
+  if (clientes.length === 0) lista.replaceChildren(h('p', { clase: 'vacio' }, busquedaDeClientes ? 'No encontré clientes con ese texto.' : 'Todavía no hay clientes. Aparecen solos con los pedidos.'));
+  else lista.replaceChildren(...clientes.map(tarjetaDeCliente));
+}
+
+function alBuscarClientes(evento) {
+  clearTimeout(esperaDeClientes);
+  const texto = evento.currentTarget.value.trim();
+  esperaDeClientes = setTimeout(() => {
+    busquedaDeClientes = texto.length >= 2 ? texto : '';
+    void recargarVistaActual();
+  }, ESPERA_AL_BUSCAR_MS);
+}
+
+function fichaDelCliente(cliente, pedidos) {
+  const direcciones = cliente.direcciones.map((d, i) =>
+    h('li', {}, direccionLegible(d), d.notasRepartidor ? ` · ${d.notasRepartidor}` : '', h('span', { clase: 'suave' }, ` · ${d.usos} ${d.usos === 1 ? 'pedido' : 'pedidos'}${i === 0 ? ' · la vigente' : ''}`)),
+  );
+  const ultimos = pedidos.map((p) => {
+    const insignia = ESTADOS[p.estado] ?? { texto: p.estado, color: '' };
+    const bidones = p.lineas.map((l) => `${l.cantidad} × ${NOMBRE_BIDON[l.tipo] ?? l.tipo}`).join(', ');
+    return h('li', {}, fechaLarga(p.fechaConfirmada ?? p.fechaEntrega), ' · ', bidones, p.total !== null ? ` · ${pesos.format(p.total)}` : '', ' ', h('span', { clase: `insignia ${insignia.color}` }, insignia.texto));
+  });
+  const campoTelefono = h('input', { type: 'tel', inputmode: 'tel', placeholder: '9 1234 5678', maxlength: 20, autocomplete: 'off' });
+  const campoUnir = h('input', { type: 'tel', inputmode: 'tel', placeholder: 'Teléfono del otro cliente', maxlength: 20, autocomplete: 'off' });
+  return h(
+    'div',
+    { clase: 'ficha' },
+    h('h3', {}, 'Teléfonos'),
+    h('div', { clase: 'cliente' }, ...cliente.telefonos.map(enlaceWhatsApp)),
+    h('div', { clase: 'fila-ficha' }, campoTelefono, boton('Agregar teléfono', 'boton boton-chico', () => void agregarTelefono(cliente, campoTelefono.value))),
+    h('h3', {}, 'Direcciones'),
+    direcciones.length > 0 ? h('ul', { clase: 'historial-lista' }, direcciones) : h('p', { clase: 'suave' }, 'Sin direcciones todavía.'),
+    h('h3', {}, `Pedidos (${cliente.pedidos})`),
+    ultimos.length > 0 ? h('ul', { clase: 'historial-lista' }, ultimos) : h('p', { clase: 'suave' }, 'Sin pedidos.'),
+    h('h3', {}, 'Unir con otro cliente'),
+    h('p', { clase: 'suave' }, 'Si este cliente aparece dos veces (por ejemplo, pidió desde otro teléfono), escribe un teléfono de la otra ficha: todo pasa a esta.'),
+    h('div', { clase: 'fila-ficha' }, campoUnir, boton('Unir', 'boton boton-chico', () => void unirClientes(cliente, campoUnir.value))),
+  );
+}
+
+async function abrirCliente(id) {
+  try {
+    const { cliente, pedidos } = await api(`/api/clientes/${id}`);
+    clienteAbierto = cliente;
+    const formulario = $('formulario-cliente');
+    formulario.elements.nombre.value = cliente.nombre;
+    formulario.elements.tipoCliente.value = cliente.tipoCliente;
+    formulario.elements.notas.value = cliente.notas;
+    $('titulo-cliente').textContent = cliente.nombre || 'Cliente sin nombre';
+    $('ficha-cliente').replaceChildren(fichaDelCliente(cliente, pedidos));
+    $('error-cliente').hidden = true;
+    if (!$('dialogo-cliente').open) $('dialogo-cliente').showModal();
+  } catch (falla) {
+    avisar(falla.message, true);
+  }
+}
+
+function errorDeCliente(texto) {
+  $('error-cliente').textContent = texto;
+  $('error-cliente').hidden = false;
+}
+
+async function guardarCliente(evento) {
+  evento.preventDefault();
+  if (!clienteAbierto) return;
+  const formulario = $('formulario-cliente');
+  $('guardar-cliente').disabled = true;
+  try {
+    await api(`/api/clientes/${clienteAbierto.id}/editar`, { nombre: formulario.elements.nombre.value, tipoCliente: formulario.elements.tipoCliente.value, notas: formulario.elements.notas.value });
+    $('dialogo-cliente').close();
+    avisar('Cliente guardado.');
+    await recargarVistaActual();
+  } catch (falla) {
+    errorDeCliente(falla.message);
+  } finally {
+    $('guardar-cliente').disabled = false;
+  }
+}
+
+async function agregarTelefono(cliente, telefono) {
+  if (soloDigitos(telefono).length < 8) return errorDeCliente('Escribe el teléfono completo.');
+  try {
+    await api(`/api/clientes/${cliente.id}/telefonos`, { telefono });
+    avisar('Teléfono agregado.');
+    await abrirCliente(cliente.id);
+  } catch (falla) {
+    errorDeCliente(falla.message);
+  }
+}
+
+async function unirClientes(cliente, telefono) {
+  if (soloDigitos(telefono).length < 8) return errorDeCliente('Escribe un teléfono de la otra ficha.');
+  const respuesta = await pedirConfirmacion({
+    titulo: 'Unir fichas',
+    texto: `Los teléfonos, las direcciones y los pedidos de la otra ficha pasan a ${cliente.nombre || 'esta'}, y la otra se borra. No se puede deshacer.`,
+    etiqueta: 'Unir',
+    clase: 'boton-peligro',
+    conMotivo: false,
+  });
+  if (!respuesta) return;
+  try {
+    await api(`/api/clientes/${cliente.id}/unir`, { telefono });
+    avisar('Fichas unidas.');
+    await abrirCliente(cliente.id);
+    await recargarVistaActual();
+  } catch (falla) {
+    errorDeCliente(falla.message);
+  }
 }
 
 // ---- Equipo: quién puede entrar y con qué clave ----
@@ -1185,6 +1327,8 @@ function mostrarBotonDeAvisos() {
 
 /** Llena los desplegables de pago, documento y tipo de cliente. Los que admiten "sin definir" empiezan con esa opción. */
 function llenarListasDePago(opciones = {}) {
+  const tipos = ['', ...(opciones.tipoCliente ?? ['hogar', 'minimarket', 'empresa'])];
+  $('formulario-cliente').elements.tipoCliente.replaceChildren(...tipos.map((valor) => h('option', { value: valor }, ETIQUETAS.tipoCliente[valor] ?? valor)));
   const formulario = $('formulario-editar');
   for (const campo of CAMPOS_DE_PAGO) {
     const valores = opciones[campo] ?? Object.keys(ETIQUETAS[campo]).filter(Boolean);
@@ -1233,6 +1377,10 @@ function iniciar() {
   $('formulario-usuario').elements.clave.addEventListener('input', (evento) => {
     evento.currentTarget.value = evento.currentTarget.value.replace(/\D/g, '').slice(0, 4);
   });
+
+  $('buscar-clientes').addEventListener('input', alBuscarClientes);
+  $('formulario-cliente').addEventListener('submit', (evento) => void guardarCliente(evento));
+  $('cerrar-cliente').addEventListener('click', () => $('dialogo-cliente').close());
 
   $('nuevo-pedido').addEventListener('click', abrirNuevoPedido);
   $('buscar-pedidos').addEventListener('input', alEscribirEnElBuscador);

@@ -754,3 +754,55 @@ describe('la API: pago, documento y tipo de cliente (D52)', () => {
     expect((await pedir(env, '/api/pedidos', { metodo: 'POST', cuerpo: { telefono: '', fecha: '2026-10-30', lineas: [{ tipo: '20L', cantidad: 1, precioUnitario: 4500 }], formaPago: 'cheque' } })).status).toBe(422);
   });
 });
+
+describe('la API: clientes (D53)', () => {
+  it('lista los clientes, asociando primero los pedidos nuevos', async () => {
+    const { env } = await entornoPanel();
+    const { clientes } = (await (await pedir(env, '/api/clientes')).json()) as { clientes: Array<Record<string, unknown>> };
+    expect(clientes).toHaveLength(1);
+    expect(clientes[0]).toMatchObject({ nombre: 'Ana Prueba', telefonos: ['56911111111'], pedidos: 2 });
+  });
+
+  it('busca por POST y muestra la ficha con sus pedidos', async () => {
+    const { env } = await entornoPanel();
+    const { clientes } = (await (await pedir(env, '/api/clientes/buscar', { metodo: 'POST', cuerpo: { texto: '1111' } })).json()) as { clientes: Array<{ id: number }> };
+    expect(clientes).toHaveLength(1);
+    const ficha = (await (await pedir(env, `/api/clientes/${clientes[0]?.id}`)).json()) as { cliente: Record<string, unknown>; pedidos: unknown[] };
+    expect(ficha.cliente).toMatchObject({ nombre: 'Ana Prueba' });
+    expect(ficha.pedidos).toHaveLength(2);
+    expect((await pedir(env, '/api/clientes/999')).status).toBe(404);
+  });
+
+  it('edita, agrega un teléfono y une dos fichas', async () => {
+    const { env, repositorio } = await entornoPanel();
+    await repositorio.guardarPedido(pedido({ idPedido: 'P261028-CCCCC', telefono: '56922222222', nombre: 'Ana Oficina' }), AHORA - 50);
+    const { clientes } = (await (await pedir(env, '/api/clientes')).json()) as { clientes: Array<{ id: number; nombre: string }> };
+    const ana = clientes.find((c) => c.nombre === 'Ana Prueba')?.id;
+    expect((await pedir(env, `/api/clientes/${ana}/editar`, { metodo: 'POST', cuerpo: { tipoCliente: 'empresa', notas: 'Recepción' } })).status).toBe(200);
+    expect((await pedir(env, `/api/clientes/${ana}/editar`, { metodo: 'POST', cuerpo: { tipoCliente: 'hotel' } })).status).toBe(422);
+    expect((await pedir(env, `/api/clientes/${ana}/telefonos`, { metodo: 'POST', cuerpo: { telefono: '9 3333 3333' } })).status).toBe(200);
+    const deOtro = await pedir(env, `/api/clientes/${ana}/telefonos`, { metodo: 'POST', cuerpo: { telefono: '+56 9 2222 2222' } });
+    expect(deOtro.status).toBe(409);
+    expect(((await deOtro.json()) as { otroId: number }).otroId).toBeGreaterThan(0);
+    expect((await pedir(env, `/api/clientes/${ana}/unir`, { metodo: 'POST', cuerpo: { telefono: '922222222' } })).status).toBe(200);
+    const despues = (await (await pedir(env, `/api/clientes/${ana}`)).json()) as { cliente: { telefonos: string[]; pedidos: number } };
+    expect(despues.cliente.telefonos.sort()).toEqual(['56911111111', '56922222222', '56933333333']);
+    expect(despues.cliente.pedidos).toBe(3);
+  });
+
+  it('corregir la dirección de un pedido la suma al historial de su cliente', async () => {
+    const { env } = await entornoPanel();
+    const { clientes } = (await (await pedir(env, '/api/clientes')).json()) as { clientes: Array<{ id: number }> };
+    await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo: { direccion: 'Av. Nueva 45', comuna: 'Providencia' } });
+    const { cliente } = (await (await pedir(env, `/api/clientes/${clientes[0]?.id}`)).json()) as { cliente: { direccion: { direccion: string }; direcciones: unknown[] } };
+    expect(cliente.direccion.direccion).toBe('Av. Nueva 45');
+    expect(cliente.direcciones).toHaveLength(2);
+  });
+
+  it('las escrituras exigen la marca del panel, y sin sesión de administrador no hay datos', async () => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, '/api/clientes/1/editar', { metodo: 'POST', cuerpo: { notas: 'x' }, cabeceras: { 'x-panel': '' } })).status).toBe(400);
+    const sinSesion = await panel.fetch(new Request('https://panel.example/admin/api/clientes', { headers: { 'cf-access-jwt-assertion': await acceso.token() } }), env);
+    expect(sinSesion.status).toBe(401);
+  });
+});

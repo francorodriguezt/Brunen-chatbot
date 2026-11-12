@@ -18,6 +18,8 @@ import type { BaseDatos } from '../almacen';
 import { RepositorioD1 } from '../repositorio';
 import { autenticar, esLocal, type EntornoAcceso } from './acceso';
 import { error, manejarApi } from './api';
+import { RepositorioClientes } from '../fichas';
+import { manejarClientes } from './clientes-api';
 import { Cuentas } from './cuentas';
 import { cookieDeSesion, esDelAdministrador, manejarSesionAdmin, manejarSesionPublica, manejarUsuarios, tokenDeCookie, type ContextoDeIngreso } from './ingreso';
 
@@ -106,7 +108,9 @@ async function apiDeAdministracion(request: Request, url: URL, env: EntornoPanel
     if (!esDelAdministrador(sesion?.usuario, correo)) return error(401, 'Entra con tu RUT y tu clave.');
 
     const respuesta =
-      (await manejarUsuarios(request, interna, { ...ctx, yo: sesion.usuario })) ?? (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos }));
+      (await manejarUsuarios(request, interna, { ...ctx, yo: sesion.usuario })) ??
+      (await manejarClientes(request, interna, { clientes: new RepositorioClientes(env.DB as BaseDatos), repositorio: ctx.repositorio, ahoraSegundos })) ??
+      (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes: new RepositorioClientes(env.DB as BaseDatos) }));
     if (sesion?.renovada && token) respuesta.headers.append('set-cookie', cookieDeSesion(token, true, ctx.cookieSegura));
     return respuesta;
   } catch (falla) {
