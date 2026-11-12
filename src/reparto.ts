@@ -39,7 +39,26 @@ export interface ParadaDeReparto {
   total: number | null;
   /** Versión del pedido: la pantalla la devuelve al marcarlo en ruta o entregado, para no pisar un cambio ajeno. */
   actualizadoEn: number;
+  /** En qué viaje del furgón va (1, 2...): el furgón lleva como máximo `CAPACIDAD_FURGON` bidones (fase C, D60). */
+  carga: number;
 }
+
+/** Un viaje del furgón: las paradas `desde`..`hasta` (por su número de orden). */
+export interface CargaDelFurgon {
+  numero: number;
+  desde: number;
+  hasta: number;
+  totalBidones: number;
+  /** Un solo pedido con más bidones de los que caben: hay que repartirlo en dos viajes a mano. */
+  excedeFurgon: boolean;
+}
+
+/**
+ * Bidones que caben en el furgón (Felipe y Constanza, 2026-11-10). Cuenta igual un bidón de 20, 12 o 10 L mientras no se
+ * sepa cuántos de cada tamaño caben (pregunta pendiente). En 267 de 504 días del Excel se pasó de 65: lo normal es
+ * hacer más de un viaje en el día.
+ */
+export const CAPACIDAD_FURGON = 65;
 
 export interface RepartoDelDia {
   fecha: string;
@@ -52,6 +71,28 @@ export interface RepartoDelDia {
   entregadas: number;
   /** Pedidos de ese día que nadie ha confirmado todavía: no están en la lista. */
   sinConfirmar: number;
+  /** Los viajes del furgón, en el orden de las paradas. */
+  cargas: CargaDelFurgon[];
+}
+
+/**
+ * Parte las paradas en viajes de hasta `capacidad` bidones, sin cambiar su orden: cuando la siguiente parada no cabe,
+ * empieza otro viaje. Un pedido más grande que el furgón va solo en su viaje y queda marcado.
+ */
+export function armarCargas(paradas: ParadaDeReparto[], capacidad: number = CAPACIDAD_FURGON): CargaDelFurgon[] {
+  const cargas: CargaDelFurgon[] = [];
+  let actual: CargaDelFurgon | null = null;
+  for (const parada of paradas) {
+    if (!actual || (actual.totalBidones > 0 && actual.totalBidones + parada.totalBidones > capacidad)) {
+      actual = { numero: cargas.length + 1, desde: parada.orden, hasta: parada.orden, totalBidones: 0, excedeFurgon: false };
+      cargas.push(actual);
+    }
+    actual.hasta = parada.orden;
+    actual.totalBidones += parada.totalBidones;
+    actual.excedeFurgon = actual.totalBidones > capacidad;
+    parada.carga = actual.numero;
+  }
+  return cargas;
 }
 
 let comparador: Intl.Collator | undefined;
@@ -84,10 +125,12 @@ export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string):
       notas: pedido.notasRepartidor,
       total: pedido.total,
       actualizadoEn: pedido.actualizadoEn,
+      carga: 1,
     });
   }
   paradas.sort((a, b) => comparar(a.comuna, b.comuna) || comparar(a.direccion, b.direccion) || comparar(a.idPedido, b.idPedido));
   paradas.forEach((parada, i) => (parada.orden = i + 1));
+  const cargas = armarCargas(paradas);
 
   const carga = sinBidones();
   for (const parada of paradas) for (const tipo of TAMANOS) carga[tipo] += parada.bidones[tipo];
@@ -99,6 +142,7 @@ export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string):
     envasesARetirar: paradas.reduce((suma, parada) => suma + parada.envasesARetirar, 0),
     entregadas: paradas.filter((parada) => parada.estado === 'Entregado').length,
     sinConfirmar,
+    cargas,
   };
 }
 
@@ -115,10 +159,14 @@ export function textoDeReparto(reparto: RepartoDelDia): string {
     plural(reparto.paradas.length, 'parada', 'paradas'),
     `${plural(reparto.totalBidones, 'bidón', 'bidones')} (${desglose})`,
     reparto.envasesARetirar > 0 ? `retirar ${envases(reparto.envasesARetirar)}` : '',
+    reparto.cargas.length > 1 ? `${reparto.cargas.length} cargas (el furgón lleva ${CAPACIDAD_FURGON})` : '',
   ].filter(Boolean);
 
-  const lineas = reparto.paradas.map((p) =>
-    [
+  const conCargas = reparto.cargas.length > 1;
+  const lineas = reparto.paradas.flatMap((p) => {
+    const carga = conCargas ? reparto.cargas.find((c) => c.desde === p.orden) : undefined;
+    const encabezado = carga ? [`— Carga ${carga.numero}: ${carga.totalBidones} bidones${carga.excedeFurgon ? ' (no cabe en un viaje)' : ''} —`] : [];
+    return [...encabezado, [
       `${p.orden}. ${[p.direccion, p.comuna].filter(Boolean).join(', ') || 'sin dirección'}`,
       p.nombre,
       TAMANOS.filter((tipo) => p.bidones[tipo] > 0).map((tipo) => `${p.bidones[tipo]} × ${litros(tipo)}`).join(', '),
@@ -129,8 +177,8 @@ export function textoDeReparto(reparto: RepartoDelDia): string {
       p.estado === 'Entregado' ? 'ENTREGADO' : '',
     ]
       .filter(Boolean)
-      .join(' · '),
-  );
+      .join(' · ')];
+  });
   return [titulo, resumen.join(' · '), '', ...lineas].join('\n');
 }
 

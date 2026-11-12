@@ -70,6 +70,7 @@ describe('armarReparto: qué pedidos salen a reparto', () => {
       envasesARetirar: 0,
       entregadas: 0,
       sinConfirmar: 0,
+      cargas: [],
     });
   });
 });
@@ -215,5 +216,32 @@ describe('armarReparto: la versión de cada pedido', () => {
   it('cada parada lleva la versión del pedido, para que marcar "entregado" desde el reparto no pise un cambio ajeno', () => {
     const [parada] = armarReparto([pedido('P261109-AAAAA', { actualizadoEn: 1793000123 })], DIA).paradas;
     expect(parada?.actualizadoEn).toBe(1793000123);
+  });
+});
+
+describe('cargas del furgón (fase C, D60)', () => {
+  const de20 = (id: string, cantidad: number, direccion: string) =>
+    pedido(id, { direccion, lineas: [{ tipo: '20L', cantidad, precioUnitario: null, subtotal: null }], total: null });
+
+  it('con 65 bidones o menos hay una sola carga y el texto no cambia', () => {
+    const reparto = armarReparto([de20('P1', 30, 'Calle 1'), de20('P2', 35, 'Calle 2')], DIA);
+    expect(reparto.cargas).toEqual([{ numero: 1, desde: 1, hasta: 2, totalBidones: 65, excedeFurgon: false }]);
+    expect(textoDeReparto(reparto)).not.toContain('Carga');
+  });
+
+  it('pasado el tope, se arma otra carga siguiendo el orden de las paradas', () => {
+    const reparto = armarReparto([de20('P1', 30, 'Calle 1'), de20('P2', 30, 'Calle 2'), de20('P3', 10, 'Calle 3'), de20('P4', 20, 'Calle 4')], DIA);
+    expect(reparto.cargas.map((c) => [c.desde, c.hasta, c.totalBidones])).toEqual([[1, 2, 60], [3, 4, 30]]);
+    expect(reparto.paradas.map((p) => p.carga)).toEqual([1, 1, 2, 2]);
+    const texto = textoDeReparto(reparto);
+    expect(texto).toContain('2 cargas (el furgón lleva 65)');
+    expect(texto).toContain('— Carga 1: 60 bidones —');
+    expect(texto).toContain('— Carga 2: 30 bidones —');
+  });
+
+  it('un pedido más grande que el furgón va solo en su carga y queda marcado', () => {
+    const reparto = armarReparto([de20('P1', 10, 'Calle 1'), de20('P2', 80, 'Calle 2'), de20('P3', 5, 'Calle 3')], DIA);
+    expect(reparto.cargas.map((c) => [c.desde, c.hasta, c.excedeFurgon])).toEqual([[1, 1, false], [2, 2, true], [3, 3, false]]);
+    expect(textoDeReparto(reparto)).toContain('— Carga 2: 80 bidones (no cabe en un viaje) —');
   });
 });

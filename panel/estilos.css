@@ -233,3 +233,5 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
 .por-pedir > summary { cursor: pointer; font-weight: 600; }
 .por-pedir[open] > summary { margin-bottom: 0.5rem; }
 .campo-corto { width: 5.5rem; }
+.titulo-carga { margin: 1rem 0 0.25rem; font-size: 1rem; }
+.titulo-carga.excede { color: var(--peligro); }

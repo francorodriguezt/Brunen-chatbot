@@ -736,6 +736,7 @@ function pintarReparto({ reparto, texto, tsv }) {
       ...TAMANOS_DE_MAYOR_A_MENOR.filter(([tipo]) => reparto.carga[tipo] > 0).map(([tipo, nombre]) => cifra(reparto.carga[tipo], `de ${nombre}`)),
       reparto.envasesARetirar > 0 ? cifra(reparto.envasesARetirar, reparto.envasesARetirar === 1 ? 'envase por retirar' : 'envases por retirar') : null,
       reparto.entregadas > 0 ? cifra(reparto.entregadas, reparto.entregadas === 1 ? 'entregada' : 'entregadas') : null,
+      reparto.cargas.length > 1 ? cifra(reparto.cargas.length, 'cargas del furgón') : null,
     ),
     sinConfirmar ?? '',
     h(
@@ -746,7 +747,17 @@ function pintarReparto({ reparto, texto, tsv }) {
       h('a', { clase: 'boton', href: `/admin/api/reparto.csv?fecha=${encodeURIComponent(reparto.fecha)}`, download: `reparto-${reparto.fecha}.csv` }, 'Descargar archivo'),
     ),
   );
-  lista.replaceChildren(...reparto.paradas.map(tarjetaDeParada));
+  // Con más de un viaje (el furgón lleva 65 bidones, D60), un título antes de la primera parada de cada carga.
+  const conCargas = reparto.cargas.length > 1;
+  lista.replaceChildren(
+    ...reparto.paradas.flatMap((parada) => {
+      const carga = conCargas ? reparto.cargas.find((c) => c.desde === parada.orden) : undefined;
+      const titulo = carga
+        ? h('h3', { clase: `titulo-carga${carga.excedeFurgon ? ' excede' : ''}` }, `Carga ${carga.numero}: ${carga.totalBidones} bidones${carga.excedeFurgon ? ' (no cabe en un viaje: divídelo)' : ''}`)
+        : null;
+      return titulo ? [titulo, tarjetaDeParada(parada)] : [tarjetaDeParada(parada)];
+    }),
+  );
 }
 
 function pintarDiaDelReparto() {
