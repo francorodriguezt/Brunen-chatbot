@@ -22,7 +22,7 @@
     "cargar-historial": "node --max-old-space-size=3000 scripts/cargar-historial.mjs"
   },
   "engines": {
-    "node": ">=22.13"
+    "node": ">=22.18"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

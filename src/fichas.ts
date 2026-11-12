@@ -12,6 +12,7 @@
  */
 
 import type { BaseDatos } from './almacen';
+import { claveDeDireccion } from './identidad';
 import { OPCIONES_DE_PEDIDO, type TipoDeCliente } from './repositorio';
 
 export interface DireccionDeCliente {
@@ -52,17 +53,7 @@ export type ResultadoCliente<T> = { ok: true; valor: T } | { ok: false; error: E
  */
 export const VINCULAR_POR_PASADA = 4;
 
-/** "Av. Grecia 123, depto 4" y "av grecia 123 depto 4" son la misma dirección. */
-export function claveDeDireccion(direccion: string, comuna: string): string {
-  const limpiar = (t: string) =>
-    t
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
-  return `${limpiar(direccion)}|${limpiar(comuna)}`;
-}
+export { claveDeDireccion };
 
 const texto = (v: unknown): string => (typeof v === 'string' ? v : '');
 const numero = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0) || 0);

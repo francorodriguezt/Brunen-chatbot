@@ -12,6 +12,11 @@
  * Una fila que no se entiende no se adivina: se descarta y se cuenta el motivo.
  */
 
+// Las mismas reglas que el bot y las fichas, sin copiarlas: Node quita los tipos del archivo TypeScript al cargarlo.
+import { claveDeDireccion, normalizarTelefono } from '../../src/identidad.ts';
+
+export { claveDeDireccion, normalizarTelefono };
+
 const CABECERAS = {
   fecha: ['fecha'],
   nombre: ['cliente'],
@@ -45,27 +50,7 @@ export function columnas(encabezado) {
   return Object.fromEntries(Object.entries(CABECERAS).map(([clave, nombres]) => [clave, normales.findIndex((n) => nombres.includes(n))]));
 }
 
-/** Igual que `normalizarTelefono` de src/whatsapp.ts (una prueba lo comprueba): solo dígitos con código de país, o null. */
-export function normalizarTelefono(texto) {
-  let digitos = String(texto ?? '').replace(/\D/g, '');
-  if (digitos.startsWith('00')) digitos = digitos.slice(2);
-  if (digitos.length === 9) return `56${digitos}`;
-  if (digitos.length === 11 && digitos.startsWith('56')) return digitos;
-  if (digitos.length >= 10 && digitos.length <= 15 && !digitos.startsWith('56')) return digitos;
-  return null;
-}
 
-/** Igual que `claveDeDireccion` de src/fichas.ts (una prueba lo comprueba). */
-export function claveDeDireccion(direccion, comuna) {
-  const limpiar = (t) =>
-    String(t ?? '')
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
-  return `${limpiar(direccion)}|${limpiar(comuna)}`;
-}
 
 /** "20Lts" → '20L'; "12 y 20" → null (dos tamaños en una fila no se adivinan). */
 export function tamanoDe(texto) {
