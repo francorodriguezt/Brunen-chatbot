@@ -14,6 +14,7 @@ import { COMUNAS_ATENDIDAS } from '../comunas';
 import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
 import { armarReparto, csvDeReparto, textoDeReparto, tsvDeReparto } from '../reparto';
 import { ESTADOS_DE_PEDIDO, OPCIONES_DE_PEDIDO, type CambiosDePedido, type DatosDePago, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type PedidoManual, type RepositorioD1 } from '../repositorio';
+import type { RepositorioClientes } from '../fichas';
 import { normalizarTelefono } from '../whatsapp';
 
 export interface ContextoApi {
@@ -21,6 +22,8 @@ export interface ContextoApi {
   /** Correo de quien está conectado: queda en el historial de cada cambio. */
   correo: string;
   ahoraSegundos: number;
+  /** Fichas de clientes (D53): si viene, un cambio de dirección queda también en el historial del cliente. */
+  clientes?: RepositorioClientes;
 }
 
 const MAX_CUERPO_BYTES = 20_000;
@@ -250,7 +253,11 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
         }
         const cambios = aCambios(cuerpo);
         if (!cambios) return error(400, 'Solicitud no válida.');
-        return respuestaDeRepositorio(await repositorio.editarPedido(id, cambios, correo, ahoraSegundos, version), 'pedido');
+        const editado = await repositorio.editarPedido(id, cambios, correo, ahoraSegundos, version);
+        if (editado.ok && ctx.clientes && (cambios.direccion !== undefined || cambios.comuna !== undefined)) {
+          await ctx.clientes.registrarDireccionDePedido(id, ahoraSegundos);
+        }
+        return respuestaDeRepositorio(editado, 'pedido');
       }
     }
 

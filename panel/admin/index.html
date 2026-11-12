@@ -31,6 +31,7 @@
       <button type="button" role="tab" id="pestana-pedidos" aria-selected="true" aria-controls="vista-pedidos">
         Pedidos <span class="contador" id="cuenta-pedidos" hidden></span>
       </button>
+      <button type="button" role="tab" id="pestana-clientes" aria-selected="false" aria-controls="vista-clientes" tabindex="-1">Clientes</button>
       <button type="button" role="tab" id="pestana-reparto" aria-selected="false" aria-controls="vista-reparto" tabindex="-1">Reparto</button>
       <button type="button" role="tab" id="pestana-avisos" aria-selected="false" aria-controls="vista-avisos" tabindex="-1">
         Avisos <span class="contador" id="cuenta-avisos" hidden></span>
@@ -49,6 +50,13 @@
       </div>
       <div class="filtros" role="group" aria-label="Qué pedidos mostrar" id="filtros-pedidos"></div>
       <div id="lista-pedidos" class="lista"></div>
+    </section>
+    <section id="vista-clientes" role="tabpanel" aria-labelledby="pestana-clientes" hidden>
+      <div class="barra-acciones">
+        <input type="search" id="buscar-clientes" class="buscador" placeholder="Buscar por nombre, teléfono, dirección o comuna" aria-label="Buscar clientes" autocomplete="off" maxlength="60">
+      </div>
+      <p class="suave" id="explicacion-clientes">Cada cliente reúne sus teléfonos, sus direcciones y sus pedidos. Se crean solos con los pedidos que llegan.</p>
+      <div id="lista-clientes" class="lista"></div>
     </section>
     <section id="vista-reparto" role="tabpanel" aria-labelledby="pestana-reparto" hidden>
       <div class="filtros" role="group" aria-label="Qué día mostrar">
@@ -117,6 +125,23 @@
       <div class="acciones-dialogo">
         <button type="button" class="boton" id="volver-accion">Volver</button>
         <button type="submit" class="boton" id="confirmar-accion"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogo-cliente" aria-labelledby="titulo-cliente">
+    <form method="dialog" id="formulario-cliente" novalidate>
+      <h2 id="titulo-cliente">Cliente</h2>
+      <div class="campos">
+        <label>Nombre <input type="text" name="nombre" maxlength="80" autocomplete="off"></label>
+        <label>Tipo de cliente <select name="tipoCliente"></select></label>
+        <label class="ancho">Notas <textarea name="notas" rows="2" maxlength="500"></textarea></label>
+      </div>
+      <div id="ficha-cliente"></div>
+      <p class="error-formulario" id="error-cliente" role="alert" hidden></p>
+      <div class="acciones-dialogo">
+        <button type="button" class="boton" id="cerrar-cliente">Cerrar</button>
+        <button type="submit" class="boton boton-principal" id="guardar-cliente">Guardar</button>
       </div>
     </form>
   </dialog>

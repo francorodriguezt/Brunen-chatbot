@@ -222,3 +222,8 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
 @media (max-width: 26rem) {
   .entradas { grid-template-columns: 1fr; }
 }
+
+/* ---- Ficha del cliente ---- */
+.ficha h3 { margin: 1rem 0 0.35rem; font-size: 0.95rem; }
+.fila-ficha { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.4rem; }
+.fila-ficha input { flex: 1 1 auto; }

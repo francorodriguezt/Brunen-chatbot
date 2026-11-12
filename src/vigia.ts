@@ -20,6 +20,7 @@ import { AlmacenD1, type BaseDatos } from './almacen';
 import { FALLA_DEL_TOKEN, avisarFalla, type EntornoAtencion } from './atencion';
 import { leerConfiguracion } from './configuracion';
 import { fechaHoraLocal } from './despacho';
+import { RepositorioClientes } from './fichas';
 import { cerrarPausasVencidas } from './relevo';
 import { RepositorioD1 } from './repositorio';
 import { configTelegram, enviarAlerta } from './telegram';
@@ -149,6 +150,13 @@ export async function tareaProgramada(env: EntornoAtencion, ahora: Date): Promis
   try {
     await vigilar(env, ahora);
     await avisarClientesEnEspera(env, ahora);
+    if (env.DB) {
+      try {
+        await new RepositorioClientes(env.DB).vincularPendientes(Math.floor(ahora.getTime() / 1000));
+      } catch (falla) {
+        console.error('No se pudieron asociar pedidos a clientes:', falla instanceof Error ? falla.message : falla);
+      }
+    }
     const local = fechaHoraLocal(ahora);
     if (local.hora === 7 && local.minuto >= 30 && local.minuto < 35) await revisionDiaria(env, ahora);
   } catch (error) {
