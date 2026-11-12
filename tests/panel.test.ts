@@ -806,3 +806,22 @@ describe('la API: clientes (D53)', () => {
     expect(sinSesion.status).toBe(401);
   });
 });
+
+describe('correcciones de la revisión: el panel', () => {
+  it('si asociar pedidos falla, la lista de clientes se muestra igual', async () => {
+    const { env } = await entornoPanel();
+    const { RepositorioClientes } = await import('../src/fichas');
+    const espia = vi.spyOn(RepositorioClientes.prototype, 'vincularPendientes').mockRejectedValue(new Error('Too many API requests by single worker invocation'));
+    const r = await pedir(env, '/api/clientes');
+    expect(r.status).toBe(200);
+    espia.mockRestore();
+  });
+
+  it('una edición sin cambios no escribe ni deja historial', async () => {
+    const { env, repositorio } = await entornoPanel();
+    const antes = await repositorio.obtenerPedido('P261028-AAAAA');
+    expect((await pedir(env, '/api/pedidos/P261028-AAAAA/editar', { metodo: 'POST', cuerpo: {} })).status).toBe(200);
+    expect((await repositorio.obtenerPedido('P261028-AAAAA'))?.actualizadoEn).toBe(antes?.actualizadoEn);
+    expect(await repositorio.historialDe('P261028-AAAAA')).toHaveLength(1);
+  });
+});

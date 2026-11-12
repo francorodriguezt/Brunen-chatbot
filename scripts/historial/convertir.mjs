@@ -132,6 +132,25 @@ function notaDeDocumento(texto) {
 
 const DIAS_FUTUROS_ACEPTADOS = 14;
 
+/** FNV-1a de 32 bits: una huella corta y siempre igual para el mismo texto. */
+function huella(texto) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < texto.length; i++) {
+    h ^= texto.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
+}
+
+/** "H" + fecha + 5 caracteres que salen del contenido de la fila (y de cuántas veces ya apareció esa misma fila). */
+function numeroDePedido(fecha, contenido, repetidas) {
+  const clave = `${fecha}|${contenido}`;
+  const vez = repetidas.get(clave) ?? 0;
+  repetidas.set(clave, vez + 1);
+  const sufijo = (huella(`${clave}#${vez}`) % 36 ** 5).toString(36).toUpperCase().padStart(5, '0');
+  return `H${fecha.slice(2, 4)}${fecha.slice(5, 7)}${fecha.slice(8, 10)}-${sufijo}`;
+}
+
 /**
  * Convierte la hoja. `filas` incluye la fila de encabezados en `filaEncabezado`. `hoy` (YYYY-MM-DD) separa lo ya
  * entregado de lo agendado: una entrega de antes de hoy queda "Entregado"; la de hoy y hasta 14 días después, "Confirmado" (la ruta de hoy puede estar en curso); más allá
@@ -147,6 +166,10 @@ export function convertir(filas, filaEncabezado, hoy) {
 
   const pedidos = [];
   const descartes = new Map();
+  // El número de pedido sale del contenido de la fila, no de su posición: si el Excel se ordena o se le agregan filas,
+  // cada pedido conserva su número y volver a cargar no duplica. Dos filas idénticas (el mismo cliente pidió dos veces
+  // lo mismo el mismo día) se distinguen por el orden en que aparecen.
+  const repetidas = new Map();
   const descartar = (motivo) => descartes.set(motivo, (descartes.get(motivo) ?? 0) + 1);
 
   filas.forEach((fila, indice) => {
@@ -183,7 +206,7 @@ export function convertir(filas, filaEncabezado, hoy) {
       .slice(0, 500);
 
     pedidos.push({
-      id: `H${fecha.slice(2, 4)}${fecha.slice(5, 7)}${fecha.slice(8, 10)}-${(indice + 1).toString(36).toUpperCase().padStart(5, '0')}`,
+      id: numeroDePedido(fecha, [valor(fila, 'telefono'), normalizar(valor(fila, 'nombre')), claveDeDireccion(valor(fila, 'direccion'), valor(fila, 'comuna')), tipo, cantidad, monto ?? ''].join('|'), repetidas),
       creadoEn: segundosDe(fecha),
       fecha,
       estado: fecha < hoy ? 'Entregado' : 'Confirmado',
@@ -228,14 +251,19 @@ const sql = (v) => (v === null || v === undefined ? 'NULL' : typeof v === 'numbe
 /**
  * Las sentencias SQL para cargar todo. Se pueden correr dos veces sin duplicar: los pedidos tienen número fijo
  * (`ON CONFLICT DO NOTHING`), un cliente se crea solo si su teléfono no existe, y las direcciones se fusionan.
+ *
+ * Cada ficha nueva nace con una marca en sus notas ("importando:<teléfono>") y el teléfono se liga a la ficha que
+ * tiene esa marca, que después se borra. Así, si el bot crea otra ficha mientras corre la carga, ningún teléfono
+ * queda ligado a la ficha equivocada (con "la última ficha creada" sí podía pasar).
  */
 export function sentencias({ pedidos, clientes }, ahora) {
   const lineas = ['-- Carga del Excel histórico de pedidos (D54). Generado por scripts/cargar-historial.mjs. NO subir a git.'];
   const clienteDe = (telefono) => `(SELECT cliente_id FROM telefonos_cliente WHERE telefono = ${sql(telefono)})`;
   for (const c of clientes) {
     lineas.push(
-      `INSERT INTO clientes (nombre, tipo_cliente, creado_en, actualizado_en) SELECT ${sql(c.nombre)}, ${sql(c.tipoCliente)}, ${c.desde}, ${ahora} WHERE NOT EXISTS (SELECT 1 FROM telefonos_cliente WHERE telefono = ${sql(c.telefono)});`,
-      `INSERT INTO telefonos_cliente (telefono, cliente_id, agregado_en) VALUES (${sql(c.telefono)}, (SELECT MAX(id) FROM clientes), ${c.desde}) ON CONFLICT (telefono) DO NOTHING;`,
+      `INSERT INTO clientes (nombre, tipo_cliente, notas, creado_en, actualizado_en) SELECT ${sql(c.nombre)}, ${sql(c.tipoCliente)}, ${sql(`importando:${c.telefono}`)}, ${c.desde}, ${ahora} WHERE NOT EXISTS (SELECT 1 FROM telefonos_cliente WHERE telefono = ${sql(c.telefono)});`,
+      `INSERT INTO telefonos_cliente (telefono, cliente_id, agregado_en) SELECT ${sql(c.telefono)}, id, ${c.desde} FROM clientes WHERE notas = ${sql(`importando:${c.telefono}`)} ON CONFLICT (telefono) DO NOTHING;`,
+      `UPDATE clientes SET notas = '' WHERE notas = ${sql(`importando:${c.telefono}`)};`,
     );
     for (const d of c.direcciones.values()) {
       lineas.push(

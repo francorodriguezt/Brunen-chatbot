@@ -30,6 +30,15 @@ function errorDeCliente(codigo: keyof typeof MENSAJES, otroId?: number): Respons
   return otroId === undefined ? error(estado, mensaje) : new Response(JSON.stringify({ error: mensaje, otroId }), { status: estado, headers: { 'content-type': 'application/json; charset=utf-8' } });
 }
 
+/** Asociar pedidos es una ayuda: si falla (la base, el tope de consultas), la lista se muestra igual con lo que hay. */
+async function vincularSinFallar(clientes: RepositorioClientes, ahora: number): Promise<void> {
+  try {
+    await clientes.vincularPendientes(ahora);
+  } catch (falla) {
+    console.error('No se pudieron asociar pedidos a clientes:', falla instanceof Error ? falla.message : falla);
+  }
+}
+
 /** Devuelve null si la ruta no es de clientes. */
 export async function manejarClientes(request: Request, url: URL, ctx: ContextoClientes): Promise<Response | null> {
   const ruta = url.pathname;
@@ -39,7 +48,7 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
   const { clientes, ahoraSegundos } = ctx;
 
   if (ruta === '/api/clientes' && request.method === 'GET') {
-    await clientes.vincularPendientes(ahoraSegundos);
+    await vincularSinFallar(clientes, ahoraSegundos);
     return json({ clientes: await clientes.listar() });
   }
 
@@ -60,7 +69,7 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
   // La búsqueda va por POST: el texto (un nombre, un teléfono) no queda en la dirección ni en los registros.
   if (ruta === '/api/clientes/buscar') {
     if (typeof cuerpo.texto !== 'string') return error(400, 'Solicitud no válida.');
-    await clientes.vincularPendientes(ahoraSegundos);
+    await vincularSinFallar(clientes, ahoraSegundos);
     return json({ clientes: await clientes.listar(cuerpo.texto) });
   }
 

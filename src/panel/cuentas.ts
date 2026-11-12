@@ -197,8 +197,11 @@ export class Cuentas {
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?7) ON CONFLICT DO NOTHING`,
       rut, nombre, datos.rol, correo, sal, await this.huellaDeClave(sal, datos.clave), ahora, quien.slice(0, 120),
     );
-    // Dos altas a la vez con el mismo RUT: la segunda no inserta.
-    if (creados === 0) return { ok: false, error: 'rut_repetido' };
+    // Dos altas a la vez: la segunda no inserta. Se dice qué fue lo que chocó.
+    if (creados === 0) {
+      const porCorreo = correo !== null && (await this.filas('SELECT 1 FROM usuarios WHERE correo = ?1', correo)).length > 0;
+      return { ok: false, error: porCorreo ? 'correo_repetido' : 'rut_repetido' };
+    }
     const [fila] = await this.filas<FilaDeUsuario>('SELECT id, rut, nombre, rol, correo, activo FROM usuarios WHERE rut = ?1', rut);
     return fila ? { ok: true, valor: aUsuario(fila) } : { ok: false, error: 'no_existe' };
   }
