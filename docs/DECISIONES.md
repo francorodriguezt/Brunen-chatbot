@@ -439,3 +439,41 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
   2. Un dominio propio, por ejemplo `app.brunen.cl`: pasar `brunen.cl` a Cloudflare (gratis en el plan Free) y proteger `/admin`. Una sola dirección, pero hay que mover los servidores de nombres del dominio, que hoy sirven la web y quizás el correo: lo decide el dueño.
   3. Toda la dirección detrás de Access, y que el repartidor también entre con un código a su correo. Contradice "repartidor simple".
   Mientras no se elija, el Worker sigue fallando cerrado: sin el token de Access, `/admin` responde 401.
+
+### D57 · 2026-11-12 · Revisión del proyecto completo: el bot más robusto y conectado a las fichas (fase B)
+**Franco pidió revisar todo el proyecto desde cero y que el bot sea "lo más infalible posible". Se revisó el camino completo de un mensaje con la skill de revisión de código y se miraron los datos reales de uso en Cloudflare.**
+- Uso real del bot desde el 2026-10-29 (analítica de Cloudflare): 447 invocaciones, 0 errores. CPU: 3,4 ms en la mitad de ellas, 6,2 ms en el 90 % y 26,7 ms en el 1 % más lento, sin ningún corte por límite. El "CPU sin medir" de los pendientes queda respondido; se vuelve a mirar una semana después del próximo despliegue.
+- Corregido:
+  - Si la hoja CLIENTES de Google no se puede leer, el pedido se anota igual como el de alguien sin ficha: sin prometer precio y con un motivo de revisión. Antes se derivaba a una persona sin anotar nada.
+  - El bot reconoce al cliente por su ficha. Un teléfono que una persona agregó a la ficha hace menos de un año usa el último pedido del cliente hecho desde otro número, y una dirección corregida en el panel manda sobre la del último pedido. Un número viejo de la ficha no hereda los pedidos de otro número: pudo pasar a otra persona (mismo criterio que D40).
+  - "Lo de siempre" de un cliente antiguo usa su último pedido guardado en la base (del último año), no solo lo que recuerda el bot.
+  - Un PDF queda como posible comprobante de pago: los bancos chilenos lo mandan así. Un aviso de sistema de WhatsApp (por ejemplo, el cliente cambió de número) no se le responde al cliente y queda para revisar su ficha.
+  - El envío se reintenta una vez si Meta falla de su lado (5xx) o si se corta la conexión. Nunca ante un 4xx ni una espera agotada: no serviría o duplicaría un mensaje que Meta sí recibió.
+  - Un aviso firmado con una forma inesperada igual recibe 200, para que Meta no lo reintente en bucle (regla de CLAUDE.md).
+  - "Entrega en" no muestra lo que va entre paréntesis ni más de 80 caracteres: en el Excel se escribían notas internas junto a la dirección.
+  - El panel solo abría pedidos con número "P…": los del historial ("H…") no se podían abrir ni marcar entregados.
+  - El cargador del historial estima las escrituras contra el límite diario de D1: desde el 2026-09-01 las consultas fallan al pasarse (https://developers.cloudflare.com/d1/platform/pricing/). Cada índice cuenta como otra escritura.
+  - Sin Telegram, lo urgente deja una línea en los registros. El arreglo de fondo es configurar Telegram y publicar el panel antes de abrir el bot a todos.
+- Permisos de Claude Code: subir a GitHub, desplegar (también con `npx.cmd` y `npm.cmd`), tocar la base real con `--remote` y la herramienta de Cloudflare que cambia recursos ahora siempre piden confirmación.
+- Panel en dos direcciones (D56, opción 1): con `PANEL_ADMIN_URL`, la dirección pública manda `/admin` a la de administración y nunca sirve datos de administración. La de administración (`[env.admin]`, `npm run deploy:panel-admin`) se protege entera con Access desde la pestaña Access del Worker (https://developers.cloudflare.com/workers/configuration/cloudflare-access/).
+
+### D58 · 2026-11-12 · "Les toca pedir"
+**En la pestaña Clientes, un desplegable con los clientes que suelen pedir cada cierta cantidad de días y llevan una vez y media ese tiempo sin pedir.**
+- Por qué: casi todos piden lo mismo cada cierto tiempo, y el software de reparto de agua suele avisar cuando un cliente se atrasa. Sirve para llamarlo o escribirle antes de que se quede sin agua o se vaya con otro.
+- Cómo: con al menos 4 pedidos, el ritmo es la mediana de los días entre sus últimos 6 pedidos. Avisa si lleva 1,5 veces ese tiempo (y al menos 2 días de atraso) y no tiene un pedido para hoy o adelante. Los que llevan más de 4 meses se cuentan aparte como inactivos.
+- No le escribe a nadie: un mensaje que inicia el negocio por la API es una plantilla que Meta cobra. Lo decide el dueño.
+
+### D59 · 2026-11-12 · Pedidos fijos
+**La ficha de un cliente puede tener "N bidones de tal tamaño cada X días, el próximo tal día". La tarea programada crea el pedido dos días antes de la entrega, pendiente de confirmar y sin precio.**
+- Por qué: unas 20 empresas tienen plan mensual y muchos hogares piden siempre lo mismo. Hoy alguien tiene que acordarse de anotarlos (dolor 1 de Franco).
+- Una persona confirma (principio 2). El precio queda en blanco: las empresas tienen condiciones propias (regla 7).
+- No crea pedidos del pasado si la tarea estuvo detenida, pasa el domingo al lunes (los feriados los ajusta una persona) y no duplica si corre dos veces. Crea 3 por pasada, por el tope de 50 consultas del plan gratis. Número de pedido "F…". Migración `0010`.
+
+### D60 · 2026-11-12 · Ruta del día: cargas del furgón y cómo se ordenará gratis (fase C)
+**El reparto del día se parte en viajes de hasta 65 bidones, siguiendo el orden de las paradas. Ordenar la ruta por cercanía queda para el paso siguiente, con lo verificado abajo.**
+- Hecho: la lista del repartidor y la pestaña Reparto muestran "Carga 1: 64 bidones", "Carga 2: …". Un pedido más grande que el furgón va solo y queda marcado para dividirlo. Cuenta igual un bidón de 20, 12 o 10 L hasta saber cuántos de cada tamaño caben.
+- Para ordenar la ruta hacen falta coordenadas de cada dirección (geocodificar una vez y guardarlas) y un optimizador.
+- OpenRouteService usa VROOM y admite capacidad del vehículo. Su documentación de límites dice: hasta 3 vehículos y 50 paradas por consulta en la optimización (https://giscience.github.io/openrouteservice/hosted-api-restrictions). Calza con Brunen: unas 14 paradas al día, 30 como máximo, y 3 viajes alcanzan para 195 bidones.
+- No se pudo verificar en una fuente oficial su cupo diario ni si el plan gratis permite uso comercial: la página de planes no carga sin navegador, y una fuente externa dice que el plan estándar ahora sería pagado. Se verifica al crear la cuenta con el correo de Brunen, antes de construirlo.
+- Si OpenRouteService no sirve: ordenar en el propio código con la distancia en línea recta entre coordenadas (vecino más cercano y mejora 2-opt). Para 30 paradas no gasta CPU que importe, no tiene cupo y no cuesta nada; las coordenadas igual hacen falta.
+- Falta del dueño: la dirección de la planta (inicio y fin), qué papel cumple Actum, la hora de salida y cuánto se demora por parada.

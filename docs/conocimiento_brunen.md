@@ -1,6 +1,6 @@
 # Conocimiento del proyecto — Chatbot Brunen SpA
 Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
-Última actualización: 2026-11-11
+Última actualización: 2026-11-12
 
 > Datos sensibles (cuenta bancaria, teléfono de Constanza, teléfonos de clientes) NO se guardan en este repo:
 > viven en la hoja CONFIGURACION / CLIENTES de la planilla. Aquí solo se indica dónde están.
@@ -85,7 +85,9 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 13. **Un solo mensaje saliente por pedido** (presupuesto de mensajes gratis). Aprobado por el dueño el 2026-10-29 (opción A: Constanza escribe solo si algo cambia).
 14. Cliente bloqueado: lo atiende una persona y el pedido no se anota (dueño, 2026-10-29). Facturas, boletas y empresas con plan mensual: siempre una persona.
 15. Número compartido con la app (D46): si una persona le escribe a un cliente desde la app, el bot no le responde durante una hora (configurable) y, si el cliente quedó sin respuesta, deja un aviso en el panel.
-16. Dirección en la respuesta (D55): cuando el bot conoce la dirección del cliente, la respuesta del pedido dice "Entrega en: …" e invita a escribir la nueva si cambió; ese mensaje llega a una persona.
+16. Dirección en la respuesta (D55): cuando el bot conoce la dirección del cliente, la respuesta del pedido dice "Entrega en: …" e invita a escribir la nueva si cambió; ese mensaje llega a una persona. No muestra lo que va entre paréntesis (D57).
+17. Si la hoja CLIENTES no se puede leer, el pedido se anota igual, sin prometer precio, y lo revisa una persona (D57). El cliente también se reconoce por su ficha en la base.
+18. Pedidos fijos (D59): un cliente que recibe lo mismo cada cierta cantidad de días tiene su pedido creado dos días antes, pendiente de confirmar y sin precio. Al cliente no se le escribe.
 
 ## 10. Arquitectura (actualizada 2026-10-28)
 - Canal: WhatsApp Cloud API (Meta). Número: el dueño eligió el actual con coexistencia (2026-10-29). Según la documentación oficial de Meta (revisada el 2026-10-29), el alta de coexistencia pasa por un Tech Provider o Solution Partner y exige la app WhatsApp Business 2.24.17 o superior; confirmado el 2026-11-10 que no se puede hacer directo (D45): como el número se mantiene, hay que elegir entre un proveedor autorizado o que Brunen sea su propio Tech Provider; un número nuevo queda solo como último recurso. Con coexistencia se desactivan las listas de difusión y hay que abrir la app al menos cada 14 días.

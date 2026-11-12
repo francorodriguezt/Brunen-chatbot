@@ -3,6 +3,7 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Próxima sesión
+ACTUALIZACIÓN 2026-11-12 (D57 a D60, revisión del proyecto completo): subidos los 14 commits anteriores. Corregido lo encontrado en la revisión (D57): el bot sigue tomando pedidos si Google falla, reconoce al cliente por su ficha, "lo de siempre" usa los pedidos guardados, los PDF cuentan como comprobante, reintenta un envío si Meta falla de su lado, y el panel abre los pedidos del historial. Nuevos: "Les toca pedir" (D58), pedidos fijos (D59, migración `0010`) y cargas de hasta 65 bidones en el reparto (D60). El panel puede vivir en dos direcciones (D56, opción 1). Publicar: [PUBLICAR.md](PUBLICAR.md); cuentas y Zero Trust: [CUENTAS.md](CUENTAS.md). Preguntas para el dueño y Constanza: sección más abajo. Sigue la fase C: ordenar la ruta (D60).
 ACTUALIZACIÓN 2026-11-12 (D56, revisión completa): corregido lo encontrado (D56). Orden recomendado para publicar, cada paso con el visto bueno de Franco: (1) subir los commits a GitHub; (2) punto de restauración y migraciones `0007` a `0009` en la base real; (3) desplegar el bot (trae "Entrega en", el límite de un año para reconocer clientes y la asociación de pedidos a clientes); (4) cargar el historial (`datos/historial.sql`, regenerado después de la revisión); (5) el panel: elegir una de las tres opciones de D56 para Access, cargar `PANEL_SECRETO`, activar Zero Trust y desplegar. El bot va antes que el historial para que ningún cliente reconocido reciba un pedido sin ver la dirección. Después del despliegue: medir el CPU (sigue pendiente).
 ACTUALIZACIÓN 2026-11-12 (D55): el bot muestra "Entrega en: …" en la respuesta del pedido cuando conoce la dirección; si el cliente responde con una nueva, llega como aviso claro al panel. Sin desplegar. Con esto ya se puede cargar el historial en la base real (con el visto bueno de Franco).
 ACTUALIZACIÓN 2026-11-12 (fase B, tercera parte): listo el cargador del historial del Excel (D54): `npm run cargar-historial -- "<archivo>"` simula, `--generar` escribe `datos/historial.sql`. Probado en la base local (6.795 pedidos, 595 clientes, sin duplicados al repetir). Para la base real, con el visto bueno de Franco y en este orden: migraciones `0007` a `0009`, punto de restauración, y `npx.cmd wrangler d1 execute brunen-chatbot --remote --file datos/historial.sql`. Antes conviene que el bot muestre "Entrega en: …" (ver D54).
@@ -123,6 +124,37 @@ Datos de Meta tomados de fuentes secundarias el 2026-10-28: confirmar todo en la
 - [ ] Planilla real: copiar la de desarrollo, correr `npm run preparar-planilla` con la clave de esa planilla, compartirla con la cuenta de servicio, cambiar `GOOGLE_SHEET_ID` y revisar los permisos de quién puede editarla.
 - [ ] Copias de seguridad según D35 (los pedidos ya no están en la planilla) y quién tiene acceso a Cloudflare, Meta, Groq y Telegram.
 - [ ] Plan B si el bot o el panel se caen: cómo responde una persona a los clientes y desde dónde. Con coexistencia sigue la app de WhatsApp Business de siempre; con un número solo para la API habría que verificar qué bandeja de Meta permite responder a mano. Definir cuándo se usa `BOT_ACTIVO = NO` y qué se le avisa al cliente. Pesa en la decisión 7 del dueño (número).
+
+## Preguntas para el dueño y Constanza (2026-11-12): se hacen cuando hagan falta
+Franco pidió guardarlas y que se le recuerden cuando una fase las necesite. Ordenadas por cuándo bloquean algo. La lista de 2026-10-29 (más abajo) sigue vigente; aquí está lo que de verdad falta.
+
+**Antes de abrir el bot a todos los clientes**
+- [ ] (Dueño) Coexistencia del número actual: proveedor autorizado o Brunen como su propio Tech Provider (D45, D46). Es el bloqueo más grande.
+- [ ] (Dueño) Cuentas a nombre de Brunen: aceptar la invitación de Cloudflare con el correo de Brunen y poner la tarjeta de Brunen para Zero Trust Free, que no cobra ([CUENTAS.md](CUENTAS.md)).
+- [ ] (Dueño) Avisarle que cambió el texto aprobado: la respuesta ahora dice "Entrega en: …" (D55) y no muestra lo que va entre paréntesis (D57).
+- [ ] (Constanza) Si acepta recibir los avisos urgentes por Telegram y desde qué teléfono se crea el bot de Telegram.
+- [ ] (Dueño) Precios: carga inicial de 10 L, ¿$4.000 o $4.500? Carga inicial de 12 L y 10 L desde 3 envases. Si los precios especiales valen para 12 L y 10 L. Si la carga inicial mayorista ($3.250 y $2.000) es por envase.
+- [ ] (Dueño) ¿"Minimarket" del Excel es "mayorista" en el precio? ¿"Hogar" es "normal"? Mientras no se confirme, el bot no les aplica precio mayorista a los minimarket.
+- [ ] (Ambos) El corte de las 9:00 con entrega el mismo día, ¿sigue? Hoy los pedidos del día se arman para el día siguiente.
+
+**Para la ruta del día y el panel del repartidor (fases C y D)**
+- [ ] (Dueño) Dirección de la planta donde parte y termina la ruta, y si Actum (Las Condes) es la recarga a mitad de ruta o otro punto de partida.
+- [ ] (Ambos) Cuántos bidones de cada tamaño caben en el furgón (hoy se cuentan 65 sin importar el tamaño) y el peso máximo permitido.
+- [ ] (Ambos) A qué hora sale el repartidor y cuántos minutos se demora en promedio en cada parada.
+- [ ] (Constanza) Dónde se anotan hoy los vacíos que quedan por retirar y qué pasa con un vacío que falta después de justificarlo.
+- [ ] (Dueño) El celular del repartidor: si es Android o iPhone, si es de la empresa o propio, si tiene datos móviles y un correo. Y su consentimiento para compartir la ubicación durante el turno (fase E).
+
+**Para los pedidos fijos y "les toca pedir" (D58, D59)**
+- [ ] (Constanza) Qué empresas tienen plan mensual, qué reciben y cada cuánto, para cargar sus pedidos fijos.
+- [ ] (Dueño) Si quiere que a los clientes atrasados se les escriba. Desde la app WhatsApp Business lo hace una persona; si lo hiciera el bot, Meta lo cobra como plantilla.
+
+**Cuando haya tiempo (fase G y orden del Excel)**
+- [ ] (Ambos) Qué controlan las hojas CONTROL EFECTIVO, CONTROL BIDONES, CUOTAS y DETALLE HOTEL del Excel.
+- [ ] (Constanza) Qué significan "plan", "abono" y "debe" en la forma de pago, y cómo se anota un pedido con dos tamaños.
+- [ ] (Dueño) Qué significa `Credito` en CLIENTES y qué se le contesta a un cliente bloqueado.
+- [ ] (Ambos) Cuánto tiempo al día les toma hoy el proceso (anotar, armar la ruta, escribirle al repartidor), para medir cuánto se ahorra.
+- [ ] (Dueño) Dominio propio (por ejemplo `app.brunen.cl`): Cloudflare recomienda no dejar en `workers.dev` lo que es crítico para el negocio (D56, opción 2).
+- [ ] (Dueño) Cuánto tiempo se guardan los pedidos y las fichas: lo pide el aviso de privacidad de la Ley 21.719.
 
 ## Información que falta o es ambigua (2026-10-29)
 Segunda ronda: lo que falta después del cuestionario respondido y de los audios del dueño. Entre paréntesis, quién la tiene o decide.
