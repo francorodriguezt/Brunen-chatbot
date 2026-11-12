@@ -39,11 +39,12 @@ export function extraerMensajes(payload: unknown): MensajeEntrante[] {
   }
   const mensajes: MensajeEntrante[] = [];
   for (const entrada of datos.entry) {
-    for (const cambio of entrada.changes ?? []) {
+    for (const cambio of entrada?.changes ?? []) {
       // Con el número compartido llegan otros avisos (ecos, historial): solo "messages" trae mensajes de clientes.
-      if (cambio.field !== undefined && cambio.field !== 'messages') continue;
-      for (const m of cambio.value?.messages ?? []) {
-        if (!m.id || !m.from || !m.type) continue;
+      if (cambio?.field !== undefined && cambio?.field !== 'messages') continue;
+      const lista = cambio?.value?.messages;
+      for (const m of Array.isArray(lista) ? lista : []) {
+        if (!m?.id || !m.from || !m.type) continue;
         mensajes.push({
           id: m.id,
           de: m.from,
@@ -132,7 +133,26 @@ function recortar(texto: string): string {
   return texto.length > LIMITE_TEXTO ? texto.slice(0, LIMITE_TEXTO - 1) + '…' : texto;
 }
 
-export async function enviarTexto(config: ConfigWhatsApp, para: string, cuerpo: string): Promise<void> {
+/** Pausa antes del único reintento de un envío que falló del lado de Meta o de la red. */
+const ESPERA_REINTENTO_MS = 1000;
+
+/**
+ * Envía el texto. Si Meta falla de su lado (5xx) o la conexión se corta antes de llegar, reintenta una sola vez (D57):
+ * una falla momentánea no debe dejar al cliente sin respuesta. Un error del pedido (4xx, como el token vencido) o una
+ * espera agotada no se reintentan: no servirían de nada o podrían duplicar un mensaje que Meta sí recibió.
+ */
+export async function enviarTexto(config: ConfigWhatsApp, para: string, cuerpo: string, opciones: { esperarMs?: number } = {}): Promise<void> {
+  try {
+    await enviarUnaVez(config, para, cuerpo);
+  } catch (error) {
+    const reintentable = (error instanceof ErrorWhatsApp && (error.status ?? 0) >= 500) || (error instanceof TypeError);
+    if (!reintentable) throw error;
+    await new Promise((resolver) => setTimeout(resolver, opciones.esperarMs ?? ESPERA_REINTENTO_MS));
+    await enviarUnaVez(config, para, cuerpo);
+  }
+}
+
+async function enviarUnaVez(config: ConfigWhatsApp, para: string, cuerpo: string): Promise<void> {
   // Exige mayor >= 1: así el valor de relleno "v00.0" de wrangler.toml falla aquí con un mensaje claro.
   if (!/^v[1-9]\d*\.\d+$/.test(config.graphApiVersion)) {
     throw new ErrorWhatsApp(

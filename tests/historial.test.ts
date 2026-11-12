@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error: módulo de JavaScript sin tipos (scripts/), se prueba igual
-import { claveDeDireccion as claveDelScript, convertir, fechaDe, formaDePagoDe, normalizarTelefono as telefonoDelScript, sentencias, tamanoDe, tipoDeClienteDe } from '../scripts/historial/convertir.mjs';
+import { claveDeDireccion as claveDelScript, convertir, direccionesConNotas, escriturasEstimadas, fechaDe, formaDePagoDe, normalizarTelefono as telefonoDelScript, sentencias, tamanoDe, tipoDeClienteDe } from '../scripts/historial/convertir.mjs';
 import { RepositorioClientes, claveDeDireccion } from '../src/fichas';
 import { RepositorioD1 } from '../src/repositorio';
 import { normalizarTelefono } from '../src/whatsapp';
@@ -198,5 +198,17 @@ describe('correcciones de la revisión', () => {
     const fichaDelBot = db.sql("SELECT (SELECT COUNT(*) FROM telefonos_cliente t WHERE t.cliente_id = c.id) AS telefonos FROM clientes c WHERE nombre = 'Ficha del bot'");
     expect(fichaDelBot).toEqual([{ telefonos: 0 }]);
     expect(db.sql("SELECT COUNT(*) AS n FROM clientes WHERE notas LIKE 'importando:%'")).toEqual([{ n: 0 }]);
+  });
+});
+
+describe('cuidados antes de cargar en la base real (D57)', () => {
+  it('estima las escrituras contando los índices, para no pasar las 100.000 diarias del plan gratis', () => {
+    const clientes = [{ direcciones: new Map([['a', 1], ['b', 1]]) }];
+    expect(escriturasEstimadas({ pedidos: [{}, {}, {}], clientes })).toBe(3 * 7 + 1 * 5 + 2 * 2);
+  });
+
+  it('cuenta las direcciones que parecen traer notas internas, sin mostrarlas', () => {
+    const pedidos = [{ direccion: 'Calle 1 (ojo: debe)' }, { direccion: 'Calle 1 (ojo: debe)' }, { direccion: 'Calle 2' }, { direccion: 'x'.repeat(90) }, { direccion: '' }];
+    expect(direccionesConNotas(pedidos)).toBe(2);
   });
 });

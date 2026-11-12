@@ -24,7 +24,7 @@ const PAUSA_MAXIMA_MINUTOS = 24 * 60;
 const ADELANTO_TOLERADO_SEGUNDOS = 300;
 const MAXIMO_POR_PASADA = 50;
 /** Mensajes que no piden respuesta de nadie. */
-const SIN_RESPUESTA: ReadonlySet<string> = new Set(['reaction', 'sticker']);
+const SIN_RESPUESTA: ReadonlySet<string> = new Set(['reaction', 'sticker', 'system']);
 
 /** Segundos que el bot calla con un cliente después del último mensaje de una persona. 0 = el bot no se calla nunca. */
 export function pausaPorPersona(env: { PAUSA_POR_PERSONA_MINUTOS?: string }): number {

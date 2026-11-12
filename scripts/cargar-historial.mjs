@@ -17,7 +17,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { leerArchivo } from './anonimizar/lector.mjs';
-import { convertir, sentencias } from './historial/convertir.mjs';
+import { convertir, direccionesConNotas, escriturasEstimadas, sentencias } from './historial/convertir.mjs';
 
 function hoyEnSantiago() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
@@ -57,6 +57,10 @@ function main() {
   mostrar('Documento', cuenta(pedidos, (p) => p.documento));
   mostrar('Tipo de cliente', cuenta(pedidos, (p) => p.tipoCliente));
   console.log(`Fechas: de ${pedidos[0]?.fecha} a ${pedidos.at(-1)?.fecha}.`);
+  const escrituras = escriturasEstimadas(resultado);
+  console.log(`Escrituras estimadas en la base: ~${escrituras.toLocaleString('es-CL')} de las 100.000 diarias del plan gratis (D57). Cárgalo una sola vez ese día.`);
+  if (escrituras > 80_000) console.log('  OJO: queda muy cerca del límite diario; divide la carga en dos días.');
+  console.log(`Direcciones que parecen traer notas internas (paréntesis o más de 80 letras): ${direccionesConNotas(pedidos)}. El bot no le muestra al cliente lo que va entre paréntesis; conviene limpiarlas en el panel.`);
 
   if (!generar) {
     console.log('\nFue una simulación: no se escribió nada. Para generar el archivo, agrega --generar.');

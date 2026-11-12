@@ -37,6 +37,9 @@ export const repetirSinHistorial = (): string =>
 
 export const imagenRecibida = (): string => 'Recibimos tu imagen. Una persona del equipo la revisará.';
 
+/** Un documento: los bancos chilenos suelen compartir el comprobante de transferencia en PDF. */
+export const archivoRecibido = (): string => 'Recibimos tu archivo. Una persona del equipo lo revisará.';
+
 export const cancelado = (): string => 'Listo, no anoté nada. Cuando quieras, escríbeme.';
 
 /** El mensaje se recibió pero lo debe ver una persona. */
@@ -93,9 +96,17 @@ export interface LineaTexto {
 
 const itemTexto = (l: Pick<LineaTexto, 'tipo' | 'cantidad'>): string => `${l.cantidad} ${bidones(l.cantidad)} de ${litros(l.tipo)}`;
 
-/** "Calle 1" y "Ñuñoa" → "Calle 1, Ñuñoa"; si la comuna ya viene escrita en la dirección, no se repite. */
+/** Lo que se le muestra al cliente de su dirección como máximo (D57). */
+const MAXIMO_DIRECCION_VISIBLE = 80;
+
+/**
+ * "Calle 1" y "Ñuñoa" → "Calle 1, Ñuñoa"; si la comuna ya viene escrita en la dirección, no se repite. Lo que va entre
+ * paréntesis no se muestra: en el Excel histórico a veces se anotaban notas internas junto a la dirección (D57).
+ */
 function lugarDeEntrega(direccion = '', comuna = ''): string {
-  const d = direccion.trim().replace(/[\s,.]+$/, '');
+  const visible = direccion.split('(')[0] ?? '';
+  const corta = visible.length > MAXIMO_DIRECCION_VISIBLE ? visible.slice(0, MAXIMO_DIRECCION_VISIBLE).replace(/\s+\S*$/, '') : visible;
+  const d = corta.trim().replace(/[\s,.]+$/, '');
   if (!d) return '';
   const c = comuna.trim();
   const sinTildes = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();

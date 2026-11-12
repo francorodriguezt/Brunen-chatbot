@@ -311,6 +311,19 @@ describe('"lo de siempre"', () => {
     expect((await c.decir('2 de 20')).respuesta).toContain('- 2 bidones de 20 L: $6.600');
   });
 
+  it('un cliente antiguo (su último pedido está en la base, no en la memoria del bot) repite ese pedido', async () => {
+    const c = await conversacion({ puertos: { buscarUltimoPedidoGuardado: async () => [{ tipo: '20L', cantidad: 4 }] } });
+    const d = await c.decir('lo mismo de siempre');
+    expect(d.respuesta).toContain('- 4 bidones de 20 L');
+    expect(d.intencion).toBe('repetir_pedido');
+  });
+
+  it('si la base no responde, "lo de siempre" vuelve a preguntar en vez de fallar', async () => {
+    const c = await conversacion({ puertos: { buscarUltimoPedidoGuardado: async () => { throw new Error('D1 no responde'); } } });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect((await c.decir('lo de siempre')).respuesta).toBe('No tengo anotado tu último pedido. ¿Cuántos bidones necesitas y de cuántos litros (20, 12 o 10)?');
+  });
+
   it('un pedido fuera de zona no se recuerda como "lo de siempre"', async () => {
     const c = await conversacion({ cliente: conocido({ comuna: 'Maipú' }) });
     await c.decir('quiero 2 de 20');
@@ -413,12 +426,22 @@ describe('quién escribe y dónde vive', () => {
     expect(d.alerta?.tipo).toBe('escalamiento');
   });
 
-  it('si no se pudo leer la hoja de clientes no se adivina: se avisa y una persona responde', async () => {
+  it('si no se pudo leer la hoja de clientes, el pedido se anota igual sin prometer precio y lo revisa una persona', async () => {
     const d = await conversacion({ cliente: { estado: 'no_disponible' } }).decir('quiero 2 de 20');
-    expect(d.pedido).toBeUndefined();
-    expect(d.alerta?.tipo).toBe('error');
-    expect(d.alerta?.texto).toBe('quiero 2 de 20'); // la operadora ve qué pidió
-    expect(d.respuesta).toBe('Recibimos tu mensaje. Una persona del equipo te responderá en breve.');
+    expect(d.pedido).toMatchObject({ estado: 'Pendiente_Confirmacion' });
+    expect(d.alerta?.tipo).toBe('cliente_nuevo'); // sin datos previos se le piden nombre y dirección (D37)
+    expect(d.alerta?.motivos.join(' ')).toContain('No se pudo leer la hoja CLIENTES');
+    expect(d.respuesta).not.toContain('$'); // sin precio prometido
+  });
+
+  it('si no se pudo leer la hoja de clientes pero ya pidió antes, usa los datos de su pedido anterior', async () => {
+    const d = await conversacion({
+      cliente: { estado: 'no_disponible' },
+      puertos: { buscarPedidoAnterior: async () => ({ idPedido: 'P261020-AAAAA', nombre: 'Ana', direccion: 'Calle Uno 1', comuna: 'Macul', notasRepartidor: '' }) },
+    }).decir('quiero 2 de 20');
+    expect(d.pedido).toMatchObject({ direccion: 'Calle Uno 1', comuna: 'Macul' });
+    expect(d.respuesta).toContain('Entrega en: Calle Uno 1, Macul');
+    expect(d.alerta?.motivos.join(' ')).toContain('No se pudo leer la hoja CLIENTES');
   });
 
   it('un cliente de una comuna que no se atiende queda como Fuera_de_zona y se le informa', async () => {

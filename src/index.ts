@@ -341,7 +341,14 @@ export default {
       } catch (error) {
         console.error('No se pudieron leer los ecos:', error instanceof Error ? error.message : error);
       }
-      ctx.waitUntil(procesarLote(extraerMensajes(payload), env));
+      let mensajes: MensajeEntrante[] = [];
+      try {
+        mensajes = extraerMensajes(payload);
+      } catch (error) {
+        // Firmado por Meta pero con una forma que no se entiende: se responde 200 igual, o Meta lo reintentaría en bucle.
+        console.error('No se pudieron leer los mensajes del aviso:', error instanceof Error ? error.message : error);
+      }
+      if (mensajes.length > 0) ctx.waitUntil(procesarLote(mensajes, env));
       return new Response('OK', { status: 200 });
     }
 

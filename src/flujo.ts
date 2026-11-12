@@ -43,6 +43,11 @@ export interface Puertos {
    * pedido; sin este puerto, o si falla, el cliente se trata como nuevo.
    */
   buscarPedidoAnterior?(telefono: string): Promise<DatosPrevios | null>;
+  /**
+   * Lo que pidió en su último pedido guardado en la base, para "lo de siempre" de un cliente que nunca pidió por el bot
+   * (su historial viene del Excel, D54). Se consulta solo si la memoria del bot no lo tiene; si falla, se le pregunta.
+   */
+  buscarUltimoPedidoGuardado?(telefono: string): Promise<ItemInterpretado[] | null>;
   cargarPrecios(): Promise<TablaPrecios>;
   proponerEntrega(solicitada: string | undefined): Promise<PropuestaEntrega>;
   servicio(): Promise<EntradaMotor['servicio']>;
@@ -77,6 +82,18 @@ async function pedidoAnteriorDe(p: Puertos, telefono: string): Promise<DatosPrev
   } catch (error) {
     console.error('No se pudo buscar el pedido anterior del cliente:', error instanceof Error ? error.message : error);
     return undefined;
+  }
+}
+
+/** "Lo de siempre": primero lo que recuerda el bot y, si no, el último pedido guardado en la base. Nunca lanza errores. */
+async function ultimoParaRepetir(p: Puertos, telefono: string): Promise<ItemInterpretado[] | null> {
+  const recordado = p.memoria ? await p.memoria.ultimoPedido(telefono) : null;
+  if (recordado && recordado.length > 0) return recordado;
+  try {
+    return (await p.buscarUltimoPedidoGuardado?.(telefono)) ?? null;
+  } catch (error) {
+    console.error('No se pudo buscar el último pedido guardado:', error instanceof Error ? error.message : error);
+    return null;
   }
 }
 
@@ -134,11 +151,11 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
     intencion === 'cierre' ? { reducido: false, mensajeExcepcion: '' } : p.servicio(),
     INTENCIONES_CON_PRECIOS.has(intencion) ? p.cargarPrecios() : SIN_PRECIOS,
     INTENCIONES_CON_ENTREGA.has(intencion) ? p.proponerEntrega(interpretacion.fecha_texto) : undefined,
-    repite && p.memoria ? p.memoria.ultimoPedido(entrada.telefono) : null,
+    repite ? ultimoParaRepetir(p, entrada.telefono) : null,
   ]);
 
-  // Un cliente sin ficha que ya pidió por el bot no vuelve a recibir la pregunta de datos (D40): se busca solo cuando va a anotar un pedido.
-  const pedidoAnterior = cliente.estado === 'nuevo' && INTENCIONES_CON_ENTREGA.has(intencion) ? await pedidoAnteriorDe(p, entrada.telefono) : undefined;
+  // Un cliente sin ficha (o con la hoja CLIENTES caída, D57) que ya pidió no vuelve a recibir la pregunta de datos (D40): se busca solo cuando va a anotar un pedido.
+  const pedidoAnterior = cliente.estado !== 'encontrado' && INTENCIONES_CON_ENTREGA.has(intencion) ? await pedidoAnteriorDe(p, entrada.telefono) : undefined;
 
   // 3. Decidir.
   const decision = decidir({

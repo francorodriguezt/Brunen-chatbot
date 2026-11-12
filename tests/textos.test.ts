@@ -65,6 +65,14 @@ describe('textos al cliente', () => {
       expect(textos.pedidoAnotado({ ...base, direccion: 'Av. Grecia 12, Nunoa.', comuna: 'Ñuñoa' })).toContain('Entrega en: Av. Grecia 12, Nunoa. Si cambiaste');
     });
 
+    it('no le repite al cliente lo que va entre paréntesis ni un texto larguísimo: pueden ser notas internas del Excel', () => {
+      const conNota = textos.pedidoAnotado({ ...base, direccion: 'Av. Grecia 12 depto 4 (ojo: debe 2 bidones)', comuna: 'Ñuñoa' });
+      expect(conNota).toContain('Entrega en: Av. Grecia 12 depto 4, Ñuñoa.');
+      expect(conNota).not.toContain('debe');
+      const larga = textos.pedidoAnotado({ ...base, direccion: 'Calle Larga 1 ' + 'x'.repeat(200), comuna: 'Ñuñoa' });
+      expect(larga.split('\n').find((l) => l.startsWith('Entrega en'))!.length).toBeLessThan(200);
+    });
+
     it('sin dirección no dice nada de la entrega', () => {
       expect(textos.pedidoAnotado({ ...base, direccion: '  ', comuna: 'Ñuñoa' })).not.toContain('Entrega en');
       expect(textos.pedidoAnotado(base)).not.toContain('Entrega en');
