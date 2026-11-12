@@ -95,7 +95,7 @@ describe('el flujo de pedido conectado al Worker', () => {
 
     expect(mundo.enviados).toHaveLength(1);
     expect(mundo.enviados[0]?.texto).toBe(
-      'Anotamos tu pedido:\n- 2 bidones de 20 L: $6.600\nEntrega estimada: viernes 30 de octubre.\nSi algo cambia, te avisamos por aquí.',
+      'Anotamos tu pedido:\n- 2 bidones de 20 L: $6.600\nEntrega estimada: viernes 30 de octubre.\nEntrega en: Calle Falsa 123, Ñuñoa. Si cambiaste de dirección, escríbenos la nueva.\nSi algo cambia, te avisamos por aquí.',
     );
     expect(pedidosEn(env)).toEqual([expect.objectContaining({ telefono: CLIENTE, nombre: 'Ana Prueba', estado: 'Pendiente_Confirmacion', total: 6600 })]);
     expect(avisosEn(env)).toEqual([{ tipo: 'pedido', telefono: CLIENTE, estado: 'abierto' }]);

@@ -86,6 +86,9 @@ export interface Decision {
 /** Avisos informativos: el cliente ya tiene su respuesta y la operadora no tiene que contestarle. */
 const SIN_ESPERA_HUMANA: ReadonlySet<TipoAlerta> = new Set<TipoAlerta>(['pedido', 'envases', 'fuera_de_zona']);
 
+/** Frases de quien avisa que se mudó ("me cambié", "la nueva es…", "ahora vivo en…"). */
+const CAMBIO_DE_DIRECCION = /me cambi[eé]|cambi[eé] de (casa|direcci[oó]n|depto|departamento)|nueva direcci[oó]n|direcci[oó]n nueva|la nueva es|ahora vivo|ahora estoy en|me mud[eé]|nos mudamos|nos cambiamos/i;
+
 const MANTENER: AccionMemoria = { accion: 'mantener' };
 const BORRAR: AccionMemoria = { accion: 'borrar' };
 
@@ -264,7 +267,7 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
     // El pedido ya queda anotado; lo que conteste el cliente lo completa (D37).
     memoria = { accion: 'guardar', estado: { espera: 'datos', items: [], id_pedido: idPedido, intentos: 0 } };
   } else {
-    respuesta = textos.pedidoAnotado({ lineas, total: precioSeguro && cotizacion ? cotizacion.total : null, entrega: e.entrega, fechaSegura });
+    respuesta = textos.pedidoAnotado({ lineas, total: precioSeguro && cotizacion ? cotizacion.total : null, entrega: e.entrega, fechaSegura, direccion: pedido.direccion, comuna: pedido.comuna });
   }
 
   return {
@@ -312,7 +315,10 @@ function decidirBase(e: EntradaMotor): Decision {
     case 'pedido':
       return decidirPedido(e, i.items, false);
     case 'desconocido':
-      return e.pendienteDeDatos ? repreguntarDatos(e, e.pendienteDeDatos) : escalar(e, 'no_entendido', 'El bot no entendió el mensaje');
+      if (e.pendienteDeDatos) return repreguntarDatos(e, e.pendienteDeDatos);
+      // La respuesta del pedido invita a escribir la dirección nueva (D55): ese mensaje va a una persona, dicho claro.
+      if (CAMBIO_DE_DIRECCION.test(e.texto)) return escalar(e, 'no_entendido', 'Avisa que cambió de dirección: corrígela en su último pedido y en su ficha de cliente');
+      return escalar(e, 'no_entendido', 'El bot no entendió el mensaje');
   }
 }
 

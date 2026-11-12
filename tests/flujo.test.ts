@@ -63,7 +63,7 @@ describe('un pedido completo de un cliente conocido', () => {
   it('se anota, se cotiza, se propone la entrega y se responde una vez', async () => {
     const d = await conversacion().decir('quiero 2 de 20 para el viernes');
     expect(d.respuesta).toBe(
-      'Anotamos tu pedido:\n- 2 bidones de 20 L: $6.600\nEntrega estimada: viernes 30 de octubre.\nSi algo cambia, te avisamos por aquí.',
+      'Anotamos tu pedido:\n- 2 bidones de 20 L: $6.600\nEntrega estimada: viernes 30 de octubre.\nEntrega en: Calle Falsa 123, Ñuñoa. Si cambiaste de dirección, escríbenos la nueva.\nSi algo cambia, te avisamos por aquí.',
     );
     expect(d.intencion).toBe('pedido');
     expect(d.pedido).toMatchObject({
@@ -354,7 +354,7 @@ describe('quién escribe y dónde vive', () => {
     it('se anota con los datos del pedido anterior, sin volver a pedirlos y sin prometer el precio', async () => {
       const d = await conPrevio().decir('quiero 2 de 20');
       expect(d.respuesta).toBe(
-        'Anotamos tu pedido:\n- 2 bidones de 20 L\nEl valor te lo confirmamos a la brevedad.\nEntrega estimada: jueves 29 de octubre.\nSi algo cambia, te avisamos por aquí.',
+        'Anotamos tu pedido:\n- 2 bidones de 20 L\nEl valor te lo confirmamos a la brevedad.\nEntrega estimada: jueves 29 de octubre.\nEntrega en: Av. Irarrázaval 2345 depto 502, Ñuñoa. Si cambiaste de dirección, escríbenos la nueva.\nSi algo cambia, te avisamos por aquí.',
       );
       expect(d.pedido).toMatchObject({
         nombre: 'Ana Torres',

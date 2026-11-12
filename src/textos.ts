@@ -93,6 +93,15 @@ export interface LineaTexto {
 
 const itemTexto = (l: Pick<LineaTexto, 'tipo' | 'cantidad'>): string => `${l.cantidad} ${bidones(l.cantidad)} de ${litros(l.tipo)}`;
 
+/** "Calle 1" y "Ñuñoa" → "Calle 1, Ñuñoa"; si la comuna ya viene escrita en la dirección, no se repite. */
+function lugarDeEntrega(direccion = '', comuna = ''): string {
+  const d = direccion.trim().replace(/[\s,.]+$/, '');
+  if (!d) return '';
+  const c = comuna.trim();
+  const sinTildes = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  return c && !sinTildes(d).includes(sinTildes(c)) ? `${d}, ${c}` : d;
+}
+
 export function pedidoAnotado(datos: {
   lineas: readonly LineaTexto[];
   /** Solo si el precio es seguro; si no, se avisa que lo confirma una persona. */
@@ -100,6 +109,12 @@ export function pedidoAnotado(datos: {
   entrega: PropuestaEntrega;
   /** false si la fecha puede estar mal (feriados sin cargar, fecha pedida que no se entendió). */
   fechaSegura: boolean;
+  /**
+   * Dónde se va a entregar, cuando el bot ya la conoce (ficha o pedido anterior). Se muestra para que el cliente que
+   * se cambió de casa lo note en el mismo mensaje (el 14 % de los clientes del Excel se mudó alguna vez, D55).
+   */
+  direccion?: string;
+  comuna?: string;
 }): string {
   const conPrecio = datos.total !== null;
   const filas = datos.lineas.map((l) => `- ${itemTexto(l)}${conPrecio && l.subtotal !== null ? `: ${formatearCLP(l.subtotal)}` : ''}`);
@@ -119,6 +134,8 @@ export function pedidoAnotado(datos: {
     else if (datos.entrega.motivoAjuste === 'muy_pronto') partes.push(`Para ese día ya no alcanzamos; la entrega más cercana es ${fecha}.`);
     else partes.push(`Entrega estimada: ${fecha}.`);
   }
+  const lugar = lugarDeEntrega(datos.direccion, datos.comuna);
+  if (lugar) partes.push(`Entrega en: ${lugar}. Si cambiaste de dirección, escríbenos la nueva.`);
   partes.push('Si algo cambia, te avisamos por aquí.');
   return partes.join('\n');
 }
