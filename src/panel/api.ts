@@ -255,7 +255,12 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
         if (!cambios) return error(400, 'Solicitud no válida.');
         const editado = await repositorio.editarPedido(id, cambios, correo, ahoraSegundos, version);
         if (editado.ok && ctx.clientes && (cambios.direccion !== undefined || cambios.comuna !== undefined)) {
-          await ctx.clientes.registrarDireccionDePedido(id, ahoraSegundos);
+          // El pedido ya quedó guardado: si falla anotar la dirección en la ficha, no se le dice a la persona que falló.
+          try {
+            await ctx.clientes.registrarDireccionDePedido(id, ahoraSegundos);
+          } catch (falla) {
+            console.error('No se pudo anotar la dirección en la ficha del cliente:', falla instanceof Error ? falla.message : falla);
+          }
         }
         return respuestaDeRepositorio(editado, 'pedido');
       }

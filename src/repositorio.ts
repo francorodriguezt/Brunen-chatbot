@@ -152,6 +152,8 @@ export type ErrorDeRepositorio =
 export type ResultadoRepo<T> = { ok: true; valor: T } | { ok: false; error: ErrorDeRepositorio };
 
 const TIPOS: ReadonlySet<string> = new Set<TipoBidon>(['10L', '12L', '20L']);
+/** Hasta cuándo un pedido anterior sirve para reconocer al cliente sin preguntarle sus datos (D40, D55). */
+export const VIGENCIA_DEL_PEDIDO_ANTERIOR_SEGUNDOS = 365 * 24 * 3600;
 const CLAVES_DE_PAGO: ReadonlySet<string> = new Set(['formaPago', 'estadoPago', 'documento', 'numeroDocumento']);
 const MAX_TEXTO = 500;
 const MAX_LINEAS = 5;
@@ -385,11 +387,14 @@ export class RepositorioD1 {
    * Los datos del último pedido de este teléfono que tiene dirección y no se canceló (D40). Sirve para reconocer a un
    * cliente que ya pidió por el bot aunque todavía no esté en la hoja CLIENTES: no se le vuelve a preguntar su dirección.
    */
-  async datosDelUltimoPedido(telefono: string): Promise<DatosPrevios | null> {
+  async datosDelUltimoPedido(telefono: string, ahoraSegundos: number = Math.floor(Date.now() / 1000)): Promise<DatosPrevios | null> {
+    // Solo pedidos del último año: las compañías reasignan los números que dejan de usarse, y con el historial
+    // cargado (D54) quien reciba un número reciclado vería la dirección del dueño anterior en "Entrega en" (D55).
     const [fila] = await this.filas(
       `SELECT id, nombre, direccion, comuna, notas_repartidor FROM pedidos
-       WHERE telefono = ?1 AND direccion != '' AND estado != 'Cancelado' ORDER BY creado_en DESC, rowid DESC LIMIT 1`,
+       WHERE telefono = ?1 AND direccion != '' AND estado != 'Cancelado' AND creado_en >= ?2 ORDER BY creado_en DESC, rowid DESC LIMIT 1`,
       telefono,
+      ahoraSegundos - VIGENCIA_DEL_PEDIDO_ANTERIOR_SEGUNDOS,
     );
     return fila
       ? { idPedido: texto(fila.id), nombre: texto(fila.nombre), direccion: texto(fila.direccion), comuna: texto(fila.comuna), notasRepartidor: texto(fila.notas_repartidor) }
@@ -420,7 +425,6 @@ export class RepositorioD1 {
     return (await this.filas(sql, ...valores)).map(aPedido);
   }
 
-  /** Los pedidos de un día (por su fecha confirmada o, si no la hay, la propuesta), sin los cancelados: de aquí sale el reparto. */
   /** Los pedidos de una ficha de cliente (D53), del más nuevo al más antiguo. */
   async pedidosDeCliente(clienteId: number, limite = 30): Promise<PedidoGuardado[]> {
     const tope = Math.min(Math.max(Math.trunc(limite), 1), 100);
@@ -428,6 +432,7 @@ export class RepositorioD1 {
     return filas.map(aPedido);
   }
 
+  /** Los pedidos de un día (por su fecha confirmada o, si no la hay, la propuesta), sin los cancelados: de aquí sale el reparto. */
   async pedidosDelDia(fecha: string): Promise<PedidoGuardado[]> {
     const filas = await this.filas(
       `SELECT ${COLUMNAS_PEDIDO} FROM pedidos WHERE COALESCE(fecha_confirmada, fecha_entrega) = ?1 AND estado != 'Cancelado' ORDER BY creado_en, rowid LIMIT 500`,
@@ -538,6 +543,8 @@ export class RepositorioD1 {
     if (!actual) return { ok: false, error: 'no_existe' };
     if (versionVista !== undefined && versionVista !== actual.actualizadoEn) return { ok: false, error: 'conflicto' };
     if (!datosDePagoValidos(cambios)) return { ok: false, error: 'datos_invalidos' };
+    // Sin nada que cambiar no se escribe: no sube la versión ni deja un "editado" vacío en el historial.
+    if (Object.values(cambios).every((v) => v === undefined)) return { ok: true, valor: actual };
     const soloPago = Object.keys(cambios).every((clave) => CLAVES_DE_PAGO.has(clave));
     // Un pedido entregado todavía se puede marcar pagado o anotarle la factura: eso pasa después de entregar.
     if (actual.estado === 'Cancelado' || (actual.estado === 'Entregado' && !soloPago)) return { ok: false, error: 'pedido_cerrado' };

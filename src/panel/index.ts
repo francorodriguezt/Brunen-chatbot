@@ -107,10 +107,11 @@ async function apiDeAdministracion(request: Request, url: URL, env: EntornoPanel
     const sesion = await ctx.cuentas.sesionDe(token, ahoraSegundos);
     if (!esDelAdministrador(sesion?.usuario, correo)) return error(401, 'Entra con tu RUT y tu clave.');
 
+    const clientes = new RepositorioClientes(env.DB as BaseDatos);
     const respuesta =
       (await manejarUsuarios(request, interna, { ...ctx, yo: sesion.usuario })) ??
-      (await manejarClientes(request, interna, { clientes: new RepositorioClientes(env.DB as BaseDatos), repositorio: ctx.repositorio, ahoraSegundos })) ??
-      (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes: new RepositorioClientes(env.DB as BaseDatos) }));
+      (await manejarClientes(request, interna, { clientes, repositorio: ctx.repositorio, ahoraSegundos })) ??
+      (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes }));
     if (sesion?.renovada && token) respuesta.headers.append('set-cookie', cookieDeSesion(token, true, ctx.cookieSegura));
     return respuesta;
   } catch (falla) {

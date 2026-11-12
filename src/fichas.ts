@@ -45,8 +45,12 @@ export interface FichaDeCliente extends ResumenDeCliente {
 export type ErrorDeCliente = 'no_existe' | 'datos_invalidos' | 'telefono_invalido' | 'telefono_de_otro' | 'mismo_cliente';
 export type ResultadoCliente<T> = { ok: true; valor: T } | { ok: false; error: ErrorDeCliente; otroId?: number };
 
-/** Pedidos por vincular en cada pasada: con unas 4 consultas por pedido, queda bajo el tope de 50 por invocación. */
-export const VINCULAR_POR_PASADA = 8;
+/**
+ * Pedidos por vincular en cada pasada. Un pedido de un cliente nuevo usa hasta 6 consultas: 4 pedidos son 25 como
+ * máximo, la mitad del tope de 50 por invocación del plan gratis, y queda el resto para la sesión, la lista o el vigía.
+ * Lo normal es que haya 0 a 2 pendientes, porque la tarea programada pasa cada 5 minutos.
+ */
+export const VINCULAR_POR_PASADA = 4;
 
 /** "Av. Grecia 123, depto 4" y "av grecia 123 depto 4" son la misma dirección. */
 export function claveDeDireccion(direccion: string, comuna: string): string {
@@ -257,12 +261,12 @@ export class RepositorioClientes {
     await this.cambios('DELETE FROM direcciones_cliente WHERE cliente_id = ?1', origen);
     await this.cambios(
       `UPDATE clientes SET
-         nombre = CASE WHEN nombre = '' THEN ?3 ELSE nombre END,
-         tipo_cliente = CASE WHEN tipo_cliente = '' THEN ?4 ELSE tipo_cliente END,
-         notas = CASE WHEN ?5 = '' THEN notas WHEN notas = '' THEN ?5 ELSE notas || ' · ' || ?5 END,
-         creado_en = MIN(creado_en, ?6), actualizado_en = ?7
-       WHERE id = ?1 AND ?2 = ?2`,
-      destino, origen, b.nombre, b.tipoCliente, b.notas, b.creadoEn, ahora,
+         nombre = CASE WHEN nombre = '' THEN ?2 ELSE nombre END,
+         tipo_cliente = CASE WHEN tipo_cliente = '' THEN ?3 ELSE tipo_cliente END,
+         notas = CASE WHEN ?4 = '' THEN notas WHEN notas = '' THEN ?4 ELSE notas || ' · ' || ?4 END,
+         creado_en = MIN(creado_en, ?5), actualizado_en = ?6
+       WHERE id = ?1`,
+      destino, b.nombre, b.tipoCliente, b.notas, b.creadoEn, ahora,
     );
     await this.cambios('DELETE FROM clientes WHERE id = ?1', origen);
     return { ok: true, valor: true };

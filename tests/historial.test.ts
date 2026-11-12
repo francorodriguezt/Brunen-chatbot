@@ -166,3 +166,37 @@ describe('el día de hoy', () => {
     expect(convertir(filas, 0, HOY).pedidos[0]?.estado).toBe('Confirmado');
   });
 });
+
+describe('correcciones de la revisión', () => {
+  it('ordenar el Excel o agregarle filas no cambia el número de los pedidos que ya estaban', () => {
+    const originales = convertir(FILAS, 1, HOY).pedidos.map((p: { id: string; nombre: string; fecha: string }) => `${p.id}|${p.nombre}|${p.fecha}`).sort();
+    const datos = FILAS.slice(2);
+    const otraVersion = [FILAS[0], ENCABEZADO, ['2026-01-02', 'Fila Nueva', 'Calle 7', 'Macul', '56966666666', 'Hogar', '1', '20Lts', '4000', 'Efectivo', '', '', '', 'PAGADO', ''], ...[...datos].reverse()];
+    const despues = convertir(otraVersion, 1, HOY).pedidos.map((p: { id: string; nombre: string; fecha: string }) => `${p.id}|${p.nombre}|${p.fecha}`);
+    for (const pedido of originales) expect(despues).toContain(pedido);
+  });
+
+  it('dos filas idénticas (el mismo pedido dos veces el mismo día) quedan como dos pedidos', () => {
+    const fila = ['2026-01-05', 'Ana Prueba', 'Calle Falsa 123', 'Ñuñoa', '56911111111', 'Hogar', '2', '20Lts', '6000', 'Transferencia', '', '', '', 'PAGADO', ''];
+    const r = convertir([ENCABEZADO, fila, [...fila]], 0, HOY);
+    expect(new Set(r.pedidos.map((p: { id: string }) => p.id)).size).toBe(2);
+  });
+
+  it('si el bot crea una ficha en medio de la carga, el teléfono importado no se liga a ella', async () => {
+    const db = crearBaseSqlite();
+    const texto: string = sentencias(convertir(FILAS, 1, HOY), 1794000000);
+    const insert = texto.split('\n').filter((l) => l.startsWith('INSERT') || l.startsWith('UPDATE'));
+    // Justo después de crear la primera ficha importada, el bot crea otra (la más nueva de la tabla).
+    let intercalado = false;
+    for (const linea of insert) {
+      await db.prepare(linea).bind().run();
+      if (!intercalado && linea.startsWith('INSERT INTO clientes')) {
+        await db.prepare("INSERT INTO clientes (nombre, creado_en, actualizado_en) VALUES ('Ficha del bot', 1, 1)").bind().run();
+        intercalado = true;
+      }
+    }
+    const fichaDelBot = db.sql("SELECT (SELECT COUNT(*) FROM telefonos_cliente t WHERE t.cliente_id = c.id) AS telefonos FROM clientes c WHERE nombre = 'Ficha del bot'");
+    expect(fichaDelBot).toEqual([{ telefonos: 0 }]);
+    expect(db.sql("SELECT COUNT(*) AS n FROM clientes WHERE notas LIKE 'importando:%'")).toEqual([{ n: 0 }]);
+  });
+});

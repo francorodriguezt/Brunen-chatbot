@@ -514,6 +514,15 @@ describe('datos de un cliente por sus pedidos anteriores (D40)', () => {
     expect((await r.datosDelUltimoPedido('56911111111'))?.idPedido).toBe('P261020-AAAAA');
   });
 
+  it('no usa pedidos de hace más de un año: el número pudo pasar a otra persona', async () => {
+    const { r } = repo();
+    const unAnio = 365 * 24 * 3600;
+    await r.guardarPedido(pedido({ idPedido: 'P241020-AAAAA', direccion: 'Calle Antigua 1' }), AHORA - unAnio - 60);
+    expect(await r.datosDelUltimoPedido('56911111111', AHORA)).toBeNull();
+    await r.guardarPedido(pedido({ idPedido: 'P251120-AAAAA', direccion: 'Calle Reciente 2' }), AHORA - unAnio + 60);
+    expect((await r.datosDelUltimoPedido('56911111111', AHORA))?.direccion).toBe('Calle Reciente 2');
+  });
+
   it('es null si ese teléfono no tiene pedidos con dirección, y no mezcla a otros clientes', async () => {
     const { r } = repo();
     await r.guardarPedido(pedido({ telefono: '56922222222' }), AHORA);
