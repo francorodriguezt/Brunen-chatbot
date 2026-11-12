@@ -54,7 +54,7 @@ export interface CargaDelFurgon {
 }
 
 /**
- * Bidones que caben en el furgón (Felipe y Constanza, 2026-11-10). Cuenta igual un bidón de 20, 12 o 10 L mientras no se
+ * Bidones que caben en el furgón (el dueño y Constanza, 2026-11-10). Cuenta igual un bidón de 20, 12 o 10 L mientras no se
  * sepa cuántos de cada tamaño caben (pregunta pendiente). En 267 de 504 días del Excel se pasó de 65: lo normal es
  * hacer más de un viaje en el día.
  */
