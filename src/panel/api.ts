@@ -10,6 +10,7 @@
  * condiciones sin permiso (no se habilita CORS), así que no puede mover pedidos con la sesión de la operadora.
  */
 
+import { MOTIVOS_NO_ENTREGA, type RepositorioEntregas } from '../entregas';
 import { COMUNAS_ATENDIDAS } from '../comunas';
 import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
 import { armarReparto, csvDeReparto, textoDeReparto, tsvDeReparto } from '../reparto';
@@ -24,6 +25,8 @@ export interface ContextoApi {
   ahoraSegundos: number;
   /** Fichas de clientes (D53): si viene, un cambio de dirección queda también en el historial del cliente. */
   clientes?: RepositorioClientes;
+  /** Lo que anota el repartidor (fase D, D61): si viene, el reparto lo muestra para seguir el avance. */
+  entregas?: RepositorioEntregas;
 }
 
 const MAX_CUERPO_BYTES = 20_000;
@@ -177,7 +180,10 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       const fecha = url.searchParams.get('fecha');
       if (!esFecha(fecha) || Number.isNaN(Date.parse(`${fecha}T00:00:00Z`))) return error(400, 'Fecha no válida.');
       const reparto = armarReparto(await repositorio.pedidosDelDia(fecha), fecha);
-      if (ruta === '/api/reparto') return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto) });
+      if (ruta === '/api/reparto') {
+        const entregas = ctx.entregas ? Object.fromEntries(await ctx.entregas.deDia(fecha)) : {};
+        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas, motivos: MOTIVOS_NO_ENTREGA });
+      }
       return new Response(csvDeReparto(reparto), {
         status: 200,
         headers: {

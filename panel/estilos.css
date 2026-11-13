@@ -235,3 +235,11 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
 .campo-corto { width: 5.5rem; }
 .titulo-carga { margin: 1rem 0 0.25rem; font-size: 1rem; }
 .titulo-carga.excede { color: var(--peligro); }
+
+/* Panel del repartidor (fase D, D61) */
+.parada-entregado { opacity: 0.75; }
+.parada-no_se_pudo { border-left: 4px solid var(--peligro); }
+.cobrar { font-weight: 600; }
+.formulario-parada { display: grid; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--borde); }
+.formulario-parada select, .formulario-parada input[type="text"] { width: 100%; }
+.formulario-parada label { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
