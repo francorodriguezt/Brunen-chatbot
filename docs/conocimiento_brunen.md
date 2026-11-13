@@ -140,7 +140,8 @@ Lo que el dueño quiere ver en el panel (2026-10-29): pedidos por confirmar (con
 - Lo que más le interesa al dueño: tener el Excel de los pedidos listo y ordenado, subirlo a la plataforma, que el repartidor use la plataforma, que él y Constanza le hagan seguimiento desde ahí y que la plataforma le entregue punto por punto lo que debe repartir.
 - Franco aclaró (2026-10-29): hoy usan Optiroute y con él ven punto por punto dónde va el repartidor, su ubicación en vivo y cuánto demora de un punto a otro. Lo que se busca es crear una plataforma propia que haga las mismas funciones: la ruta con los puntos de la forma más eficiente posible y el seguimiento en vivo del repartidor (D38).
 - Franco pidió que el bot pregunte el nombre, la dirección y, si es un departamento, el edificio, (hecho, D37), y que dé una referencia de la hora de llegada según la programación de la ruta (por diseñar con la plataforma propia, D38).
-- PENDIENTE: nombre exacto y plan de Optiroute (¿es OptimoRoute?) y qué funciones usan; el archivo que suben hoy y quién lo arma; si los sobrantes siempre quedan en el furgón y si la carga lleva margen; qué pasa con un vacío que falta después de justificarlo; a quién se le da la hora de llegada y por qué canal; dirección de la planta (la ruta parte y termina ahí).
+- Plantas (Franco, 2026-11-12): la ruta parte y termina en la planta de Padre Orellana 1989, Santiago. La planta Actum (Isabel La Católica 5019, Las Condes) es la recarga a mitad de ruta cuando hacen falta más bidones.
+- PENDIENTE: nombre exacto y plan de Optiroute (¿es OptimoRoute?) y qué funciones usan; el archivo que suben hoy y quién lo arma; si los sobrantes siempre quedan en el furgón y si la carga lleva margen; qué pasa con un vacío que falta después de justificarlo; a quién se le da la hora de llegada y por qué canal.
 
 ## 16. Segundo cuestionario al dueño y a Constanza (2026-11-10, lo recogió Franco)
 Confirmado:

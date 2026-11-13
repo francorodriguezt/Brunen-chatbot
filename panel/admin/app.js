@@ -676,7 +676,20 @@ async function copiar(texto, mensaje) {
   }
 }
 
-function tarjetaDeParada(parada) {
+/** Lo que anotó el repartidor en esa parada (fase D, D61). */
+function lineasDeEntrega(entrega, motivos, parada) {
+  if (!entrega) return [];
+  const lineas = [];
+  if (entrega.noEntregado && parada.estado !== 'Entregado') {
+    lineas.push(h('span', { clase: 'falta' }, `No se pudo: ${motivos?.[entrega.noEntregado.motivo] ?? entrega.noEntregado.motivo} (${formatoHora.format(new Date(entrega.noEntregado.en * 1000))})`));
+  }
+  if (entrega.entregadoEn) lineas.push(h('span', { clase: 'suave' }, `Entregó a las ${formatoHora.format(new Date(entrega.entregadoEn * 1000))}`));
+  if (entrega.vaciosRetirados !== null) lineas.push(h('span', {}, h('b', {}, 'Retiró: '), `${entrega.vaciosRetirados} ${entrega.vaciosRetirados === 1 ? 'vacío' : 'vacíos'}`));
+  if (entrega.cobrado !== null) lineas.push(h('span', {}, h('b', {}, 'Cobró: '), pesos.format(entrega.cobrado)));
+  return lineas;
+}
+
+function tarjetaDeParada(parada, entrega, motivos) {
   const insignia = ESTADOS[parada.estado] ?? { texto: parada.estado, color: '' };
   const pedido = { id: parada.idPedido, nombre: parada.nombre, telefono: parada.telefono, actualizadoEn: parada.actualizadoEn };
   const entregado = boton('Entregado', 'boton boton-chico boton-principal', () => entregarPedido(pedido));
@@ -701,12 +714,13 @@ function tarjetaDeParada(parada) {
       dato('Cobra', parada.total === null ? h('span', { clase: 'falta' }, 'sin precio') : pesos.format(parada.total)),
       parada.envasesARetirar > 0 ? dato('Retira', `${parada.envasesARetirar} ${parada.envasesARetirar === 1 ? 'envase' : 'envases'}`) : null,
       parada.notas ? dato('Notas', parada.notas) : null,
+      ...lineasDeEntrega(entrega, motivos, parada),
     ),
     h('div', { clase: 'acciones' }, acciones, boton('Ver pedido', 'boton boton-chico', () => verPedido(parada.idPedido))),
   );
 }
 
-function pintarReparto({ reparto, texto, tsv }) {
+function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {} }) {
   const resumen = $('resumen-reparto');
   const lista = $('lista-reparto');
   const titulo = h('h2', { clase: 'titulo-reparto' }, `Reparto del ${fechaLarga(reparto.fecha)}`);
@@ -755,7 +769,8 @@ function pintarReparto({ reparto, texto, tsv }) {
       const titulo = carga
         ? h('h3', { clase: `titulo-carga${carga.excedeFurgon ? ' excede' : ''}` }, `Carga ${carga.numero}: ${carga.totalBidones} bidones${carga.excedeFurgon ? ' (no cabe en un viaje: divídelo)' : ''}`)
         : null;
-      return titulo ? [titulo, tarjetaDeParada(parada)] : [tarjetaDeParada(parada)];
+      const tarjeta = tarjetaDeParada(parada, entregas[parada.idPedido], motivos);
+      return titulo ? [titulo, tarjeta] : [tarjeta];
     }),
   );
 }

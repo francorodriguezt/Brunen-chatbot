@@ -477,3 +477,17 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - No se pudo verificar en una fuente oficial su cupo diario ni si el plan gratis permite uso comercial: la página de planes no carga sin navegador, y una fuente externa dice que el plan estándar ahora sería pagado. Se verifica al crear la cuenta con el correo de Brunen, antes de construirlo.
 - Si OpenRouteService no sirve: ordenar en el propio código con la distancia en línea recta entre coordenadas (vecino más cercano y mejora 2-opt). Para 30 paradas no gasta CPU que importe, no tiene cupo y no cuesta nada; las coordenadas igual hacen falta.
 - Falta del dueño: la dirección de la planta (inicio y fin), qué papel cumple Actum, la hora de salida y cuánto se demora por parada.
+
+### D61 · 2026-11-12 · Panel del repartidor (fase D)
+**El repartidor ve la ruta de hoy en su teléfono, una tarjeta por parada con Navegar, Waze, Llamar, Entregado y No se pudo. El administrador ve el avance en la pestaña Reparto.**
+- Qué ve: lo que hoy se le escribe a mano por WhatsApp, nada más. Nombre, dirección y comuna, teléfono, lo que deja ("3 de 20 L"), los vacíos por retirar, las notas para el reparto y, si paga en efectivo, lo que tiene que cobrar. No ve las observaciones internas ni lo que escribió el cliente. Solo ve los pedidos confirmados de hoy, en el orden del reparto y separados por carga ("Carga 2: recarga en Actum si hace falta").
+- Entregado: pregunta cuántos vacíos retiró y, si era en efectivo, si cobró. El pedido pasa a Entregado, se guarda la hora, los vacíos y lo cobrado, y el pago queda pagado. Se puede corregir el mismo día sin perder el cobro.
+- No se pudo: motivos fijos (no estaba, no encontró la dirección, cerrado, no quiso recibir, otro) y un detalle opcional. El pedido sigue abierto, porque no hay un estado "Reprogramado", y queda un aviso para que Constanza lo reagende o llame al cliente. Si el pedido se mueve a otro día, el intento fallido no cuenta en la ruta nueva.
+- Sin señal: lo marcado se guarda en el teléfono y se envía solo cuando vuelve la conexión, y se sigue viendo la última ruta cargada. Las dos cosas se borran al salir.
+- Navegar y Waze son enlaces con la dirección: no usan ningún servicio pagado. La dirección sale de Brunen solo cuando el repartidor toca el botón, igual que hoy cuando la copia en el mapa.
+- Seguridad: solo un repartidor con su sesión (RUT y clave) usa esta API. Un administrador tiene su propia puerta. Las escrituras exigen la cabecera del panel, que bloquea los envíos desde otro sitio, y solo se aceptan pedidos de hoy.
+- Datos: migración `0011` (`entregado_en`, `vacios_retirados`, `cobrado_en_entrega`, `no_entregado_en`, `no_entregado_motivo` en `pedidos`).
+- No hecho, a propósito:
+  - "Publicar la ruta": el repartidor ve los pedidos de hoy apenas se confirman. Si Constanza confirma más mientras él ya salió, la numeración cambia. Llega con el orden propio de la ruta (fase C/F).
+  - "Iniciar ruta" y "Terminar jornada" llegan con la posición en vivo (fase E), que necesita el consentimiento del repartidor.
+- Plantas (Franco, 2026-11-12): la ruta parte y termina en Padre Orellana 1989, Santiago. Actum (Isabel La Católica 5019, Las Condes) es la recarga a mitad de ruta.

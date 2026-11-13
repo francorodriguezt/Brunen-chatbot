@@ -21,6 +21,8 @@ import { error, manejarApi } from './api';
 import { RepositorioClientes } from '../fichas';
 import { RepositorioFijos } from '../fijos';
 import { manejarClientes } from './clientes-api';
+import { RepositorioEntregas } from '../entregas';
+import { manejarRepartidor } from './repartidor-api';
 import { Cuentas } from './cuentas';
 import { cookieDeSesion, esDelAdministrador, manejarSesionAdmin, manejarSesionPublica, manejarUsuarios, tokenDeCookie, type ContextoDeIngreso } from './ingreso';
 
@@ -97,9 +99,25 @@ async function apiPublica(request: Request, url: URL, env: EntornoPanel, ahoraSe
   const ctx = contexto(request, env, ahoraSegundos);
   if (ctx instanceof Response) return ctx;
   try {
-    return (await manejarSesionPublica(request, url, ctx)) ?? error(404, 'No encontrado.');
+    const deSesion = await manejarSesionPublica(request, url, ctx);
+    if (deSesion) return deSesion;
+    // El repartidor (fase D, D61): solo con la sesión de un repartidor; un administrador usa su propia puerta.
+    if (url.pathname.startsWith('/api/repartidor/')) {
+      const token = tokenDeCookie(request);
+      const sesion = await ctx.cuentas.sesionDe(token, ahoraSegundos);
+      if (sesion?.usuario.rol !== 'repartidor') return error(401, 'Entra con tu RUT y tu clave.');
+      const respuesta = await manejarRepartidor(request, url, {
+        repositorio: ctx.repositorio,
+        entregas: new RepositorioEntregas(env.DB as BaseDatos),
+        ahoraSegundos,
+        nombre: sesion.usuario.nombre,
+      });
+      if (respuesta && sesion.renovada && token) respuesta.headers.append('set-cookie', cookieDeSesion(token, true, ctx.cookieSegura));
+      return respuesta ?? error(404, 'No encontrado.');
+    }
+    return error(404, 'No encontrado.');
   } catch (falla) {
-    console.error('Error en el ingreso:', falla instanceof Error ? falla.message : falla);
+    console.error('Error en el ingreso o en la ruta del repartidor:', falla instanceof Error ? falla.message : falla);
     return error(500, 'No se pudo completar. Intenta de nuevo.');
   }
 }
@@ -123,7 +141,7 @@ async function apiDeAdministracion(request: Request, url: URL, env: EntornoPanel
     const respuesta =
       (await manejarUsuarios(request, interna, { ...ctx, yo: sesion.usuario })) ??
       (await manejarClientes(request, interna, { clientes, repositorio: ctx.repositorio, fijos: new RepositorioFijos(env.DB as BaseDatos), ahoraSegundos })) ??
-      (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes }));
+      (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes, entregas: new RepositorioEntregas(env.DB as BaseDatos) }));
     if (sesion?.renovada && token) respuesta.headers.append('set-cookie', cookieDeSesion(token, true, ctx.cookieSegura));
     return respuesta;
   } catch (falla) {

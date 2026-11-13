@@ -511,6 +511,14 @@ describe('la API: reparto del día', () => {
     expect(datos.tsv.split('\n')).toHaveLength(2);
   });
 
+  it('trae lo que anotó el repartidor en cada parada, para seguir el avance (fase D, D61)', async () => {
+    const { env, db, repositorio } = await entornoPanel();
+    await repositorio.cambiarEstado('P261028-AAAAA', 'Confirmado', 'x@y.test', AHORA);
+    db.sql("UPDATE pedidos SET no_entregado_en = 1793282400, no_entregado_motivo = 'cerrado' WHERE id = 'P261028-AAAAA'");
+    const datos = (await (await pedir(env, '/api/reparto?fecha=2026-10-29')).json()) as { entregas: Record<string, unknown> };
+    expect(datos.entregas['P261028-AAAAA']).toEqual({ vaciosRetirados: null, cobrado: null, entregadoEn: null, noEntregado: { motivo: 'cerrado', en: 1793282400 } });
+  });
+
   it('un día sin entregas responde vacío, no un error', async () => {
     const { env } = await entornoPanel();
     const datos = (await (await pedir(env, '/api/reparto?fecha=2027-01-05')).json()) as { reparto: { paradas: unknown[] } };
