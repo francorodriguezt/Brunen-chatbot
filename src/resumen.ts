@@ -17,6 +17,7 @@ const NOMBRE_INTENCION: Readonly<Record<Intencion, string>> = {
   proveedor: 'proveedor',
   pago: 'aviso de pago',
   envases: 'devolución de envases',
+  cambio: 'cancelar o cambiar un pedido',
   saludo: 'saludo',
   cierre: 'cierre (no se respondería)',
   desconocido: 'no lo entendí',

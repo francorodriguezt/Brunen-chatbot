@@ -50,6 +50,14 @@ describe('calcularTotal', () => {
 });
 
 describe('guardar lo que decide el bot', () => {
+  it('guarda la forma de pago que dijo el cliente; si no la dijo, queda vacía para que la complete una persona', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ formaPago: 'efectivo' }), AHORA);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-BBBBB' }), AHORA);
+    expect((await r.obtenerPedido('P261028-AAAAA'))?.formaPago).toBe('efectivo');
+    expect((await r.obtenerPedido('P261028-BBBBB'))?.formaPago).toBe('');
+  });
+
   it('guarda un pedido con sus líneas y deja el historial', async () => {
     const { r } = repo();
     expect(await r.guardarPedido(pedido(), AHORA)).toBe(true);

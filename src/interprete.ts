@@ -19,7 +19,8 @@ export interface ItemInterpretado {
   cantidad: number | null;
 }
 
-const NOMBRE = /(?:[bv]idon(?:es|ez)?|botellon(?:es)?|garrafon(?:es)?)/.source;
+// "bidoness", "bidonez": se tolera la letra repetida del final, frecuente al escribir rápido.
+const NOMBRE = /(?:[bv]idon(?:e?[sz]+)?|botellon(?:e?s+)?|garrafon(?:e?s+)?)/.source;
 const TIPO = /(?:10|12|20)/.source;
 const UNIDAD = /(?:\s+(?:l|lt|lts|ltr|ltrs|litros?))?/.source;
 
@@ -27,6 +28,12 @@ const UNIDAD = /(?:\s+(?:l|lt|lts|ltr|ltrs|litros?))?/.source;
 const CANTIDAD_Y_TIPO = new RegExp(String.raw`\b(\d{1,3})\s+(?:${NOMBRE}\s+(?:de\s+)?|de\s+)(${TIPO})${UNIDAD}\b`, 'g');
 // "bidon de 20 x 3"
 const TIPO_POR_CANTIDAD = new RegExp(String.raw`\b(?:${NOMBRE}\s+(?:de\s+)?|de\s+)(${TIPO})${UNIDAD}\s+x\s+(\d{1,3})\b`, 'g');
+// "2 x 20", "2x20 lts" (el texto ya viene como "2 x 20"): primero la cantidad, después los litros.
+const CANTIDAD_POR_TIPO = new RegExp(String.raw`\b(\d{1,3})\s+x\s+(${TIPO})${UNIDAD}\b`, 'g');
+// "20 lts x 3": los litros llevan su unidad, así que la cantidad es la otra.
+const TIPO_CON_UNIDAD_POR_CANTIDAD = new RegExp(String.raw`\b(${TIPO})\s+(?:l|lt|lts|ltr|ltrs|litros?)\s+x\s+(\d{1,3})\b`, 'g');
+// "20 x 3": los litros primero y sin unidad. Se aplica después de "2 x 20", así "20 x 20" queda como 20 de 20.
+const TIPO_SUELTO_POR_CANTIDAD = new RegExp(String.raw`\b(${TIPO})\s+x\s+(\d{1,3})\b`, 'g');
 // "4 bidones" (sin tipo)
 const SOLO_CANTIDAD = new RegExp(String.raw`\b(\d{1,3})\s+${NOMBRE}\b`, 'g');
 // "bidon de 20", "bidones de 12 litros" (sin cantidad)
@@ -83,11 +90,14 @@ export function extraerItems(texto: string): ItemInterpretado[] {
 
   aplicar(CANTIDAD_Y_TIPO, ([cantidad = '', litros = '']) => conCantidad(aTipo(litros), cantidad));
   aplicar(TIPO_POR_CANTIDAD, ([litros = '', cantidad = '']) => conCantidad(aTipo(litros), cantidad));
+  aplicar(TIPO_CON_UNIDAD_POR_CANTIDAD, ([litros = '', cantidad = '']) => conCantidad(aTipo(litros), cantidad));
+  aplicar(CANTIDAD_POR_TIPO, ([cantidad = '', litros = '']) => conCantidad(aTipo(litros), cantidad));
+  aplicar(TIPO_SUELTO_POR_CANTIDAD, ([litros = '', cantidad = '']) => conCantidad(aTipo(litros), cantidad));
   aplicar(SOLO_CANTIDAD, ([cantidad = '']) => conCantidad('no_especificado', cantidad));
   aplicar(NOMBRE_Y_TIPO, ([nombre = '', litros = '']) => ({
     tipo: aTipo(litros),
     // "bidon de 20" es uno; "bidones de 20" no dice cuántos.
-    cantidad: /[sz]$/.test(nombre) ? null : 1,
+    cantidad: /[sz]+$/.test(nombre) ? null : 1,
   }));
   aplicar(SOLO_TIPO_CON_UNIDAD, ([litros = '']) => ({ tipo: aTipo(litros), cantidad: null }));
 
@@ -115,11 +125,26 @@ const DIAS_SEMANA: Readonly<Record<string, string>> = {
 
 const MESES = 'enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre';
 const DIA_Y_MES = new RegExp(String.raw`\b\d{1,2} de (?:${MESES})\b`, 'g');
-// "para el 20", "el dia 15"; no cuando es parte de "15/11" o "15 de noviembre".
+// "para el 20", "el dia 15", "2 de 20 el 15"; no cuando es parte de "15/11" o "15 de noviembre", ni cuando el número
+// son litros o bidones ("el 20 lts", "el 12 x 2").
 const DIA_SUELTO = new RegExp(
-  String.raw`\b(?:para el dia|para el|el dia)\s+(\d{1,2})(?![/\d])(?!\s+de\s+(?:${MESES}))\b`,
+  String.raw`\b(?:para el dia|para el|el dia|el)\s+(\d{1,2})(?![/\d])(?!\s+(?:de|l|lt|lts|ltr|ltrs|litros?|x)\b)(?!\s+${NOMBRE}\b)\b`,
   'g',
 );
+// Días que el cliente descarta: "mañana no, el jueves" (mañana) y "el jueves, no el viernes" (viernes). Se buscan en el
+// texto con sus comas, porque sin ellas "no el viernes" podría ser cualquiera de los dos.
+const PALABRA_FECHA = String.raw`(?:pasado manana|manana|hoy|lunes|martes|miercoles|jueves|viernes|sabado|domingo)`;
+const DESCARTADA_POR_NO_DESPUES = new RegExp(String.raw`\b(${PALABRA_FECHA})\s*(?:no|tampoco)\b`, 'g');
+const DESCARTADA_POR_NO_ANTES = new RegExp(String.raw`[,;.]\s*(?:no|tampoco)\s+(?:el\s+|para\s+el\s+|para\s+)?(${PALABRA_FECHA})\b`, 'g');
+
+function fechasDescartadas(texto: string): Set<string> {
+  const conComas = texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ');
+  const fuera = new Set<string>();
+  for (const patron of [DESCARTADA_POR_NO_DESPUES, DESCARTADA_POR_NO_ANTES]) {
+    for (const m of conComas.matchAll(patron)) if (m[1]) fuera.add(m[1]);
+  }
+  return fuera;
+}
 
 /**
  * Cuándo quiere el pedido, como texto ("mañana", "viernes", "15 de noviembre"). No calcula la
@@ -128,10 +153,12 @@ const DIA_SUELTO = new RegExp(
 export function extraerFecha(texto: string): string | undefined {
   const t = preparar(texto);
   const candidatos: Array<{ posicion: number; fecha: string }> = [];
+  const descartadas = fechasDescartadas(texto);
 
   // Toma la primera coincidencia válida de cada patrón; después gana la que aparece antes en el texto.
   const agregar = (patron: RegExp, aFecha: (m: RegExpMatchArray) => string | null) => {
     for (const m of t.matchAll(patron)) {
+      if (descartadas.has(m[0])) continue;
       const fecha = aFecha(m);
       if (fecha) {
         candidatos.push({ posicion: m.index ?? 0, fecha });
@@ -146,7 +173,7 @@ export function extraerFecha(texto: string): string | undefined {
   agregar(/\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/g, (m) => DIAS_SEMANA[m[1] ?? ''] ?? null);
   agregar(DIA_Y_MES, (m) => m[0]);
   agregar(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, (m) => m[0]);
-  agregar(DIA_SUELTO, (m) => `el ${Number(m[1])}`);
+  agregar(DIA_SUELTO, (m) => (Number(m[1]) >= 1 && Number(m[1]) <= 31 ? `el ${Number(m[1])}` : null));
 
   return candidatos.sort((a, b) => a.posicion - b.posicion)[0]?.fecha;
 }
@@ -166,6 +193,7 @@ export type Intencion =
   | 'proveedor'
   | 'pago'
   | 'envases'
+  | 'cambio'
   | 'saludo'
   | 'cierre'
   | 'desconocido';
@@ -188,7 +216,14 @@ export interface Interpretacion {
   envases_a_retirar?: number;
   tipo_pregunta?: TipoPregunta;
   accion?: AccionSugerida;
+  /** Cómo dice que va a pagar, si lo dice con claridad ("pago en efectivo"). Se anota en el pedido. */
+  forma_pago?: FormaDePagoMencionada;
+  /** Pide envases nuevos ("no tengo envases", "con envase nuevo"): es carga inicial, que cuesta más que la recarga. */
+  pide_envase?: true;
 }
+
+/** Las formas de pago que el cliente puede nombrar, con las mismas palabras que usa el panel (D52). */
+export type FormaDePagoMencionada = 'efectivo' | 'transferencia' | 'redcompra';
 
 // ---------------------------------------------------------------------------------------------
 // Validación de ítems que vienen de fuera del intérprete: la respuesta de la IA y la memoria guardada
@@ -267,6 +302,38 @@ const MENCIONA_PRODUCTO = palabras(
 const PEDIR_EXPLICITO = palabras('pedir', 'pido', 'encargar', 'encargo', 'agendar', 'pedido');
 // Hablan de envases propios, no de pedir: "tengo 3 bidones vacios para devolver".
 const DEVOLUCION = palabras('vacio', 'vacios', 'vacia', 'vacias', 'devolver', 'devolucion', 'retirar', 'retiran', 'envase', 'envases');
+// Pide envases nuevos (carga inicial), no devuelve: "2 bidones de 20 con envase nuevo", "no tengo envases".
+const SIN_ENVASE = palabras(
+  'envase nuevo', 'envases nuevos', 'bidon nuevo', 'bidones nuevos', 'sin envase', 'sin envases', 'no tengo envase',
+  'no tengo envases', 'no tengo bidon', 'no tengo bidones', 'con envase', 'con envases', 'carga inicial', 'primera vez',
+);
+// Cancelar, cambiar o mover un pedido que ya hizo: lo ve una persona (no se anota otro pedido encima).
+// En Chile "cancelar" también es pagar ("cancelo en efectivo"): ese uso se quita antes de buscar.
+const CAMBIO = palabras(
+  'cancelar', 'cancela', 'cancelo', 'cancelen', 'cancelame', 'cancelado', 'anular', 'anula', 'anulo', 'anulen',
+  'ya no quiero', 'ya no necesito', 'no quiero el pedido', 'no lo quiero', 'no los quiero',
+  'cambiar el pedido', 'cambiar mi pedido', 'cambiar pedido', 'cambio el pedido', 'cambio de pedido',
+  'modificar el pedido', 'modificar mi pedido', 'modificar pedido', 'corregir el pedido', 'corregir mi pedido',
+  'mejor que sean', 'mejor que sea', 'en vez de', 'en lugar de', 'no voy a estar', 'no estare', 'no vamos a estar',
+  'no estaremos', 'no hay nadie', 'reagendar', 'reagenda', 'reagendame', 'reprogramar', 'reprograma', 'otro dia',
+  'cambiar la fecha', 'cambiar el dia', 'postergar', 'posponer',
+);
+const CANCELAR_ES_PAGAR =
+  /\b(?:como|donde|cuando)\s+(?:puedo\s+|se\s+|les\s+)?cancel\w*|\bcancel\w*\s+(?:con|en|al|contra|por|cuando|apenas|despues|altiro|el total|todo)\b/g;
+const PAGO_EFECTIVO = palabras('efectivo', 'cash', 'en la entrega', 'contra entrega', 'al recibir');
+const PAGO_TRANSFERENCIA = palabras('transferencia', 'transfiero', 'transferire', 'por transferir');
+const PAGO_TARJETA = palabras('tarjeta', 'redcompra', 'debito', 'maquinita');
+
+const CON_FORMA_DE_PAGO: ReadonlySet<Intencion> = new Set<Intencion>(['pedido', 'repetir_pedido', 'desconocido']);
+
+function formaDePago(t: string): FormaDePagoMencionada | undefined {
+  const encontradas = [
+    PAGO_EFECTIVO.test(t) ? 'efectivo' : null,
+    PAGO_TRANSFERENCIA.test(t) ? 'transferencia' : null,
+    PAGO_TARJETA.test(t) ? 'redcompra' : null,
+  ].filter((forma): forma is FormaDePagoMencionada => forma !== null);
+  return encontradas.length === 1 ? encontradas[0] : undefined; // con dos no está claro: lo ve una persona
+}
 
 const PREGUNTA_PRECIO = palabras(
   'cuanto sale', 'cuanto salen', 'cuanto cuesta', 'cuanto cuestan', 'cuanto vale', 'cuanto valen',
@@ -293,6 +360,7 @@ const PREGUNTA_PAGO = palabras(
   'forma de pago', 'formas de pago', 'datos de la cuenta', 'datos para la transferencia',
   'datos de transferencia', 'datos para transferir', 'numero de cuenta', 'cuenta bancaria',
   'aceptan tarjeta', 'aceptan efectivo', 'aceptan transferencia', 'se puede pagar', 'puedo pagar',
+  'como cancelo', 'como puedo cancelar', 'como se cancela', 'donde cancelo', 'forma de cancelar',
   'cuanto me cobraron', 'cuanto les debo', 'cuanto debo', 'cuanto les pague', 'cuanto pague',
 );
 // "llegan a", "despachan hasta", "reparten en": solo es pregunta de zona si además hay una comuna.
@@ -345,6 +413,7 @@ export function accionDePedido(items: readonly ItemInterpretado[]): AccionSugeri
 /**
  * Qué quiere el cliente, según reglas. Orden de decisión (el primero que calza gana):
  *   1. reclamo / factura / proveedor -> escalar a una persona (aunque también pida bidones).
+ *   1b. cancelar, cambiar o mover un pedido -> "cambio", también a una persona (no se anota otro pedido encima).
  *   2. "lo de siempre" sin bidones nombrados -> repetir_pedido.
  *   3. pregunta (precio, zona, horario, pago), salvo que además pida con verbo y cantidad.
  *   4. pedido: bidones nombrados (si no hablan de devolver envases), o un verbo de pedir junto al producto.
@@ -356,16 +425,21 @@ export function interpretar(texto: string): Interpretacion {
   const comuna = detectarComuna(texto);
   const fecha = extraerFecha(texto);
 
+  const pago = formaDePago(t);
+
   const resultado = (intencion: Intencion, extra: Partial<Interpretacion> = {}): Interpretacion => ({
     intencion,
     items,
     ...(fecha !== undefined && { fecha_texto: fecha }),
     ...(comuna !== null && { comuna_mencionada: comuna.nombre }),
+    ...(pago !== undefined && CON_FORMA_DE_PAGO.has(intencion) && { forma_pago: pago }),
     ...extra,
   });
 
   const escalada = RECLAMO.test(t) ? 'reclamo' : FACTURA.test(t) ? 'factura' : PROVEEDOR.test(t) ? 'proveedor' : undefined;
   if (escalada) return resultado(escalada, { accion: 'escalar' });
+
+  if (CAMBIO.test(t.replace(CANCELAR_ES_PAGAR, ' '))) return resultado('cambio', { accion: 'escalar' });
 
   // Una pregunta ("¿cuánto sale lo mismo de siempre?") nunca debe crear un pedido.
   if (REPETIR.test(t) && items.length === 0 && !tipoDePregunta(t, comuna !== null)) return resultado('repetir_pedido');
@@ -378,15 +452,16 @@ export function interpretar(texto: string): Interpretacion {
     return resultado('pregunta', { tipo_pregunta: tipoPregunta });
   }
 
+  const pideEnvases = SIN_ENVASE.test(t);
   const quierePedir =
-    items.length > 0 ? verbo || !DEVOLUCION.test(t) : verbo && (MENCIONA_PRODUCTO.test(t) || PEDIR_EXPLICITO.test(t));
+    items.length > 0 ? verbo || pideEnvases || !DEVOLUCION.test(t) : verbo && (MENCIONA_PRODUCTO.test(t) || PEDIR_EXPLICITO.test(t));
   if (quierePedir) {
     const accion = accionDePedido(items);
-    return resultado('pedido', accion ? { accion } : {});
+    return resultado('pedido', { ...(accion && { accion }), ...(pideEnvases && { pide_envase: true }) });
   }
 
   // Envases vacíos para devolver (regla 5: se anotan para el repartidor). No es un pedido.
-  if (DEVOLUCION.test(t)) {
+  if (DEVOLUCION.test(t) && !pideEnvases) {
     const envases = items.reduce((suma, item) => suma + (item.cantidad ?? 0), 0);
     return { ...resultado('envases'), items: [], ...(envases > 0 && { envases_a_retirar: envases }) };
   }

@@ -332,10 +332,10 @@ export class RepositorioD1 {
     const total = calcularTotal(p.lineas);
     const nuevo =
       (await this.cambios(
-        `INSERT INTO pedidos (id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, actualizado_en)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?2) ON CONFLICT(id) DO NOTHING`,
+        `INSERT INTO pedidos (id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, actualizado_en, forma_pago)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?2, ?14) ON CONFLICT(id) DO NOTHING`,
         p.idPedido, ahoraSegundos, p.telefono, p.nombre, p.comuna, p.direccion, p.fechaEntrega, p.estado,
-        JSON.stringify(p.lineas), total, p.notasRepartidor, p.envasesARetirar, p.observaciones,
+        JSON.stringify(p.lineas), total, p.notasRepartidor, p.envasesARetirar, p.observaciones, p.formaPago ?? '',
       )) > 0;
     if (nuevo) await this.anotarHistorial(p.idPedido, ahoraSegundos, 'bot', 'creado');
     return nuevo;

@@ -29,6 +29,8 @@ export interface PedidoARegistrar {
   notasRepartidor: string;
   envasesARetirar: number;
   observaciones: string;
+  /** Cómo dijo el cliente que va a pagar (D52). Vacío si no lo dijo: lo completa una persona. */
+  formaPago?: 'efectivo' | 'transferencia' | 'redcompra';
 }
 
 /**

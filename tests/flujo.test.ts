@@ -818,3 +818,33 @@ describe('un cliente nuevo da su nombre y su dirección (D37)', () => {
     expect(d.memoria).toEqual({ accion: 'borrar' });
   });
 });
+
+describe('cambios, envases nuevos y forma de pago (mensajes reales mal entendidos)', () => {
+  it('cancelar o cambiar un pedido no anota otro encima: lo ve una persona', async () => {
+    const charla = conversacion();
+    for (const texto of ['cancelar pedido', 'cambiar el pedido a 3 de 20', 'no voy a estar, pueden venir otro dia']) {
+      const d = await charla.decir(texto);
+      expect(d.pedido).toBeUndefined();
+      expect(d.alerta).toMatchObject({ tipo: 'escalamiento', resumen: expect.stringContaining('cancelar, cambiar o mover') });
+    }
+  });
+
+  it('"cancelo en efectivo" es pagar, no cancelar: se anota el pedido con su forma de pago', async () => {
+    const d = await conversacion().decir('2 de 20 para mañana, cancelo en efectivo');
+    expect(d.pedido).toMatchObject({ lineas: [{ tipo: '20L', cantidad: 2 }], formaPago: 'efectivo' });
+  });
+
+  it('con envases nuevos (carga inicial) se anota el pedido, sin prometer el precio de la recarga', async () => {
+    const d = await conversacion().decir('2 bidones de 20 con envase nuevo');
+    expect(d.pedido).toBeDefined();
+    expect(d.respuesta).not.toContain('$');
+    expect(d.alerta?.tipo).toBe('pedido_revision');
+    expect(d.alerta?.motivos.join(' ')).toContain('carga inicial');
+  });
+
+  it('"pago en efectivo" suelto llega a una persona para anotarlo en su pedido', async () => {
+    const d = await conversacion().decir('pago en efectivo');
+    expect(d.pedido).toBeUndefined();
+    expect(d.alerta).toMatchObject({ tipo: 'pago', resumen: expect.stringContaining('efectivo') });
+  });
+});
