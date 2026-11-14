@@ -5,6 +5,7 @@
  */
 
 import { darFormatoAlRut, mostrarIngreso, pedir, registrarAplicacion } from '/ingreso.js';
+import { crearRutaDelDia } from '/admin/mapa.js';
 
 // Cada consulta es una solicitud al Worker (el plan gratis permite 100.000 al día): con la pestaña a la vista se consulta
 // seguido para enterarse rápido de un pedido, y con la pestaña oculta o la ventana tapada, más espaciado.
@@ -799,6 +800,25 @@ async function cargarReparto() {
   if (firma === estado.firmas.reparto) return;
   estado.firmas.reparto = firma;
   pintarReparto(datos);
+  rutaDelDia().actualizar(estado.fechaReparto, $('ruta-del-dia').open);
+}
+
+let rutaDelDiaCreada = null;
+/** La sección del mapa (D63), creada la primera vez que se usa. */
+function rutaDelDia() {
+  rutaDelDiaCreada ??= crearRutaDelDia({
+    contenedor: $('contenido-ruta'),
+    api,
+    h,
+    boton,
+    avisar,
+    // El orden publicado cambia la lista del reparto: se pide de nuevo sin esperar la próxima consulta.
+    alPublicar: () => {
+      estado.firmas.reparto = '';
+      void cargarReparto();
+    },
+  });
+  return rutaDelDiaCreada;
 }
 
 /** Desde el reparto: los pedidos de ese día que todavía nadie confirmó. */
@@ -1483,6 +1503,9 @@ function iniciar() {
   $('reparto-hoy').addEventListener('click', () => elegirDiaDelReparto(hoyEnSantiago()));
   $('reparto-manana').addEventListener('click', () => elegirDiaDelReparto(sumarDias(hoyEnSantiago(), 1)));
   $('fecha-reparto').addEventListener('change', (evento) => elegirDiaDelReparto(evento.currentTarget.value));
+  $('ruta-del-dia').addEventListener('toggle', (evento) => {
+    if (evento.currentTarget.open) rutaDelDia().abrir(estado.fechaReparto || hoyEnSantiago());
+  });
   void cargarOpciones();
 
   $('activar-avisos').addEventListener('click', () => void activarAvisosDelNavegador());

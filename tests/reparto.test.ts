@@ -29,6 +29,7 @@ function pedido(id: string, cambios: Partial<PedidoGuardado> = {}): PedidoGuarda
     documento: '',
     numeroDocumento: '',
     tipoCliente: '',
+    ordenRuta: null,
     ...cambios,
   };
 }
@@ -71,6 +72,7 @@ describe('armarReparto: qué pedidos salen a reparto', () => {
       entregadas: 0,
       sinConfirmar: 0,
       cargas: [],
+      publicada: false,
     });
   });
 });
@@ -243,5 +245,31 @@ describe('cargas del furgón (fase C, D60)', () => {
     const reparto = armarReparto([de20('P1', 10, 'Calle 1'), de20('P2', 80, 'Calle 2'), de20('P3', 5, 'Calle 3')], DIA);
     expect(reparto.cargas.map((c) => [c.desde, c.hasta, c.excedeFurgon])).toEqual([[1, 1, false], [2, 2, true], [3, 3, false]]);
     expect(textoDeReparto(reparto)).toContain('— Carga 2: 80 bidones (no cabe en un viaje) —');
+  });
+});
+
+describe('orden de la ruta publicada (fase C, D63)', () => {
+  const con = (id: string, ordenRuta: number | null, direccion: string, comuna = 'Ñuñoa') => pedido(id, { ordenRuta, direccion, comuna });
+
+  it('sin ruta publicada se ordena por comuna y dirección, como siempre', () => {
+    expect(ids([con('P3', null, 'Calle C'), con('P1', null, 'Calle A'), con('P2', null, 'Calle B')])).toEqual(['P1', 'P2', 'P3']);
+    expect(armarReparto([con('P1', null, 'Calle A')], DIA).publicada).toBe(false);
+  });
+
+  it('con ruta publicada manda su orden, aunque la dirección diga otra cosa', () => {
+    const reparto = armarReparto([con('P1', 3, 'Calle A'), con('P2', 1, 'Calle Z'), con('P3', 2, 'Calle M')], DIA);
+    expect(reparto.paradas.map((p) => p.idPedido)).toEqual(['P2', 'P3', 'P1']);
+    expect(reparto.paradas.map((p) => p.orden)).toEqual([1, 2, 3]);
+    expect(reparto.publicada).toBe(true);
+  });
+
+  it('un pedido que llegó después de publicar va al final, por comuna y dirección', () => {
+    expect(ids([con('P1', 2, 'Calle A'), con('NUEVO-B', null, 'Calle B'), con('P2', 1, 'Calle Z'), con('NUEVO-A', null, 'Calle A')])).toEqual(['P2', 'P1', 'NUEVO-A', 'NUEVO-B']);
+  });
+
+  it('las cargas del furgón siguen el orden publicado', () => {
+    const grande = (id: string, orden: number) => pedido(id, { ordenRuta: orden, lineas: [{ tipo: '20L', cantidad: 30, precioUnitario: 3300, subtotal: 99000 }] });
+    const reparto = armarReparto([grande('A', 3), grande('B', 1), grande('C', 2)], DIA);
+    expect(reparto.paradas.map((p) => [p.idPedido, p.carga])).toEqual([['B', 1], ['C', 1], ['A', 2]]);
   });
 });

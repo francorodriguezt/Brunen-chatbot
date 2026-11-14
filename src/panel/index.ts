@@ -23,6 +23,8 @@ import { RepositorioFijos } from '../fijos';
 import { manejarClientes } from './clientes-api';
 import { RepositorioEntregas } from '../entregas';
 import { manejarRepartidor } from './repartidor-api';
+import { manejarRuta } from './ruta-api';
+import { RepositorioPuntos } from '../puntos';
 import { Cuentas } from './cuentas';
 import { cookieDeSesion, esDelAdministrador, manejarSesionAdmin, manejarSesionPublica, manejarUsuarios, tokenDeCookie, type ContextoDeIngreso } from './ingreso';
 
@@ -49,9 +51,20 @@ function administracionAparte(env: EntornoPanel): string | null {
  * Cabeceras de seguridad de toda respuesta. La política de contenido solo deja correr los scripts y estilos propios
  * (nada en línea ni de terceros) y no permite que otra página muestre la aplicación dentro de un marco. Van aquí y no
  * en un archivo `_headers` para que valgan igual en producción y en local, y para poder probarlas.
+ *
+ * Dos zonas piden un permiso más y solo ellas lo tienen (D63):
+ * - La administración dibuja el mapa de la ruta: sus mosaicos vienen de OpenFreeMap (gratis, sin clave). Por esa dirección
+ *   no sale ninguna dirección ni nombre de cliente; solo se piden los mosaicos de la zona que se está mirando.
+ * - El repartidor puede dejar que el teléfono diga dónde está al confirmar una entrega (una sola lectura).
  */
+const MAPA_EXTERNO = 'https://tiles.openfreemap.org';
+const politica = (imagenes = '', conexiones = ''): string =>
+  `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:${imagenes}; connect-src 'self'${conexiones}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`;
+const POLITICA_BASE = politica();
+// El "worker" del mapa es un archivo propio (/admin/vendor): lo cubre script-src 'self', sin abrir nada más.
+const POLITICA_ADMIN = politica(` blob: ${MAPA_EXTERNO}`, ` ${MAPA_EXTERNO}`);
 const CABECERAS_DE_SEGURIDAD: Readonly<Record<string, string>> = {
-  'content-security-policy': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+  'content-security-policy': POLITICA_BASE,
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'same-origin',
   'permissions-policy': 'camera=(), microphone=(), geolocation=()',
@@ -71,9 +84,13 @@ const ESTATICOS_PUBLICOS: ReadonlySet<string> = new Set([
 ]);
 const ES_ICONO = /^\/iconos\/[a-z0-9-]+\.png$/;
 
-function conCabeceras(respuesta: Response): Response {
+const esDeZona = (ruta: string, zona: string): boolean => ruta === zona || ruta.startsWith(`${zona}/`);
+
+function conCabeceras(respuesta: Response, ruta: string): Response {
   const protegida = new Response(respuesta.body, respuesta); // copia con cabeceras que se pueden cambiar
   for (const [nombre, valor] of Object.entries(CABECERAS_DE_SEGURIDAD)) protegida.headers.set(nombre, valor);
+  if (esDeZona(ruta, '/admin')) protegida.headers.set('content-security-policy', POLITICA_ADMIN);
+  if (esDeZona(ruta, '/repartidor')) protegida.headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=(self)');
   return protegida;
 }
 
@@ -109,6 +126,7 @@ async function apiPublica(request: Request, url: URL, env: EntornoPanel, ahoraSe
       const respuesta = await manejarRepartidor(request, url, {
         repositorio: ctx.repositorio,
         entregas: new RepositorioEntregas(env.DB as BaseDatos),
+        puntos: new RepositorioPuntos(env.DB as BaseDatos),
         ahoraSegundos,
         nombre: sesion.usuario.nombre,
       });
@@ -140,6 +158,7 @@ async function apiDeAdministracion(request: Request, url: URL, env: EntornoPanel
     const clientes = new RepositorioClientes(env.DB as BaseDatos);
     const respuesta =
       (await manejarUsuarios(request, interna, { ...ctx, yo: sesion.usuario })) ??
+      (await manejarRuta(request, interna, { repositorio: ctx.repositorio, puntos: new RepositorioPuntos(env.DB as BaseDatos), ahoraSegundos })) ??
       (await manejarClientes(request, interna, { clientes, repositorio: ctx.repositorio, fijos: new RepositorioFijos(env.DB as BaseDatos), ahoraSegundos })) ??
       (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes, entregas: new RepositorioEntregas(env.DB as BaseDatos) }));
     if (sesion?.renovada && token) respuesta.headers.append('set-cookie', cookieDeSesion(token, true, ctx.cookieSegura));
@@ -178,6 +197,6 @@ async function atender(request: Request, env: EntornoPanel): Promise<Response> {
 
 export default {
   async fetch(request: Request, env: EntornoPanel): Promise<Response> {
-    return conCabeceras(await atender(request, env));
+    return conCabeceras(await atender(request, env), new URL(request.url).pathname);
   },
 };

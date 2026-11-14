@@ -77,6 +77,7 @@ describe('guardar lo que decide el bot', () => {
       documento: '',
       numeroDocumento: '',
       tipoCliente: '',
+      ordenRuta: null,
     });
     expect(await r.historialDe('P261028-AAAAA')).toEqual([{ en: AHORA, quien: 'bot', accion: 'creado', detalle: '' }]);
   });
@@ -789,5 +790,61 @@ describe('lo que pidió la última vez, para "lo de siempre" (D57)', () => {
     expect(await r.itemsDelUltimoPedido('56911111111', AHORA)).toEqual([{ tipo: '20L', cantidad: 4 }]);
     expect(await r.itemsDelUltimoPedido('56922222222', AHORA)).toBeNull();
     expect(await r.itemsDelUltimoPedido('56911111111', AHORA + 2 * 365 * 24 * 3600)).toBeNull();
+  });
+});
+
+describe('publicar el orden de la ruta (fase C, D63)', () => {
+  const FECHA = '2026-10-29';
+  async function conTres() {
+    const { db, r } = repo();
+    for (const [id, dir] of [['P261028-AAAAA', 'Calle A'], ['P261028-BBBBB', 'Calle B'], ['P261028-CCCCC', 'Calle C']] as const) {
+      await r.guardarPedido(pedido({ idPedido: id, direccion: dir, estado: 'Confirmado' as never }), AHORA);
+    }
+    await r.guardarPedido(pedido({ idPedido: 'P261028-DDDDD', fechaEntrega: '2026-10-30', estado: 'Confirmado' as never }), AHORA);
+    return { db, r };
+  }
+
+  it('guarda la posición de cada parada y deja la versión del pedido como estaba', async () => {
+    const { db, r } = await conTres();
+    const antes = (await r.obtenerPedido('P261028-AAAAA'))?.actualizadoEn;
+    expect(await r.publicarOrdenDeRuta(FECHA, ['P261028-CCCCC', 'P261028-AAAAA', 'P261028-BBBBB'])).toBe(3);
+    expect(db.sql("SELECT id, orden_ruta FROM pedidos WHERE fecha_entrega = '2026-10-29' ORDER BY orden_ruta")).toEqual([
+      { id: 'P261028-CCCCC', orden_ruta: 1 },
+      { id: 'P261028-AAAAA', orden_ruta: 2 },
+      { id: 'P261028-BBBBB', orden_ruta: 3 },
+    ]);
+    expect((await r.obtenerPedido('P261028-AAAAA'))?.actualizadoEn).toBe(antes);
+    expect((await r.obtenerPedido('P261028-AAAAA'))?.ordenRuta).toBe(2);
+  });
+
+  it('publicar de nuevo reemplaza el orden anterior, y no toca pedidos de otro día', async () => {
+    const { db, r } = await conTres();
+    await r.publicarOrdenDeRuta('2026-10-30', ['P261028-DDDDD']);
+    await r.publicarOrdenDeRuta(FECHA, ['P261028-AAAAA', 'P261028-BBBBB', 'P261028-CCCCC']);
+    await r.publicarOrdenDeRuta(FECHA, ['P261028-BBBBB']);
+    expect(db.sql("SELECT id, orden_ruta FROM pedidos ORDER BY id")).toEqual([
+      { id: 'P261028-AAAAA', orden_ruta: null },
+      { id: 'P261028-BBBBB', orden_ruta: 1 },
+      { id: 'P261028-CCCCC', orden_ruta: null },
+      { id: 'P261028-DDDDD', orden_ruta: 1 },
+    ]);
+  });
+
+  it('ignora ids que no son de ese día, y con una lista vacía quita la ruta publicada', async () => {
+    const { db, r } = await conTres();
+    expect(await r.publicarOrdenDeRuta(FECHA, ['P261028-AAAAA', 'P261028-DDDDD', 'P000000-ZZZZZ'])).toBe(1);
+    expect(await r.publicarOrdenDeRuta(FECHA, [])).toBe(0);
+    expect(db.sql('SELECT COUNT(*) AS n FROM pedidos WHERE orden_ruta IS NOT NULL')).toEqual([{ n: 0 }]);
+  });
+
+  it('con más paradas de las que caben en una consulta no publica a medias: falla sin tocar el orden anterior', async () => {
+    const { db, r } = await conTres();
+    await r.publicarOrdenDeRuta(FECHA, ['P261028-BBBBB', 'P261028-AAAAA']);
+    const demasiadas = Array.from({ length: 91 }, (_, i) => `P261028-${String(i).padStart(5, '0')}`);
+    await expect(r.publicarOrdenDeRuta(FECHA, demasiadas)).rejects.toThrow(RangeError);
+    expect(db.sql('SELECT id, orden_ruta FROM pedidos WHERE orden_ruta IS NOT NULL ORDER BY orden_ruta')).toEqual([
+      { id: 'P261028-BBBBB', orden_ruta: 1 },
+      { id: 'P261028-AAAAA', orden_ruta: 2 },
+    ]);
   });
 });

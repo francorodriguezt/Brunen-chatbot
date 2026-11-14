@@ -237,12 +237,15 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
 .titulo-carga.excede { color: var(--peligro); }
 
 /* Panel del repartidor (fase D, D61) */
+.nota-ubicacion { margin: -0.2rem 0 0.2rem; font-size: 0.85rem; }
 .parada-entregado { opacity: 0.75; }
 .parada-no_se_pudo { border-left: 4px solid var(--peligro); }
 .cobrar { font-weight: 600; }
 .formulario-parada { display: grid; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--borde); }
 .formulario-parada select, .formulario-parada input[type="text"] { width: 100%; }
 .formulario-parada label { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.formulario-parada label:has(input[type="checkbox"]) { flex-wrap: nowrap; min-height: 44px; }
+.formulario-parada input[type="checkbox"] { flex: none; width: 1.5rem; height: 1.5rem; margin: 0; }
 
 /* Celular (D63): las 5 pestañas caben en 375 px y los toques se pueden acertar con el pulgar */
 @media (max-width: 520px) {
@@ -251,7 +254,23 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
   .contador { min-width: 1.2rem; padding: 0 0.3rem; font-size: 0.72rem; line-height: 1.2rem; }
 }
 @media (pointer: coarse) {
-  .boton-chico, .filtros button, .formulario-parada select, .formulario-parada input { min-height: 44px; }
+  .boton-chico, .filtros button, .formulario-parada select, .formulario-parada input:not([type="checkbox"]) { min-height: 44px; }
   .cliente a { display: inline-block; padding: 0.6rem 0; }
   .ingreso a { display: inline-block; padding: 0.7rem 0; }
 }
+
+/* Ruta eficiente y mapa (fase C, D63) */
+.ruta-del-dia { margin: 0 0 1rem; padding: 0.75rem 1rem; border: 1px solid var(--borde); border-radius: 12px; background: var(--superficie); }
+.ruta-del-dia > summary { cursor: pointer; font-weight: 600; min-height: 1.75rem; }
+.ruta-del-dia[open] > summary { margin-bottom: 0.5rem; }
+.ruta-cabecera .acciones { margin: 0.5rem 0; }
+.nota-ruta { font-size: 0.85rem; margin: 0.25rem 0; }
+.mapa-ruta { height: 340px; margin: 0.6rem 0; border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; }
+.mapa-ruta.ubicando { outline: 3px solid var(--aviso-borde); }
+.mapa-ruta.ubicando .maplibregl-canvas-container { cursor: crosshair; }
+.marcador { display: grid; place-items: center; min-width: 1.7rem; height: 1.7rem; padding: 0 0.25rem; border: 2px solid #ffffff; border-radius: 999px; background: #0b6cb0; color: #ffffff; font: 700 0.8rem/1 system-ui, sans-serif; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+.marcador.deposito { border-radius: 6px; background: #14202b; }
+.marcador.aproximado { border: 2px dashed #0b6cb0; background: #ffffff; color: #0b6cb0; }
+.parada-ruta .falta { margin: 0.25rem 0 0; font-size: 0.9rem; }
+.fin-ruta { margin: 0.5rem 0 0; }
+#contenido-ruta .revision, .parada-ruta { scroll-margin-top: 7.5rem; } /* que no queden bajo la barra de pestañas */

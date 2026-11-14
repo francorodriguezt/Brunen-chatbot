@@ -54,6 +54,8 @@ export interface PedidoGuardado {
   documento: Documento | '';
   numeroDocumento: string;
   tipoCliente: TipoDeCliente | '';
+  /** Posición de la parada en la ruta publicada de su día (fase C, D63); null = sin publicar. */
+  ordenRuta: number | null;
 }
 
 /**
@@ -245,6 +247,7 @@ function aPedido(fila: Record<string, unknown>): PedidoGuardado {
     documento: texto(fila.documento) as Documento | '',
     numeroDocumento: texto(fila.numero_documento),
     tipoCliente: texto(fila.tipo_cliente) as TipoDeCliente | '',
+    ordenRuta: typeof fila.orden_ruta === 'number' ? fila.orden_ruta : null,
   };
 }
 
@@ -271,7 +274,7 @@ const TIPOS_DE_PEDIDO_SQL = TIPOS_DE_AVISO_DE_PEDIDO.map((tipo) => `'${tipo}'`).
 
 // `mensaje_cliente`: lo que escribió al hacer el pedido, del aviso que nació con él (no de un reclamo o pago posterior).
 const COLUMNAS_PEDIDO = `id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, fecha_confirmada, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, confirmado_por, actualizado_en,
-  forma_pago, estado_pago, documento, numero_documento, tipo_cliente,
+  forma_pago, estado_pago, documento, numero_documento, tipo_cliente, orden_ruta,
   (SELECT texto FROM avisos WHERE avisos.id_pedido = pedidos.id AND avisos.tipo IN (${TIPOS_DE_PEDIDO_SQL}) AND avisos.texto != '' ORDER BY avisos.id LIMIT 1) AS mensaje_cliente`;
 
 export interface FiltroDePedidos {
@@ -298,6 +301,9 @@ export const SQL_RESUMEN = `SELECT
   (SELECT COUNT(*) FROM avisos WHERE estado = 'abierto' AND tipo NOT IN (${TIPOS_DE_PEDIDO_SQL})) AS avisos_abiertos,
   (SELECT COALESCE(MAX(actualizado_en), 0) FROM pedidos) AS ultima_actualizacion,
   (SELECT COALESCE(MAX(id), 0) FROM avisos) AS ultimo_aviso`;
+
+/** Paradas que caben en una ruta publicada: una consulta de D1 admite 100 valores. */
+export const MAXIMO_DE_PARADAS_PUBLICADAS = 90;
 
 export class RepositorioD1 {
   constructor(
@@ -443,6 +449,28 @@ export class RepositorioD1 {
       .filter((l): l is ItemPedido => (l.tipo === '20L' || l.tipo === '12L' || l.tipo === '10L') && Number.isInteger(l.cantidad) && (l.cantidad as number) > 0)
       .map((l) => ({ tipo: l.tipo, cantidad: l.cantidad }));
     return items.length > 0 ? items : null;
+  }
+
+  /**
+   * Publica el orden de la ruta de un día (fase C, D63): la posición de cada pedido (1, 2, 3...) y quita la de los que no
+   * están en la lista. Solo toca pedidos de ese día. No cambia la versión del pedido (`actualizado_en`): reordenar la
+   * ruta no es editar el pedido. Devuelve cuántos quedaron con posición. Es una sola consulta: se aplica entera o no se aplica.
+   */
+  async publicarOrdenDeRuta(fecha: string, ids: readonly string[]): Promise<number> {
+    const unicos = [...new Set(ids)];
+    // D1 admite 100 valores por consulta (la fecha más un id por parada); el Excel real tiene 30 paradas al día como máximo.
+    if (unicos.length > MAXIMO_DE_PARADAS_PUBLICADAS) throw new RangeError(`Una ruta publicada admite hasta ${MAXIMO_DE_PARADAS_PUBLICADAS} paradas`);
+    // Una sola consulta: el orden anterior se borra y el nuevo se escribe juntos, o no cambia nada.
+    const casos = unicos.map((_, i) => `WHEN ?${i + 2} THEN ${i + 1}`).join(' ');
+    const filas = await this.filas(
+      `UPDATE pedidos SET orden_ruta = ${unicos.length > 0 ? `CASE id ${casos} ELSE NULL END` : 'NULL'}
+       WHERE COALESCE(fecha_confirmada, fecha_entrega) = ?1
+         AND (orden_ruta IS NOT NULL${unicos.length > 0 ? ` OR id IN (${unicos.map((_, i) => `?${i + 2}`).join(', ')})` : ''})
+       RETURNING orden_ruta`,
+      fecha,
+      ...unicos,
+    );
+    return filas.filter((f) => f.orden_ruta !== null).length;
   }
 
   // ---- Lo que lee y cambia el panel ----

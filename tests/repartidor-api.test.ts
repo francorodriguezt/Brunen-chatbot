@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import panel, { type EntornoPanel } from '../src/panel';
 import { Cuentas } from '../src/panel/cuentas';
 import type { PedidoARegistrar } from '../src/pedidos';
+import { RepositorioPuntos } from '../src/puntos';
 import { RepositorioD1 } from '../src/repositorio';
 import { crearBaseSqlite } from './ayudas';
 
@@ -67,6 +68,7 @@ interface Parada {
   cobrar: number | null;
   vaciosRetirados: number | null;
   motivo: string | null;
+  punto: { lat: number; lng: number; afinar: boolean } | null;
   [clave: string]: unknown;
 }
 
@@ -116,5 +118,42 @@ describe('lo que marca el repartidor', () => {
   it('un administrador no marca entregas por esta puerta', async () => {
     const { env, administrador } = await entorno();
     expect((await pedir(env, '/api/repartidor/pedidos/P261113-AAAAA/entregado', administrador, { vacios: 0, cobrado: false })).status).toBe(401);
+  });
+});
+
+describe('el repartidor y el mapa (fase C, D63)', () => {
+  it('cada parada trae su punto exacto si se conoce (para que Navegar lo use), y nunca uno aproximado', async () => {
+    const { env, db, repartidor } = await entorno();
+    await new RepositorioPuntos(db).guardar('Calle Falsa 123', 'Ñuñoa', { lat: -33.4569, lng: -70.5976, origen: 'manual' }, AHORA);
+    const paradas = (await ruta(env, repartidor)).paradas;
+    expect(paradas.find((p) => p.idPedido === 'P261113-AAAAA')?.punto).toEqual({ lat: -33.4569, lng: -70.5976, afinar: false });
+    expect(paradas.find((p) => p.idPedido === 'P261113-BBBBB')?.punto).toBeNull();
+  });
+
+  it('un punto de un GPS poco preciso se marca para afinarlo en la próxima entrega; uno preciso o uno a mano, no', async () => {
+    const { env, db, repartidor } = await entorno();
+    const puntos = new RepositorioPuntos(db);
+    await puntos.guardar('Calle Falsa 123', 'Ñuñoa', { lat: -33.4569, lng: -70.5976, origen: 'repartidor', precisionM: 60 }, AHORA);
+    await puntos.guardar('Calle Otra 9', 'Ñuñoa', { lat: -33.458, lng: -70.599, origen: 'repartidor', precisionM: 12 }, AHORA);
+    const paradas = (await ruta(env, repartidor)).paradas;
+    expect(paradas.find((p) => p.idPedido === 'P261113-AAAAA')?.punto?.afinar).toBe(true);
+    expect(paradas.find((p) => p.idPedido === 'P261113-BBBBB')?.punto?.afinar).toBe(false);
+  });
+
+  it('al entregar con un GPS preciso el teléfono enseña el punto; con uno impreciso no', async () => {
+    const { env, db, repartidor } = await entorno();
+    const gps = (precision: number) => ({ vacios: 0, cobrado: false, lat: -33.457, lng: -70.598, precision });
+    expect((await pedir(env, '/api/repartidor/pedidos/P261113-BBBBB/entregado', repartidor, gps(300))).status).toBe(200);
+    expect((await new RepositorioPuntos(db).deDirecciones([{ direccion: 'Calle Otra 9', comuna: 'Ñuñoa' }])).size).toBe(0);
+    expect((await pedir(env, '/api/repartidor/pedidos/P261113-AAAAA/entregado', repartidor, gps(15))).status).toBe(200);
+    const aprendido = await new RepositorioPuntos(db).deDirecciones([{ direccion: 'Calle Falsa 123', comuna: 'Ñuñoa' }]);
+    expect([...aprendido.values()][0]).toMatchObject({ lat: -33.457, lng: -70.598, origen: 'repartidor', precisionM: 15 });
+  });
+
+  it('entregar sin GPS, o con un GPS fuera de la región, funciona igual y no guarda nada', async () => {
+    const { env, db, repartidor } = await entorno();
+    expect((await pedir(env, '/api/repartidor/pedidos/P261113-AAAAA/entregado', repartidor, { vacios: 0, cobrado: false, lat: 10, lng: 10, precision: 5 })).status).toBe(200);
+    expect((await pedir(env, '/api/repartidor/pedidos/P261113-BBBBB/entregado', repartidor, { vacios: 0, cobrado: false })).status).toBe(200);
+    expect(db.sql('SELECT COUNT(*) AS n FROM puntos')).toEqual([{ n: 0 }]);
   });
 });
