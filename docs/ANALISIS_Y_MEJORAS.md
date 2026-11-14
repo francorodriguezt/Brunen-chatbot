@@ -116,7 +116,7 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 ### I. Operación 🔴
 - **I1 (Must).** Telegram sin configurar: las fallas y reclamos urgentes quedan solo en la base.
 - **I2 (Should).** Resumen diario por Telegram: pedidos del día, sin confirmar, entregados, cobrado.
-- **I3 (Should).** Guía de incidentes: qué hacer si vence el token de WhatsApp, si cae la base, si Meta cae.
+- **I3 (Should, hecho el 2026-11-14: docs/INCIDENTES.md).** Guía de incidentes: qué hacer si vence el token de WhatsApp, si cae la base, si Meta cae.
 - **I4 (Should).** Documentar el regreso a la versión anterior (`wrangler rollback`).
 - **I5 (Could).** `/salud` solo responde "ok": no revisa la base.
 
@@ -145,7 +145,7 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 | R1 | La coexistencia del número de WhatsApp no se resuelve | Alta | Alto | Decidir entre un proveedor autorizado o ser Tech Provider; mientras, el bot queda en prueba (D45) |
 | R2 | Sin Telegram ni panel, los avisos urgentes no los ve nadie | Alta | Alto | Publicar y configurar antes de abrir el bot a clientes |
 | R3 | Pérdida de datos por una falla de la base | Baja | Alto | Respaldos automáticos (B1) y restauración probada |
-| R4 | Una sola persona conoce el sistema | Media | Alto | Documentación ya extensa; falta una guía de incidentes (I3) y entrenar a Constanza |
+| R4 | Una sola persona conoce el sistema | Media | Alto | Documentación extensa y guía de incidentes (docs/INCIDENTES.md); falta entrenar a Constanza |
 | R5 | Cambios en precios o política de Meta | Media | Medio | Un mensaje por pedido; vigilar el uso |
 | R6 | Ley 21.719 | Media | Medio | H2, antes de diciembre o de la nueva fecha |
 | R7 | Se pasa del límite diario de escrituras de la base | Baja | Alto | Cargar el historial una sola vez; aviso de uso (B3) |

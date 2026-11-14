@@ -30,6 +30,8 @@ anterior): `npx wrangler d1 time-travel restore brunen-chatbot --timestamp=…`.
 1. Descarga el respaldo:
    - de la planilla: hoja `RESPALDO_PEDIDOS`, *Archivo > Descargar > Valores separados por comas (.csv)*; o
    - del panel: *Equipo > Descargar todos los pedidos (Excel)*.
+   Usa el archivo **tal como se descargó**: si lo abres en Excel y lo vuelves a guardar, Excel cambia las fechas y los
+   números largos, y esas filas se descartan. Para mirarlo, abre una copia.
 2. Arma el SQL. Imprime solo totales, sin datos de clientes:
 
    ```bash
