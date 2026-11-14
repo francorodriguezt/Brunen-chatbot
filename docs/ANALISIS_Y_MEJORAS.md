@@ -61,7 +61,7 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 
 ### A. Bot de WhatsApp 🟢
 - Fuerte: una respuesta por pedido, escalamiento ante la duda, reconoce clientes por ficha, no se cae si Google falla, reintenta un envío fallido, responde 200 a Meta siempre.
-- **A1 (Must).** El corpus de regresión tiene **2 casos** (`tests/mensajes.json`). Para llegar a "infalible", cada mensaje que el bot escala como "no entendido" se anota anonimizado, y se mide el porcentaje que entiende. Es la mejora que más sube la calidad.
+- **A1 (Must, avanzado el 2026-11-14, D64).** El corpus de regresión pasó de 54 a 83 casos (`tests/mensajes.json`) y se corrigieron 9 formas de escribir que el bot entendía mal. Falta lo principal: sumar los mensajes reales. Para llegar a "infalible", cada mensaje que el bot escala como "no entendido" se anota anonimizado, y se mide el porcentaje que entiende. Es la mejora que más sube la calidad.
 - **A2 (Should).** Botones de respuesta en el mismo mensaje ("Sí, es esa dirección" o "Cambiar"). Es el mismo mensaje, así que no sube el costo, pero Meta cuenta los mensajes de servicio desde el 1 de octubre. Falta comprobar que el número compartido con la app acepta botones.
 - **A3 (Could).** Los números de pedido salen de un hash de 32 bits (60 millones de combinaciones por día). Si dos pedidos chocaran, el segundo se descartaría sin aviso. La probabilidad es de una vez cada 100 años a 50 pedidos diarios, pero el arreglo es de 3 líneas.
 - **A4 (Could).** `igualesTiempoConstante` sale antes si el largo difiere. La guía de Workers pide comparar la huella de ambos con `crypto.subtle.timingSafeEqual`.
@@ -76,8 +76,8 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 ### C. Panel del administrador 🟡
 - Fuerte: bandeja clara, estados con color, historial, búsqueda, dos pestañas nuevas (Clientes, Reparto) y avance en vivo de las entregas.
 - **Corregido hoy:** en un celular de 375 px las 5 pestañas medían 506 px: "Avisos" y "Equipo" quedaban fuera de pantalla y la página se desbordaba. Ahora caben. Los botones y enlaces se agrandan a 44 px en pantallas táctiles (los enlaces de teléfono medían 23 px de alto).
-- **C1 (Should).** "Nuevo pedido" tiene 20 campos y ocupa dos pantallas de celular. Una versión rápida (teléfono, cantidad y tamaño, dirección) con "más datos" plegado, y un cuadro para **pegar el mensaje del cliente** que rellena el formulario con el intérprete que ya existe. Ataca directo el dolor de anotar a mano.
-- **C2 (Should).** Cuadre de caja diario: lo que el repartidor cobró contra lo que debía cobrar. Los datos ya se guardan.
+- **C1 (Should, hecho el 2026-11-14, D64: pegar el mensaje llena el formulario).** "Nuevo pedido" tiene 20 campos y ocupa dos pantallas de celular. Una versión rápida (teléfono, cantidad y tamaño, dirección) con "más datos" plegado, y un cuadro para **pegar el mensaje del cliente** que rellena el formulario con el intérprete que ya existe. Ataca directo el dolor de anotar a mano.
+- **C2 (Should, hecho el 2026-11-14, D64: "Cierre del día" en Reparto).** Cuadre de caja diario: lo que el repartidor cobró contra lo que debía cobrar. Los datos ya se guardan.
 - **C3 (Should).** Tablero simple con lo que el dueño pidió: bidones por día, semana y mes, y envases pendientes.
 - **C4 (Should).** Aviso por Telegram de pedidos sin confirmar pasados 30 minutos en horario de atención.
 - **C5 (Could).** Deshacer después de cancelar o confirmar por error.
@@ -85,7 +85,7 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 
 ### D. Panel del repartidor 🟢
 - Fuerte: 27 controles, todos de 44 px o más; cola sin señal; no ve datos internos.
-- **D1 (Should).** Mantener la pantalla encendida mientras la ruta está abierta (función "wake lock"). En iPhone hay que probarlo con la aplicación instalada.
+- **D1 (Should, hecho el 2026-11-14, D64).** Mantener la pantalla encendida mientras la ruta está abierta (función "wake lock"). En iPhone hay que probarlo con la aplicación instalada.
 - **D2 (Info).** iPhone no tiene sincronización en segundo plano. El diseño actual, que envía al abrir y al volver la señal, es el correcto.
 - **D3 (Later).** Prueba de entrega con foto: no cabe en el plan gratis de forma razonable; la hora, los vacíos y el punto del teléfono cubren lo esencial.
 

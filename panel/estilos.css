@@ -238,6 +238,8 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
 
 /* Panel del repartidor (fase D, D61) */
 .nota-ubicacion { margin: -0.2rem 0 0.2rem; font-size: 0.85rem; }
+.pantalla-encendida { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; min-height: 44px; }
+.pantalla-encendida input { width: 1.4rem; height: 1.4rem; margin: 0; }
 .parada-entregado { opacity: 0.75; }
 .parada-no_se_pudo { border-left: 4px solid var(--peligro); }
 .cobrar { font-weight: 600; }
@@ -274,3 +276,15 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
 .parada-ruta .falta { margin: 0.25rem 0 0; font-size: 0.9rem; }
 .fin-ruta { margin: 0.5rem 0 0; }
 #contenido-ruta .revision, .parada-ruta { scroll-margin-top: 7.5rem; } /* que no queden bajo la barra de pestañas */
+
+/* Pedido rápido (D64): pegar el mensaje del cliente llena el formulario */
+.pegar-mensaje { display: grid; gap: 0.4rem; margin: 0 0 0.75rem; padding: 0.6rem 0.75rem; border: 1px dashed var(--borde); border-radius: 10px; background: var(--acento-suave); }
+.pegar-mensaje label { font-weight: 600; }
+.pegar-mensaje textarea { width: 100%; }
+.pegar-mensaje .boton { justify-self: start; }
+.avisos-pegado { margin: 0; padding-left: 1.1rem; color: var(--aviso); font-size: 0.9rem; }
+
+/* Cierre del día (D64) */
+.cierre-dia { margin: 0.6rem 0; padding: 0.6rem 0.8rem; border: 1px solid var(--borde); border-radius: 10px; background: var(--superficie); }
+.cierre-dia h3 { margin: 0 0 0.3rem; font-size: 1rem; }
+.cierre-dia ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.2rem; }

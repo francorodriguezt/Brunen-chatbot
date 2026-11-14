@@ -717,6 +717,23 @@ describe('la API: reconocer al cliente por su teléfono', () => {
   });
 });
 
+describe('la API: pedido rápido con el mensaje pegado (D64)', () => {
+  it('lee el mensaje con el intérprete del bot y no guarda nada', async () => {
+    const { env, repositorio } = await entornoPanel();
+    const antes = (await repositorio.listarPedidos()).length;
+    const r = await pedir(env, '/api/pedidos/interpretar', { metodo: 'POST', cuerpo: { texto: '[10:32, 28/10/2026] +56 9 1111 2222: 3 de 20, pago en efectivo' } });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ telefono: '56911112222', lineas: [{ tipo: '20L', cantidad: 3 }], formaPago: 'efectivo' });
+    expect((await repositorio.listarPedidos()).length).toBe(antes);
+  });
+
+  it('sin texto, o sin la cabecera del panel, se rechaza', async () => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, '/api/pedidos/interpretar', { metodo: 'POST', cuerpo: { texto: '  ' } })).status).toBe(400);
+    expect((await pedir(env, '/api/pedidos/interpretar', { metodo: 'POST', cuerpo: { texto: '2 de 20' }, cabeceras: { 'x-panel': '' } })).status).not.toBe(200);
+  });
+});
+
 describe('la API: la versión del pedido que la pantalla estaba mostrando', () => {
   it('con la versión al día, confirma', async () => {
     const { env } = await entornoPanel();

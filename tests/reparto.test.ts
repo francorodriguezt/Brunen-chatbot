@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { armarReparto, csvDeReparto, textoDeReparto, tsvDeReparto } from '../src/reparto';
+import { armarReparto, csvDeReparto, mensajeDeParada, textoDeReparto, tsvDeReparto } from '../src/reparto';
 import type { PedidoGuardado } from '../src/repositorio';
 
 const DIA = '2026-11-10'; // martes
@@ -271,5 +271,25 @@ describe('orden de la ruta publicada (fase C, D63)', () => {
     const grande = (id: string, orden: number) => pedido(id, { ordenRuta: orden, lineas: [{ tipo: '20L', cantidad: 30, precioUnitario: 3300, subtotal: 99000 }] });
     const reparto = armarReparto([grande('A', 3), grande('B', 1), grande('C', 2)], DIA);
     expect(reparto.paradas.map((p) => [p.idPedido, p.carga])).toEqual([['B', 1], ['C', 1], ['A', 2]]);
+  });
+});
+
+describe('mensajeDeParada: un mensaje por parada, como el que hoy se escribe a mano (D64)', () => {
+  it('número y nombre, dirección con notas, teléfono, y lo que deja con lo que cobra en efectivo', () => {
+    const [parada] = armarReparto(
+      [pedido('P261109-AAAAA', { notasRepartidor: 'Portería', envasesARetirar: 2, formaPago: 'efectivo', lineas: [{ tipo: '20L', cantidad: 15, precioUnitario: 2750, subtotal: 41250 }], total: 41250 })],
+      DIA,
+    ).paradas;
+    expect(mensajeDeParada(parada!)).toBe('1. Ana Prueba\nCalle Falsa 123, Ñuñoa. Portería\n+56955550001\n15 de 20 L · retirar 2 envases · *efectivo $41.250*');
+  });
+
+  it('por transferencia, o en efectivo ya pagado, no dice que cobre', () => {
+    const paradas = armarReparto([pedido('P261109-AAAAA', { formaPago: 'transferencia' }), pedido('P261109-BBBBB', { formaPago: 'efectivo', estadoPago: 'pagado', direccion: 'Otra 1' })], DIA).paradas;
+    expect(paradas.map((p) => p.cobrarEnEfectivo)).toEqual([null, null]);
+    for (const p of paradas) expect(mensajeDeParada(p)).not.toContain('efectivo');
+  });
+
+  it('la lista para copiar también marca lo que se cobra en efectivo', () => {
+    expect(textoDeReparto(armarReparto([pedido('P261109-AAAAA', { formaPago: 'efectivo' })], DIA))).toContain('*efectivo $6.600*');
   });
 });
