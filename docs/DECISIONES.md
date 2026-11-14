@@ -491,3 +491,27 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
   - "Publicar la ruta": el repartidor ve los pedidos de hoy apenas se confirman. Si Constanza confirma más mientras él ya salió, la numeración cambia. Llega con el orden propio de la ruta (fase C/F).
   - "Iniciar ruta" y "Terminar jornada" llegan con la posición en vivo (fase E), que necesita el consentimiento del repartidor.
 - Plantas (Franco, 2026-11-12): la ruta parte y termina en Padre Orellana 1989, Santiago. Actum (Isabel La Católica 5019, Las Condes) es la recarga a mitad de ruta.
+
+### D62 · 2026-11-13 · Investigación: OpenRouteService y opciones para la ruta, el mapa y el seguimiento
+**Franco pidió investigar OpenRouteService a fondo y otras opciones para el panel. Esto corrige a D60 y deja una recomendación; todavía no se construye nada.**
+- Qué es: un servicio de rutas de código abierto del instituto HeiGIT (Universidad de Heidelberg). Repositorio `GIScience/openrouteservice` (licencia GPL-3.0, activo, versión 10.1.0 de octubre de 2026). Para ordenar paradas usa VROOM (`VROOM-Project/vroom`, licencia BSD-2-Clause).
+- Plan gratis (Standard), verificado en su página de planes (https://account.heigit.org/info/plans): 500 optimizaciones, 3.000 geocodificaciones, 2.000 rutas y 500 matrices al día. D60 decía que no se pudo verificar y que podría ser de pago: es gratis.
+- Límites por consulta de la optimización: 3 vehículos y 50 paradas (https://giscience.github.io/openrouteservice/hosted-api-restrictions). Brunen tiene unas 14 paradas al día y 30 como máximo.
+- Términos de servicio (https://account.heigit.org/info/tos):
+  - No restringen el uso comercial. Piden atribuir a OpenStreetMap y no dan garantía de disponibilidad.
+  - **Prohíben transmitir datos personales.** La dirección de un cliente lo es. Geocodificar direcciones ahí choca con sus términos y con D32 (las direcciones no salen de Brunen). El geocodificador público de OpenStreetMap, Nominatim, pide lo mismo y además limita a 1 consulta por segundo (https://operations.osmfoundation.org/policies/nominatim/).
+  - La optimización solo necesita coordenadas y cantidades, sin nombre ni teléfono. Aun así, la coordenada de una casa sigue siendo un dato de un cliente: es una zona gris.
+- Límite técnico de VROOM (https://github.com/VROOM-Project/vroom/blob/master/docs/API.md): cada vehículo sale con toda su carga; no modela recargar a mitad de ruta. El furgón de Brunen recarga en Actum. Se puede aproximar con 3 "vehículos" de 65 bidones (3 viajes, 195 bidones; el máximo histórico es 180), pero no es exacto.
+- La optimización no se puede instalar por cuenta propia junto con OpenRouteService: VROOM se instala aparte y necesita un servidor, que rompe el costo cero.
+- **Recomendación para ordenar la ruta:**
+  1. Coordenadas sin terceros: el teléfono del repartidor guarda el punto al marcar "Entregado" (ya previsto en el diseño). Cada dirección aprende su punto en la primera entrega. Para una dirección nueva, mientras tanto, se ordena por comuna.
+  2. Orden calculado en el propio código: vecino más cercano y mejora 2-opt con distancia en línea recta, partiendo y terminando en la planta, y pasando por Actum entre cargas. Para 30 paradas es instantáneo, no tiene cupo y no manda nada afuera.
+  3. OpenRouteService queda como mejora opcional (distancias por calle en vez de línea recta), solo con coordenadas y si Franco acepta la zona gris.
+- **Mapa en el panel** (lo pidió el dueño: clientes por comuna y en un mapa):
+  - MapLibre GL JS (código abierto) con los mapas de OpenFreeMap (https://openfreemap.org/): gratis, sin clave ni registro, sin límite de vistas y con uso comercial permitido. Se financia con donaciones y no garantiza disponibilidad.
+  - Los mapas de `tile.openstreetmap.org` sirven, pero su política advierte que pueden cortar el acceso a servicios comerciales (https://operations.osmfoundation.org/policies/tiles/).
+  - Hay que abrir la política de contenido del panel para ese dominio y servir la librería desde el propio panel. Pedir un mapa revela qué zona se mira, no las direcciones.
+- **Posición en vivo (fase E):**
+  - Una página web deja de recibir la posición cuando se bloquea la pantalla, sobre todo en iPhone. Sirve mientras el repartidor tenga la aplicación abierta; la pantalla se puede mantener encendida con la función "wake lock" del navegador (https://web.dev/blog/screen-wake-lock-supported-in-all-browsers), que en iPhone hay que probar con la aplicación instalada.
+  - Para el segundo plano existe OwnTracks, una aplicación gratuita y de código abierto (`owntracks/android`, `owntracks/ios`) que envía la posición por HTTPS a una dirección propia y guarda en cola si no hay señal (https://owntracks.org/booklet/tech/http/). Un Worker de Brunen puede recibirla: no pasa por terceros.
+  - Depende del teléfono del repartidor (Android o iPhone) y de su consentimiento por escrito.
