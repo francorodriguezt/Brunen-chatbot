@@ -11,6 +11,7 @@
  */
 
 import { cierreDelDia } from '../caja';
+import { desdeParaEstadisticas, resumirEntregas } from '../estadisticas';
 import { MOTIVOS_NO_ENTREGA, type RepositorioEntregas } from '../entregas';
 import { COMUNAS_ATENDIDAS } from '../comunas';
 import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
@@ -176,6 +177,13 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       // planilla y el panel no tiene acceso a Google): la persona la revisa antes de guardar.
       const sugerida = calcularFechaEntrega(new Date(ahoraSegundos * 1000), { feriados: SIN_FERIADOS });
       return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha, ...OPCIONES_DE_PEDIDO });
+    }
+
+    // Bidones entregados por día, semana y mes, y vacíos por retirar (D65): lo que el dueño pidió ver.
+    if (ruta === '/api/estadisticas' && metodo === 'GET') {
+      const hasta = url.searchParams.get('hasta') ?? fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha;
+      if (!esFecha(hasta) || Number.isNaN(Date.parse(`${hasta}T00:00:00Z`))) return error(400, 'Fecha no válida.');
+      return json(resumirEntregas(await repositorio.entregadosEntre(desdeParaEstadisticas(hasta), hasta), hasta));
     }
 
     if ((ruta === '/api/reparto' || ruta === '/api/reparto.csv') && metodo === 'GET') {

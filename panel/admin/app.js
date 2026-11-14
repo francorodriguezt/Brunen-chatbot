@@ -880,6 +880,7 @@ async function cargarReparto() {
   estado.firmas.reparto = firma;
   pintarReparto(datos);
   rutaDelDia().actualizar(estado.fechaReparto, $('ruta-del-dia').open);
+  void cargarEstadisticas(); // solo si está abierta y cambió el día
 }
 
 let rutaDelDiaCreada = null;
@@ -898,6 +899,56 @@ function rutaDelDia() {
     },
   });
   return rutaDelDiaCreada;
+}
+
+// ---- Bidones entregados (D65) ----
+
+const formatoDiaDeBarra = new Intl.DateTimeFormat('es-CL', { timeZone: 'UTC', weekday: 'short', day: 'numeric' });
+let estadisticasDe = null; // el día de las que están a la vista
+
+function detalleDeBidones(b) {
+  const partes = TAMANOS_DE_MAYOR_A_MENOR.filter(([tipo]) => b[tipo] > 0).map(([tipo, nombre]) => `${b[tipo]} de ${nombre}`);
+  return partes.length > 1 ? ` (${partes.join(', ')})` : '';
+}
+
+function pintarEstadisticas(e) {
+  const cifra = (titulo, b) => h('li', {}, h('b', {}, String(b.total)), ` ${titulo}${detalleDeBidones(b)}`);
+  const maximo = Math.max(1, ...e.dias.map((d) => d.bidones.total));
+  const barras = h(
+    'ol',
+    { clase: 'grafico', 'aria-label': 'Bidones entregados en los últimos 14 días' },
+    ...e.dias.map((d) => {
+      const barra = h('span', { clase: 'grafico-barra' });
+      barra.style.width = `${Math.round((d.bidones.total / maximo) * 100)}%`; // por CSSOM: la política de contenido no deja estilos en línea
+      return h('li', {}, h('span', { clase: 'grafico-dia' }, formatoDiaDeBarra.format(new Date(`${d.fecha}T12:00:00Z`)).replace('.', '')), h('span', { clase: 'grafico-fondo' }, barra), h('span', { clase: 'grafico-numero' }, String(d.bidones.total)));
+    }),
+  );
+  const vacios = e.vacios.length === 0
+    ? h('p', { clase: 'suave' }, 'No hay vacíos pendientes: en cada entrega el repartidor retiró los que tocaban.')
+    : h(
+        'ul',
+        { clase: 'lista-vacios' },
+        ...e.vacios.slice(0, 30).map((v) => h('li', {}, h('b', {}, `${v.faltan} ${v.faltan === 1 ? 'vacío' : 'vacíos'}`), ` · ${v.nombre || 'Sin nombre'} · `, enlaceWhatsApp(v.telefono), ` · última vez el ${fechaLarga(v.ultimoDia)}`)),
+      );
+  $('contenido-estadisticas').replaceChildren(
+    h('ul', { clase: 'cifras' }, cifra(`el ${fechaLarga(e.hasta)}`, e.dia), cifra('esta semana', e.semana), cifra('este mes', e.mes), cifra('el mes pasado', e.mesAnterior)),
+    h('h3', { clase: 'titulo-carga' }, 'Últimos 14 días'),
+    barras,
+    h('h3', { clase: 'titulo-carga' }, 'Vacíos por retirar'),
+    h('p', { clase: 'suave' }, 'Clientes a los que, al entregar, el repartidor les retiró menos vacíos de los que había (desde el mes pasado).'),
+    vacios,
+  );
+}
+
+async function cargarEstadisticas() {
+  const hasta = estado.fechaReparto || hoyEnSantiago();
+  if (!$('bidones-entregados').open || estadisticasDe === hasta) return;
+  try {
+    pintarEstadisticas(await api(`/api/estadisticas?hasta=${encodeURIComponent(hasta)}`));
+    estadisticasDe = hasta;
+  } catch (falla) {
+    $('contenido-estadisticas').replaceChildren(h('p', { clase: 'falta' }, falla.message));
+  }
 }
 
 /** Desde el reparto: los pedidos de ese día que todavía nadie confirmó. */
@@ -1585,6 +1636,12 @@ function iniciar() {
   $('reparto-hoy').addEventListener('click', () => elegirDiaDelReparto(hoyEnSantiago()));
   $('reparto-manana').addEventListener('click', () => elegirDiaDelReparto(sumarDias(hoyEnSantiago(), 1)));
   $('fecha-reparto').addEventListener('change', (evento) => elegirDiaDelReparto(evento.currentTarget.value));
+  $('bidones-entregados').addEventListener('toggle', (evento) => {
+    if (evento.currentTarget.open) {
+      estadisticasDe = null; // al abrir se piden de nuevo: pudo haber entregas desde la última vez
+      void cargarEstadisticas();
+    }
+  });
   $('ruta-del-dia').addEventListener('toggle', (evento) => {
     if (evento.currentTarget.open) rutaDelDia().abrir(estado.fechaReparto || hoyEnSantiago());
   });

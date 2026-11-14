@@ -12,6 +12,7 @@
 
 import { TIPOS_DE_AVISO_DE_PEDIDO, type Alerta, type TipoAlerta } from './alertas';
 import type { BaseDatos } from './almacen';
+import type { EntregaParaContar } from './estadisticas';
 import type { CompletarPedido, DatosPrevios, LineaPedido, PedidoARegistrar } from './pedidos';
 import type { ItemPedido, TipoBidon } from './precios';
 
@@ -511,6 +512,35 @@ export class RepositorioD1 {
       fecha,
     );
     return filas.map(aPedido);
+  }
+
+  /**
+   * Los pedidos entregados entre dos días (de entrega), con lo justo para contar bidones y vacíos (D65). Recorre la tabla
+   * por fecha, así que solo corre cuando alguien abre esa sección, no en la consulta que se repite cada pocos segundos.
+   */
+  async entregadosEntre(desde: string, hasta: string): Promise<EntregaParaContar[]> {
+    const filas = await this.filas(
+      `SELECT COALESCE(fecha_confirmada, fecha_entrega) AS dia, telefono, nombre, lineas, envases_a_retirar, vacios_retirados
+       FROM pedidos WHERE estado = 'Entregado' AND COALESCE(fecha_confirmada, fecha_entrega) BETWEEN ?1 AND ?2 LIMIT 5000`,
+      desde,
+      hasta,
+    );
+    return filas.map((fila) => {
+      let lineas: unknown = [];
+      try {
+        lineas = JSON.parse(texto(fila.lineas));
+      } catch {
+        /* una fila dañada no cuenta bidones */
+      }
+      return {
+        dia: texto(fila.dia),
+        telefono: texto(fila.telefono),
+        nombre: texto(fila.nombre),
+        lineas: (Array.isArray(lineas) ? lineas : []).map((l) => ({ tipo: String((l as { tipo?: unknown }).tipo), cantidad: Number((l as { cantidad?: unknown }).cantidad) })),
+        envasesARetirar: Number(fila.envases_a_retirar) || 0,
+        vaciosRetirados: fila.vacios_retirados === null || fila.vacios_retirados === undefined ? null : Number(fila.vacios_retirados),
+      };
+    });
   }
 
   /**

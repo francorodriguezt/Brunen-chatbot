@@ -78,7 +78,7 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 - **Corregido hoy:** en un celular de 375 px las 5 pestañas medían 506 px: "Avisos" y "Equipo" quedaban fuera de pantalla y la página se desbordaba. Ahora caben. Los botones y enlaces se agrandan a 44 px en pantallas táctiles (los enlaces de teléfono medían 23 px de alto).
 - **C1 (Should, hecho el 2026-11-14, D64: pegar el mensaje llena el formulario).** "Nuevo pedido" tiene 20 campos y ocupa dos pantallas de celular. Una versión rápida (teléfono, cantidad y tamaño, dirección) con "más datos" plegado, y un cuadro para **pegar el mensaje del cliente** que rellena el formulario con el intérprete que ya existe. Ataca directo el dolor de anotar a mano.
 - **C2 (Should, hecho el 2026-11-14, D64: "Cierre del día" en Reparto).** Cuadre de caja diario: lo que el repartidor cobró contra lo que debía cobrar. Los datos ya se guardan.
-- **C3 (Should).** Tablero simple con lo que el dueño pidió: bidones por día, semana y mes, y envases pendientes.
+- **C3 (Should, hecho el 2026-11-14, D65: "Bidones entregados y vacíos por retirar" en Reparto).** Tablero simple con lo que el dueño pidió: bidones por día, semana y mes, y envases pendientes.
 - **C4 (Should).** Aviso por Telegram de pedidos sin confirmar pasados 30 minutos en horario de atención.
 - **C5 (Could).** Deshacer después de cancelar o confirmar por error.
 - **C6 (Could).** El ingreso tiene dos títulos `h1`; el enlace "Volver" medía 21 px de alto.

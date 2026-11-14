@@ -288,3 +288,12 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
 .cierre-dia { margin: 0.6rem 0; padding: 0.6rem 0.8rem; border: 1px solid var(--borde); border-radius: 10px; background: var(--superficie); }
 .cierre-dia h3 { margin: 0 0 0.3rem; font-size: 1rem; }
 .cierre-dia ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.2rem; }
+
+/* Bidones entregados (D65) */
+.grafico { list-style: none; margin: 0.3rem 0 0.6rem; padding: 0; display: grid; gap: 0.2rem; }
+.grafico li { display: grid; grid-template-columns: 4.2rem 1fr 2.5rem; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+.grafico-dia { color: var(--suave); }
+.grafico-fondo { height: 0.8rem; border-radius: 4px; background: var(--neutro-suave); overflow: hidden; }
+.grafico-barra { display: block; height: 100%; background: var(--acento); border-radius: 4px; }
+.grafico-numero { text-align: right; font-variant-numeric: tabular-nums; }
+.lista-vacios { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; }

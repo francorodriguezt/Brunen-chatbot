@@ -549,3 +549,10 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - **Mensajes por parada** (`mensajeDeParada` en `src/reparto.ts`): el botón "Copiar mensaje" de cada parada copia el mensaje con el formato que hoy se escribe a mano (número y nombre, dirección y notas, teléfono, cantidad y "*efectivo $X*"). Sirve mientras el repartidor no use su aplicación. La lista para copiar también marca lo que se cobra en efectivo.
 - **Pantalla encendida** en la aplicación del repartidor (wake lock del navegador): solo mientras quedan paradas y la aplicación está a la vista. Viene marcada y el repartidor la puede apagar. En iPhone hay que probarla con la aplicación instalada.
 - Diferencia conocida: la ruta del mapa (D63) se calcula con las paradas que faltan, así que a mitad del día sus cargas pueden no coincidir con las de la lista, que cuenta también las ya entregadas.
+
+### D65 · 2026-11-14 · Bidones entregados y vacíos por retirar
+**Lo que el dueño pidió ver en el panel (2026-10-29): bidones entregados por día, semana y mes, y envases pendientes de retiro por cliente. Queda en Reparto, en "Bidones entregados y vacíos por retirar".**
+- Cifras del día elegido, la semana (de lunes a ese día), el mes y el mes pasado, por tamaño, y un gráfico de barras de los últimos 14 días (`src/estadisticas.ts`, `GET /api/estadisticas?hasta=`).
+- Vacíos por retirar: por cliente, los que el repartidor dejó sin retirar al entregar (lo que había que retirar menos lo que marcó, D61), desde el mes pasado. Los pedidos entregados a mano en el panel, sin esa marca, no cuentan.
+- Se calcula al abrir la sección, no en la consulta que se repite cada pocos segundos: lee los pedidos entregados desde el primer día del mes anterior (una lectura de unas 2.000 filas con el historial cargado; el plan gratis de D1 permite 5 millones al día).
+- Pendiente: "envases pendientes" según el dueño puede significar otra cosa (los bidones que cada cliente tiene en su casa). Si es eso, hace falta un saldo de envases por cliente (fase G).
