@@ -316,6 +316,22 @@
     {
       "mensaje": "buenas tardes me pueden traer 1 bidon de 20 a las condes",
       "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 1 }], "comuna_mencionada": "Las Condes" }
+    },
+    {
+      "mensaje": "ya cancelé",
+      "esperado": { "intencion": "pago" }
+    },
+    {
+      "mensaje": "ya está cancelado",
+      "esperado": { "intencion": "pago" }
+    },
+    {
+      "mensaje": "cancela el pedido porfa",
+      "esperado": { "intencion": "cambio", "accion": "escalar" }
+    },
+    {
+      "mensaje": "se cancela al recibir?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "pago" }
     }
   ]
 }

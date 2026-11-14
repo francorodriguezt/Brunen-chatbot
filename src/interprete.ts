@@ -310,7 +310,7 @@ const SIN_ENVASE = palabras(
 // Cancelar, cambiar o mover un pedido que ya hizo: lo ve una persona (no se anota otro pedido encima).
 // En Chile "cancelar" también es pagar ("cancelo en efectivo"): ese uso se quita antes de buscar.
 const CAMBIO = palabras(
-  'cancelar', 'cancela', 'cancelo', 'cancelen', 'cancelame', 'cancelado', 'anular', 'anula', 'anulo', 'anulen',
+  'cancelar', 'cancela', 'cancelo', 'cancelen', 'cancelame', 'anular', 'anula', 'anulo', 'anulen',
   'ya no quiero', 'ya no necesito', 'no quiero el pedido', 'no lo quiero', 'no los quiero',
   'cambiar el pedido', 'cambiar mi pedido', 'cambiar pedido', 'cambio el pedido', 'cambio de pedido',
   'modificar el pedido', 'modificar mi pedido', 'modificar pedido', 'corregir el pedido', 'corregir mi pedido',
@@ -361,6 +361,7 @@ const PREGUNTA_PAGO = palabras(
   'datos de transferencia', 'datos para transferir', 'numero de cuenta', 'cuenta bancaria',
   'aceptan tarjeta', 'aceptan efectivo', 'aceptan transferencia', 'se puede pagar', 'puedo pagar',
   'como cancelo', 'como puedo cancelar', 'como se cancela', 'donde cancelo', 'forma de cancelar',
+  'se paga al recibir', 'se cancela al recibir', 'se paga contra entrega', 'se cancela contra entrega',
   'cuanto me cobraron', 'cuanto les debo', 'cuanto debo', 'cuanto les pague', 'cuanto pague',
 );
 // "llegan a", "despachan hasta", "reparten en": solo es pregunta de zona si además hay una comuna.
@@ -370,7 +371,7 @@ const VERBO_ZONA = new RegExp(
 const PALABRA_ZONA = palabras('cobertura', 'zona', 'zonas', 'comunas', 'sector', 'sectores');
 const MENCION_PAGO = palabras(
   'transferi', 'transferimos', 'transferido', 'pague', 'pagamos', 'pagado', 'deposite', 'abone',
-  'comprobante', 'voucher',
+  'comprobante', 'voucher', 'cancele', 'ya cancele', 'esta cancelado', 'ya esta cancelado',
 );
 
 // Los saludos largos van antes que "buenas", para que no quede "tardes" suelto.
