@@ -12,6 +12,7 @@
 
 import { fechaHoraLocal } from '../despacho';
 import { MOTIVOS_NO_ENTREGA, type EstadoDeEntrega, type RepositorioEntregas } from '../entregas';
+import { PRECISION_BUENA_M, RepositorioPuntos, claveDePunto } from '../puntos';
 import { armarReparto } from '../reparto';
 import type { RepositorioD1 } from '../repositorio';
 import { error, esperadoComoEscritura, json, leerCuerpo } from './api';
@@ -19,6 +20,8 @@ import { error, esperadoComoEscritura, json, leerCuerpo } from './api';
 export interface ContextoRepartidor {
   repositorio: RepositorioD1;
   entregas: RepositorioEntregas;
+  /** Puntos del mapa (D63): el teléfono enseña el de cada dirección al entregar. */
+  puntos: RepositorioPuntos;
   ahoraSegundos: number;
   /** Nombre del repartidor, para el historial del pedido. */
   nombre: string;
@@ -42,11 +45,13 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
   const porId = new Map(pedidos.map((p) => [p.id, p]));
   const entregas = await ctx.entregas.deDia(hoy);
   const reparto = armarReparto(pedidos, hoy);
+  const conocidos = await ctx.puntos.deDirecciones(reparto.paradas.map((p) => ({ direccion: p.direccion, comuna: p.comuna })));
   const paradas = reparto.paradas.map((parada) => {
     const pedido = porId.get(parada.idPedido);
     const entrega = entregas.get(parada.idPedido);
     const estado = estadoDeParada(entrega, parada.estado);
     const efectivoPendiente = pedido?.formaPago === 'efectivo' && pedido.estadoPago === 'pendiente';
+    const exacto = parada.direccion.trim() ? conocidos.get(claveDePunto(parada.direccion, parada.comuna)) : undefined;
     return {
       orden: parada.orden,
       carga: parada.carga,
@@ -68,6 +73,9 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
       estado,
       vaciosRetirados: entrega?.vaciosRetirados ?? null,
       motivo: estado === 'no_se_pudo' ? (entrega?.noEntregado?.motivo ?? null) : null,
+      // Solo el punto exacto: Navegar con uno aproximado llevaría al centro de la comuna. `afinar`: el punto vino de un GPS
+      // poco preciso, así que al entregar conviene leerlo de nuevo (un pin puesto a mano nunca se afina).
+      punto: exacto ? { lat: exacto.lat, lng: exacto.lng, afinar: exacto.origen === 'repartidor' && (exacto.precisionM ?? Infinity) > PRECISION_BUENA_M } : null,
     };
   });
   return json({
@@ -78,6 +86,21 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
     totalBidones: reparto.totalBidones,
     motivos: Object.entries(MOTIVOS_NO_ENTREGA).map(([valor, texto]) => ({ valor, texto })),
   });
+}
+
+/**
+ * Al entregar, el teléfono manda dónde está (una sola lectura, no un seguimiento). Si el GPS es preciso, esa dirección
+ * aprende su punto; un pin puesto a mano nunca se pisa. Es una ayuda: si falla, la entrega ya quedó anotada.
+ */
+async function aprenderPunto(ctx: ContextoRepartidor, id: string, cuerpo: Record<string, unknown>): Promise<void> {
+  const { lat, lng, precision } = cuerpo;
+  if (typeof lat !== 'number' || typeof lng !== 'number' || typeof precision !== 'number') return;
+  try {
+    const pedido = await ctx.repositorio.obtenerPedido(id);
+    if (pedido) await ctx.puntos.guardar(pedido.direccion, pedido.comuna, { lat, lng, origen: 'repartidor', precisionM: precision }, ctx.ahoraSegundos);
+  } catch (falla) {
+    console.error('No se pudo guardar el punto de la entrega:', falla instanceof Error ? falla.message : falla);
+  }
 }
 
 /** Devuelve null si la ruta no es del repartidor. */
@@ -100,7 +123,10 @@ export async function manejarRepartidor(request: Request, url: URL, ctx: Context
     accion[2] === 'entregado'
       ? await ctx.entregas.entregar(id, { vacios: cuerpo.vacios as number, cobrado: cuerpo.cobrado as boolean }, opciones)
       : await ctx.entregas.noEntregado(id, { motivo: String(cuerpo.motivo ?? ''), detalle: typeof cuerpo.detalle === 'string' ? cuerpo.detalle : '' }, opciones);
-  if (resultado.ok) return json({ ok: true });
+  if (resultado.ok) {
+    if (accion[2] === 'entregado') await aprenderPunto(ctx, id, cuerpo);
+    return json({ ok: true });
+  }
   const [estado, mensaje] = MENSAJES_DE_ERROR[resultado.error];
   return error(estado, mensaje);
 }

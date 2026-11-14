@@ -515,3 +515,22 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
   - Una página web deja de recibir la posición cuando se bloquea la pantalla, sobre todo en iPhone. Sirve mientras el repartidor tenga la aplicación abierta; la pantalla se puede mantener encendida con la función "wake lock" del navegador (https://web.dev/blog/screen-wake-lock-supported-in-all-browsers), que en iPhone hay que probar con la aplicación instalada.
   - Para el segundo plano existe OwnTracks, una aplicación gratuita y de código abierto (`owntracks/android`, `owntracks/ios`) que envía la posición por HTTPS a una dirección propia y guarda en cola si no hay señal (https://owntracks.org/booklet/tech/http/). Un Worker de Brunen puede recibirla: no pasa por terceros.
   - Depende del teléfono del repartidor (Android o iPhone) y de su consentimiento por escrito.
+
+### D63 · 2026-11-14 · Ruta eficiente y mapa (fase C)
+**La pestaña Reparto calcula el orden de reparto que recorre menos kilómetros, desde la planta y de vuelta, con las recargas, lo muestra en un mapa y deja publicarlo para el repartidor. Todo en el propio código y sin mandar direcciones afuera.**
+- Cálculo (`src/ruta.ts`): vecino más cercano desde la planta y mejoras locales (invertir un tramo y mover una parada) hasta que no ayuden. Distancia en línea recta por 1,3 (por las calles se anda más que en línea recta; valor típico, no medido en Santiago). En las pruebas queda a menos de 3 % del mejor orden posible con 7 paradas.
+  - Cargas: el furgón se llena en el orden de la ruta (65 bidones, D60). Entre dos viajes recarga en la planta o en Actum, donde desvíe menos.
+  - CPU: el plan gratis de Workers da 10 ms por solicitud. La primera versión tardaba unos 20 ms con 30 paradas; con una tabla de distancias calculada una vez baja a cerca de 1 ms (30 paradas) y 4 ms (45).
+  - Los kilómetros y los minutos (25 km/h, 5 min por parada, 15 min por recarga) son referenciales hasta que el dueño confirme la hora de salida y el tiempo por parada: sirven para comparar órdenes, no para prometer horas.
+- Coordenadas (`src/puntos.ts`, migración `0012`), sin servicios externos (D32, D62):
+  - Un pin puesto a mano en el mapa del panel. Es la verdad y el teléfono nunca lo pisa.
+  - El GPS del repartidor al tocar "Entregado": una sola lectura, solo si la dirección no tiene punto o el suyo es impreciso (más de 25 m), y solo si la precisión es de 75 m o menos. El repartidor lo ve y lo puede desmarcar. No es seguimiento.
+  - Sin punto, la parada se ubica en el centro de su comuna y se marca "aproximada". Fuera de las 12 comunas y sin punto, queda "sin ubicar", al final.
+  - Las plantas se buscaron una vez en OpenStreetMap: son direcciones del negocio, no de clientes.
+- Publicar: el orden se guarda en `pedidos.orden_ruta` en una sola consulta. El panel del repartidor y la lista del Reparto lo siguen; primero las ya entregadas, después la ruta y al final las sin ubicar. Si llega un pedido después de publicar, el panel lo avisa en vez de meterlo al final sin que nadie lo decida. Reemplaza lo que D61 dejó sin hacer ("Publicar la ruta").
+- Mapa: MapLibre GL JS 6.18.0 (licencia BSD-3-Clause) copiado en `panel/admin/vendor/` y verificado con la huella del registro de npm (ver su README), con los mosaicos de OpenFreeMap (gratis, sin clave). Se baja solo al abrir "Ruta eficiente y mapa".
+  - La política de contenido de `/admin` permite `tiles.openfreemap.org` para imágenes y conexiones; el resto del panel no. Por esa dirección no sale ninguna dirección ni nombre, pero sí se piden los mosaicos de la zona que se mira.
+  - `/repartidor` es la única zona que puede pedir la ubicación del teléfono (`Permissions-Policy: geolocation=(self)`).
+- Navegar y Waze van a las coordenadas cuando la dirección tiene punto exacto; si no, a la dirección escrita, como antes.
+- Hecho a propósito así: no se instala MapLibre como dependencia de npm porque trae 25 paquetes para copiar 3 archivos.
+- Falta: probarlo con el repartidor (permiso de ubicación en su teléfono), y que el dueño confirme la hora de salida y los minutos por parada.

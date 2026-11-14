@@ -171,6 +171,10 @@ function insignia(parada) {
 function tarjeta(p) {
   const lugar = [p.direccion, p.comuna].filter(Boolean).join(', ') || 'sin dirección';
   const destino = encodeURIComponent(`${lugar}, Chile`);
+  // Con el punto exacto de la dirección (D63) se navega a las coordenadas; si no, a la dirección escrita.
+  const coordenadas = p.punto ? `${p.punto.lat},${p.punto.lng}` : null;
+  const enGoogle = coordenadas ? `https://www.google.com/maps/dir/?api=1&destination=${coordenadas}&travelmode=driving` : `https://www.google.com/maps/search/?api=1&query=${destino}`;
+  const enWaze = coordenadas ? `https://waze.com/ul?ll=${coordenadas}&navigate=yes` : `https://waze.com/ul?q=${destino}&navigate=yes`;
   const formulario = abierta?.id === p.idPedido ? (abierta.tipo === 'entregado' ? formularioEntregado(p) : formularioNoSePudo(p)) : null;
   return h(
     'article',
@@ -190,8 +194,8 @@ function tarjeta(p) {
     h(
       'div',
       { clase: 'acciones' },
-      h('a', { clase: 'boton', href: `https://www.google.com/maps/search/?api=1&query=${destino}`, target: '_blank', rel: 'noopener noreferrer' }, 'Navegar'),
-      h('a', { clase: 'boton', href: `https://waze.com/ul?q=${destino}&navigate=yes`, target: '_blank', rel: 'noopener noreferrer' }, 'Waze'),
+      h('a', { clase: 'boton', href: enGoogle, target: '_blank', rel: 'noopener noreferrer' }, 'Navegar'),
+      h('a', { clase: 'boton', href: enWaze, target: '_blank', rel: 'noopener noreferrer' }, 'Waze'),
       p.telefono ? h('a', { clase: 'boton', href: `tel:+${p.telefono}` }, 'Llamar') : null,
       boton(p.estado === 'entregado' ? 'Corregir' : 'Entregado', 'boton boton-principal', () => abrir(p.idPedido, 'entregado')),
       p.estado === 'pendiente' ? boton('No se pudo', 'boton', () => abrir(p.idPedido, 'no-se-pudo')) : null,
@@ -211,17 +215,26 @@ function formularioEntregado(p) {
   const corrigiendo = p.estado === 'entregado';
   const monto = corrigiendo ? (p.cobrado ?? p.montoEfectivo) : p.cobrar;
   const cobro = monto !== null && monto !== undefined ? h('input', { type: 'checkbox', checked: corrigiendo ? p.cobrado !== null : true }) : null;
-  const confirmar = () => {
+  // Solo si esa dirección no tiene su punto en el mapa o el que tiene es impreciso, y solo al entregar (no al corregir).
+  const ubicar = !corrigiendo && (!p.punto || p.punto.afinar) && 'geolocation' in navigator ? h('input', { type: 'checkbox', checked: true }) : null;
+  const confirmar = async () => {
     const numero = Number(vacios.value);
     if (!Number.isInteger(numero) || numero < 0 || numero > 200) return avisar('Escribe cuántos vacíos retiraste (0 si ninguno).', true);
-    void marcar(p, 'entregado', { vacios: numero, cobrado: cobro ? cobro.checked : false });
+    const cuerpo = { vacios: numero, cobrado: cobro ? cobro.checked : false };
+    if (ubicar?.checked) {
+      avisar('Buscando dónde estás (unos segundos)…');
+      Object.assign(cuerpo, await ubicacionActual());
+    }
+    void marcar(p, 'entregado', cuerpo);
   };
   return h(
     'div',
     { clase: 'formulario-parada' },
     h('label', {}, 'Vacíos que retiraste ', vacios),
     cobro ? h('label', {}, cobro, ` Cobré ${pesos.format(monto)} en efectivo`) : null,
-    h('div', { clase: 'acciones' }, boton('Confirmar entrega', 'boton boton-principal', confirmar), boton('Cancelar', 'boton', () => abrir(p.idPedido, 'entregado'))),
+    ubicar ? h('label', {}, ubicar, ' Guardar dónde queda esta dirección, para el mapa de la ruta') : null,
+    ubicar ? h('p', { clase: 'suave nota-ubicacion' }, 'El teléfono dice dónde estás solo en este momento, una vez. No se sigue tu recorrido.') : null,
+    h('div', { clase: 'acciones' }, boton('Confirmar entrega', 'boton boton-principal', () => void confirmar()), boton('Cancelar', 'boton', () => abrir(p.idPedido, 'entregado'))),
   );
 }
 
@@ -243,6 +256,25 @@ function formularioNoSePudo(p) {
 }
 
 // ---- Marcar y enviar ----
+
+/**
+ * Una sola lectura del GPS al entregar (D63): con ella, esa dirección aprende su punto en el mapa. Si no hay permiso,
+ * no hay señal de GPS o tarda más de unos segundos, la entrega se anota igual, sin ubicación.
+ */
+function ubicacionActual() {
+  return new Promise((resolver) => {
+    const listo = (valor) => resolver(valor);
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (posicion) => listo({ lat: posicion.coords.latitude, lng: posicion.coords.longitude, precision: Math.round(posicion.coords.accuracy) }),
+        () => listo({}),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 30_000 },
+      );
+    } catch {
+      listo({});
+    }
+  });
+}
 
 /** Envía una acción. true = llegó o el servidor la rechazó (no se reintenta); false = sin señal (se reintenta). */
 async function enviar(accion) {

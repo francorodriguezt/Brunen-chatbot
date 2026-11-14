@@ -306,6 +306,26 @@ describe('el Worker del panel', () => {
       expect(r.headers.get('cache-control')).toBe('no-store');
     }
   });
+
+  it('el mapa y la ubicación se permiten solo en su zona: mosaicos en /admin y GPS en /repartidor (D63)', async () => {
+    const { env } = await entornoPanel();
+    const admin = await pedir(env, '/');
+    const politica = admin.headers.get('content-security-policy') ?? '';
+    expect(politica).toContain("connect-src 'self' https://tiles.openfreemap.org");
+    expect(politica).toContain("img-src 'self' data: blob: https://tiles.openfreemap.org");
+    expect(politica).not.toContain('worker-src'); // el worker del mapa es un archivo propio
+    expect(politica).toContain("script-src 'self'");
+    expect(politica).not.toContain('unsafe');
+    expect(admin.headers.get('permissions-policy')).toContain('geolocation=()');
+
+    const portada = await panel.fetch(new Request('https://panel.example/'), env);
+    expect(portada.headers.get('content-security-policy')).not.toContain('openfreemap');
+    expect(portada.headers.get('permissions-policy')).toContain('geolocation=()');
+
+    const repartidor = await panel.fetch(new Request('https://panel.example/repartidor'), env);
+    expect(repartidor.headers.get('permissions-policy')).toContain('geolocation=(self)');
+    expect(repartidor.headers.get('content-security-policy')).not.toContain('openfreemap');
+  });
 });
 
 describe('la API: lectura', () => {

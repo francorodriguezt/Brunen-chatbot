@@ -73,6 +73,8 @@ export interface RepartoDelDia {
   sinConfirmar: number;
   /** Los viajes del furgón, en el orden de las paradas. */
   cargas: CargaDelFurgon[];
+  /** true si alguien publicó el orden de la ruta de este día; si no, las paradas van por comuna y dirección. */
+  publicada: boolean;
 }
 
 /**
@@ -128,7 +130,16 @@ export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string):
       carga: 1,
     });
   }
-  paradas.sort((a, b) => comparar(a.comuna, b.comuna) || comparar(a.direccion, b.direccion) || comparar(a.idPedido, b.idPedido));
+  // La ruta publicada manda; lo que llegó después de publicar va al final, por comuna y dirección.
+  const posicion = new Map(pedidos.map((p) => [p.id, p.ordenRuta]));
+  paradas.sort((a, b) => {
+    const pa = posicion.get(a.idPedido) ?? null;
+    const pb = posicion.get(b.idPedido) ?? null;
+    if (pa !== null && pb !== null && pa !== pb) return pa - pb;
+    if ((pa === null) !== (pb === null)) return pa === null ? 1 : -1;
+    return comparar(a.comuna, b.comuna) || comparar(a.direccion, b.direccion) || comparar(a.idPedido, b.idPedido);
+  });
+  const publicada = paradas.some((parada) => posicion.get(parada.idPedido) != null);
   paradas.forEach((parada, i) => (parada.orden = i + 1));
   const cargas = armarCargas(paradas);
 
@@ -143,6 +154,7 @@ export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string):
     entregadas: paradas.filter((parada) => parada.estado === 'Entregado').length,
     sinConfirmar,
     cargas,
+    publicada,
   };
 }
 

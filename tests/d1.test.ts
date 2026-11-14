@@ -82,6 +82,7 @@ describe('migraciones', () => {
       { name: 'mensajes_procesados' },
       { name: 'pedidos' },
       { name: 'pedidos_fijos' },
+      { name: 'puntos' },
       { name: 'sesiones' },
       { name: 'telefonos_cliente' },
       { name: 'ultimos_pedidos' },

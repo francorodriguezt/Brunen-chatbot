@@ -89,8 +89,10 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 - **D2 (Info).** iPhone no tiene sincronización en segundo plano. El diseño actual, que envía al abrir y al volver la señal, es el correcto.
 - **D3 (Later).** Prueba de entrega con foto: no cabe en el plan gratis de forma razonable; la hora, los vacíos y el punto del teléfono cubren lo esencial.
 
-### E. Ruta y mapa 🔴 (en construcción, ver D63)
-- Falta todo lo que el dueño pidió: puntos en un mapa, orden eficiente desde la planta hasta el punto final, con la recarga en Actum.
+### E. Ruta y mapa 🟡 (construida el 2026-11-14, D63; sin publicar)
+- Hecho: orden más corto desde la planta y de vuelta, con recarga en la planta o en Actum; mapa en la pestaña Reparto; cambiar el orden a mano; pines a mano; publicar para el repartidor; Navegar a coordenadas; el GPS del repartidor ubica cada dirección al entregar.
+- **E1 (Should).** Tiempos reales: hora de salida y minutos por parada del dueño (hoy son referenciales).
+- **E2 (Could).** Distancias por calle (OpenRouteService, solo coordenadas) si la línea recta se queda corta (D62).
 
 ### F. Clientes y retención 🟢
 - Fuerte: fichas con varios teléfonos, "Les toca pedir", pedidos fijos.
