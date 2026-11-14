@@ -28,7 +28,7 @@ Anotar el *bookmark* que muestra: sirve para volver atrás hasta 7 días.
 npx.cmd wrangler d1 migrations list brunen-chatbot --remote
 ```
 
-Debe listar las que falten. Las `0007` a `0010` se aplicaron el 2026-11-12; la `0011` (panel del repartidor) y la `0012` (puntos del mapa y orden de la ruta, D63) van antes de publicar el panel. Después:
+Debe listar las que falten. Las `0007` a `0010` se aplicaron el 2026-11-12 y las `0011` a `0013` (repartidor, mapa y respaldo) el 2026-11-14: hoy no debería faltar ninguna. Si falta alguna:
 
 ```bash
 npx.cmd wrangler d1 migrations apply brunen-chatbot --remote

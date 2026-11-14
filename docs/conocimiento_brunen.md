@@ -1,6 +1,6 @@
 # Conocimiento del proyecto — Chatbot Brunen SpA
 Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
-Última actualización: 2026-11-12
+Última actualización: 2026-11-14
 
 > Datos sensibles (cuenta bancaria, teléfono de Constanza, teléfonos de clientes) NO se guardan en este repo:
 > viven en la hoja CONFIGURACION / CLIENTES de la planilla. Aquí solo se indica dónde están.
@@ -93,7 +93,7 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 - Canal: WhatsApp Cloud API (Meta). Número: el dueño eligió el actual con coexistencia (2026-10-29). Según la documentación oficial de Meta (revisada el 2026-10-29), el alta de coexistencia pasa por un Tech Provider o Solution Partner y exige la app WhatsApp Business 2.24.17 o superior; confirmado el 2026-11-10 que no se puede hacer directo (D45): como el número se mantiene, hay que elegir entre un proveedor autorizado o que Brunen sea su propio Tech Provider; un número nuevo queda solo como último recurso. Con coexistencia se desactivan las listas de difusión y hay que abrir la app al menos cada 14 días.
 - Motor: código propio en **Cloudflare Workers + TypeScript** (plan gratuito). Reemplaza la idea inicial de n8n.
 - Interpretación: parser por reglas + LLM de respaldo (Groq gratis). Gemini gratis descartado (usa los datos).
-- Datos: los pedidos y los avisos viven en la base D1 de Cloudflare, junto con la memoria del bot (mensajes ya vistos, pedido a medias, último pedido); Google Sheets sigue para CLIENTES, PRECIOS, CONFIGURACION y FERIADOS (D32, D33). Respaldo de D1: Time Travel (7 días) y una exportación semanal guardada fuera del repositorio (D35).
+- Datos: los pedidos y los avisos viven en la base D1 de Cloudflare, junto con la memoria del bot (mensajes ya vistos, pedido a medias, último pedido); Google Sheets sigue para CLIENTES, PRECIOS, CONFIGURACION y FERIADOS (D32, D33). Respaldo de D1: Time Travel (7 días) y, desde el 2026-11-14, una copia en la misma planilla (hojas RESPALDO_PEDIDOS cada 30 minutos y RESPALDO_CLIENTES cada noche), la descarga en Excel desde el panel y un script para restaurar (D66, docs/RESPALDO.md).
 - Panel de administración propio (un Worker aparte, detrás de Cloudflare Access: D34) para que Constanza y el dueño vean, confirmen y cambien pedidos y avisos. Telegram queda solo para lo muy urgente (reclamos y fallas del sistema). Desde el 2026-11-10 el panel también arma el reparto del día, listo para copiar o descargar, y permite anotar a mano los pedidos que no llegan por el bot (D42).
 - Comprobantes: se guardarán en D1 por 60 días y se verán en el panel (D30, D32; Drive con la cuenta de servicio no sirve). Monitoreo: UptimeRobot → `/salud`. Además, una tarea programada (el vigía, D43) deja un aviso si un mensaje quedó sin atender y revisa cada mañana el token de WhatsApp y la planilla.
 - Flujo: webhook → validar firma → 200 inmediato → deduplicar → revisar `BOT_ACTIVO` → buscar cliente → según tipo:
