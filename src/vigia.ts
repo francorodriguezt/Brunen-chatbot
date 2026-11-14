@@ -24,6 +24,7 @@ import { RepositorioClientes } from './fichas';
 import { RepositorioFijos } from './fijos';
 import { cerrarPausasVencidas } from './relevo';
 import { RepositorioD1 } from './repositorio';
+import { hojasDeRespaldo, respaldarClientes, respaldarPedidos, respaldoAtrasado } from './respaldo';
 import { configTelegram, enviarAlerta } from './telegram';
 import { revisarToken } from './whatsapp';
 
@@ -136,6 +137,23 @@ export async function revisionDiaria(env: EntornoAtencion, ahora: Date = new Dat
   if (token === 'token') await avisarFalla(env, 'token-whatsapp', FALLA_DEL_TOKEN, ahora);
 
   const hayPlanilla = Boolean(env.GOOGLE_SERVICE_ACCOUNT_JSON && env.GOOGLE_SHEET_ID);
+  // Respaldo en Google Sheets (D66): si lleva más de un día sin copiar y hay pedidos esperando, que lo sepa una persona.
+  if (hayPlanilla && env.DB) {
+    try {
+      const atraso = await respaldoAtrasado(env.DB, Math.floor(ahora.getTime() / 1000));
+      if (atraso) {
+        const horas = Math.round(atraso.segundos / 3600);
+        await avisarFalla(
+          env,
+          'respaldo',
+          `El respaldo de los pedidos en Google Sheets no se actualiza hace ${horas > 1000 ? 'mucho' : `${horas} horas`}${atraso.error ? ` (${atraso.error})` : ''}. Los pedidos están a salvo en la base; avisa a Franco.`,
+          ahora,
+        );
+      }
+    } catch (falla) {
+      console.error('No se pudo revisar el respaldo:', falla instanceof Error ? falla.message : falla);
+    }
+  }
   if (hayPlanilla && (await leerConfiguracion(env)) === undefined) {
     await avisarFalla(
       env,
@@ -143,6 +161,30 @@ export async function revisionDiaria(env: EntornoAtencion, ahora: Date = new Dat
       'No se pudo leer la planilla de Google (clientes, precios, feriados y configuración): mientras no vuelva, el bot deriva los pedidos a una persona. Revisa que la planilla siga compartida con la cuenta de servicio.',
       ahora,
     );
+  }
+}
+
+/**
+ * Respaldo en Google Sheets (D66): los pedidos cada 30 minutos (la tarea corre cada 5) y las fichas de clientes una vez
+ * por noche. Si falla, se intenta de nuevo en la vuelta siguiente desde el mismo punto.
+ */
+async function respaldar(env: EntornoAtencion, ahora: Date, local: { hora: number; minuto: number }): Promise<void> {
+  if (!env.DB || local.minuto % 30 >= 5) return;
+  const hojas = hojasDeRespaldo(env);
+  if (!hojas) return;
+  const segundos = Math.floor(ahora.getTime() / 1000);
+  try {
+    const copiados = await respaldarPedidos(env.DB, hojas, segundos);
+    if (copiados > 0) console.log(`Respaldo: ${copiados} pedido(s) copiados a Google Sheets.`);
+  } catch (falla) {
+    console.error('No se pudo respaldar los pedidos en Google Sheets:', falla instanceof Error ? falla.message : falla);
+  }
+  if (local.hora !== 3 || local.minuto >= 5) return;
+  try {
+    const fichas = await respaldarClientes(env.DB, hojas, segundos);
+    console.log(`Respaldo: ${fichas} ficha(s) de clientes copiadas a Google Sheets.`);
+  } catch (falla) {
+    console.error('No se pudo respaldar las fichas en Google Sheets:', falla instanceof Error ? falla.message : falla);
   }
 }
 
@@ -166,6 +208,7 @@ export async function tareaProgramada(env: EntornoAtencion, ahora: Date): Promis
       }
     }
     const local = fechaHoraLocal(ahora);
+    await respaldar(env, ahora, local);
     if (local.hora === 7 && local.minuto >= 30 && local.minuto < 35) await revisionDiaria(env, ahora);
   } catch (error) {
     console.error('La tarea programada falló:', error instanceof Error ? error.message : error);

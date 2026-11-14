@@ -297,3 +297,8 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
 .grafico-barra { display: block; height: 100%; background: var(--acento); border-radius: 4px; }
 .grafico-numero { text-align: right; font-variant-numeric: tabular-nums; }
 .lista-vacios { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; }
+
+/* Respaldo (D66) */
+.respaldo { margin-top: 1rem; }
+.respaldo h2 { margin: 0 0 0.3rem; }
+.lista-respaldo { margin: 0.3rem 0; padding-left: 1.1rem; display: grid; gap: 0.2rem; }

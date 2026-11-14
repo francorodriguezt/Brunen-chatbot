@@ -121,6 +121,49 @@ export class ClienteSheets {
     }
   }
 
+  private async pedir(url: string, init: RequestInit, ahoraSegundos: number): Promise<Response> {
+    const respuesta = await fetch(url, {
+      ...init,
+      headers: { Authorization: `Bearer ${await this.token(ahoraSegundos)}`, 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(TIEMPO_MAXIMO_MS),
+    });
+    if (!respuesta.ok) {
+      const detalle = await respuesta.text().catch(() => '');
+      throw new ErrorGoogle(`Google Sheets respondió ${respuesta.status}: ${detalle.slice(0, 200)}`, respuesta.status);
+    }
+    return respuesta;
+  }
+
+  /** Los nombres de las hojas (pestañas) de la planilla. */
+  async titulosDeHojas(ahoraSegundos: number = Math.floor(Date.now() / 1000)): Promise<string[]> {
+    const respuesta = await this.pedir(`https://sheets.googleapis.com/v4/spreadsheets/${this.planillaId}?fields=sheets.properties.title`, { method: 'GET' }, ahoraSegundos);
+    const datos = (await respuesta.json()) as { sheets?: Array<{ properties?: { title?: string } }> };
+    return (datos.sheets ?? []).map((hoja) => hoja.properties?.title ?? '').filter(Boolean);
+  }
+
+  /** Crea una hoja (pestaña) vacía. Falla si ya existe. */
+  async crearHoja(titulo: string, ahoraSegundos: number = Math.floor(Date.now() / 1000)): Promise<void> {
+    await this.pedir(
+      `https://sheets.googleapis.com/v4/spreadsheets/${this.planillaId}:batchUpdate`,
+      { method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title: titulo } } }] }) },
+      ahoraSegundos,
+    );
+  }
+
+  /** Escribe filas desde la celda indicada (por ejemplo "HOJA!A1"), reemplazando lo que hubiera en esas celdas. */
+  async escribirRango(rango: string, filas: ReadonlyArray<ReadonlyArray<string | number>>, ahoraSegundos: number = Math.floor(Date.now() / 1000)): Promise<void> {
+    await this.pedir(
+      `https://sheets.googleapis.com/v4/spreadsheets/${this.planillaId}/values/${encodeURIComponent(rango)}?valueInputOption=RAW`,
+      { method: 'PUT', body: JSON.stringify({ values: filas }) },
+      ahoraSegundos,
+    );
+  }
+
+  /** Borra los valores de un rango (no la hoja ni su formato). */
+  async limpiarRango(rango: string, ahoraSegundos: number = Math.floor(Date.now() / 1000)): Promise<void> {
+    await this.pedir(`https://sheets.googleapis.com/v4/spreadsheets/${this.planillaId}/values/${encodeURIComponent(rango)}:clear`, { method: 'POST', body: '{}' }, ahoraSegundos);
+  }
+
   /** Lee las filas de un rango (por ejemplo "FERIADOS!A2:B"). Las celdas vacías del final se omiten. */
   async leerFilas(rango: string, ahoraSegundos: number = Math.floor(Date.now() / 1000)): Promise<string[][]> {
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.planillaId}/values/${encodeURIComponent(rango)}`;

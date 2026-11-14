@@ -717,6 +717,27 @@ describe('la API: reconocer al cliente por su teléfono', () => {
   });
 });
 
+describe('la API: respaldo (D66)', () => {
+  it('entrega todos los pedidos por páginas, con el mismo encabezado que la planilla', async () => {
+    const { env } = await entornoPanel();
+    const r = await pedir(env, '/api/respaldo');
+    expect(r.status).toBe(200);
+    const datos = (await r.json()) as { encabezado: string[]; filas: unknown[][]; siguiente: string | null };
+    expect(datos.encabezado[1]).toBe('ID_Pedido');
+    expect(datos.filas.length).toBeGreaterThan(0);
+    expect(datos.filas.every((f) => f.length === datos.encabezado.length)).toBe(true);
+    expect(datos.siguiente).toBeNull();
+    const despues = (await (await pedir(env, `/api/respaldo?despues=${String(datos.filas.at(-1)?.[1])}`)).json()) as { filas: unknown[] };
+    expect(despues.filas).toEqual([]);
+  });
+
+  it('dice cómo va la copia en Google Sheets, y no acepta un cursor raro', async () => {
+    const { env } = await entornoPanel();
+    expect(await (await pedir(env, '/api/respaldo/estado')).json()).toEqual({ hojas: [] });
+    expect((await pedir(env, `/api/respaldo?despues=${'x'.repeat(30)}`)).status).toBe(400);
+  });
+});
+
 describe('la API: bidones entregados (D65)', () => {
   it('responde las cifras del día pedido, y una fecha mal escrita da 400', async () => {
     const { env } = await entornoPanel();

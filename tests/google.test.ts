@@ -103,4 +103,27 @@ describe('ClienteSheets', () => {
     const fallo = await new ClienteSheets(cuenta, 'P').agregarFilas('ERRORES', [['a']], 1000).catch((e: unknown) => e);
     expect((fallo as ErrorGoogle).message).toContain('invalid_grant');
   });
+
+  it('respaldo (D66): lista las hojas, crea una, escribe un rango tal cual y limpia lo que sobra', async () => {
+    const llamadas = stubGoogle(() => new Response(JSON.stringify({ sheets: [{ properties: { title: 'CLIENTES' } }, { properties: { title: 'RESPALDO_PEDIDOS' } }] }), { status: 200 }));
+    const cliente = new ClienteSheets(cuenta, 'PLANILLA1');
+    expect(await cliente.titulosDeHojas(1000)).toEqual(['CLIENTES', 'RESPALDO_PEDIDOS']);
+    await cliente.crearHoja('RESPALDO_CLIENTES', 1000);
+    await cliente.escribirRango('RESPALDO_CLIENTES!A1', [['Cliente_Id', 'Nombre'], [1, '=no es fórmula']], 1000);
+    await cliente.limpiarRango('RESPALDO_CLIENTES!A3:Z', 1000);
+    const [titulos, crear, escribir, limpiar] = llamadas.filter((l) => !l.url.startsWith('https://oauth2'));
+    expect(titulos?.url).toContain('/spreadsheets/PLANILLA1?fields=sheets.properties.title');
+    expect(crear?.url).toContain('/spreadsheets/PLANILLA1:batchUpdate');
+    expect(JSON.parse(String(crear?.init?.body))).toEqual({ requests: [{ addSheet: { properties: { title: 'RESPALDO_CLIENTES' } } }] });
+    expect(escribir?.init?.method).toBe('PUT');
+    expect(escribir?.url).toContain('valueInputOption=RAW');
+    expect(limpiar?.url).toContain(':clear');
+    expect((limpiar?.init?.headers as Record<string, string>).Authorization).toBe('Bearer token-falso');
+  });
+
+  it('respaldo: un error de Google se informa con su código', async () => {
+    stubGoogle(() => new Response('sin permiso', { status: 403 }));
+    const fallo = await new ClienteSheets(cuenta, 'P').escribirRango('X!A1', [['a']], 1000).catch((e: unknown) => e);
+    expect((fallo as ErrorGoogle).message).toContain('403');
+  });
 });

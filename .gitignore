@@ -23,6 +23,9 @@ datos/
 # Copias seudonimizadas de esos datos y su informe (scripts/anonimizar-excel.mjs): tampoco se suben
 datos-anonimos/
 
+# SQL que arma la restauración desde el respaldo (D66): trae datos de clientes
+restaurar-pedidos.sql
+
 # Sistema
 .DS_Store
 Thumbs.db

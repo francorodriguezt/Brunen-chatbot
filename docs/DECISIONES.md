@@ -556,3 +556,15 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Vacíos por retirar: por cliente, los que el repartidor dejó sin retirar al entregar (lo que había que retirar menos lo que marcó, D61), desde el mes pasado. Los pedidos entregados a mano en el panel, sin esa marca, no cuentan.
 - Se calcula al abrir la sección, no en la consulta que se repite cada pocos segundos: lee los pedidos entregados desde el primer día del mes anterior (una lectura de unas 2.000 filas con el historial cargado; el plan gratis de D1 permite 5 millones al día).
 - Pendiente: "envases pendientes" según el dueño puede significar otra cosa (los bidones que cada cliente tiene en su casa). Si es eso, hace falta un saldo de envases por cliente (fase G).
+
+### D66 · 2026-11-14 · Respaldo de la base en Google Sheets y en Excel
+**Franco pidió un respaldo en Excel o Google Sheets para no depender solo de la base. Quedan tres copias además del Time Travel de Cloudflare. Detalle y cómo restaurar: [RESPALDO.md](RESPALDO.md).**
+- `RESPALDO_PEDIDOS` (planilla de Brunen): cada 30 minutos la tarea programada agrega al final los pedidos nuevos o que cambiaron, con todos sus datos. Es un registro, nunca se reescribe: el estado vigente de un pedido es su última fila. Se eligió así porque agregar filas es una sola llamada barata a Google, y no hay que buscar ni reescribir filas; reconstruir el estado vigente lo hace el script de restauración.
+- `RESPALDO_CLIENTES`: cada noche a las 3:00, una copia completa de las fichas (teléfonos y dirección vigente). Se escribe primero lo nuevo y después se borra lo que sobra, para que una falla deje la copia anterior.
+- Excel desde el panel (Equipo > Respaldo): todos los pedidos en su estado actual. La pantalla los pide por páginas de 300 y arma el archivo en el equipo, para que ninguna solicitud gaste mucha CPU.
+- `npm run restaurar-respaldo -- archivo.csv` lee cualquiera de las dos copias, se queda con la versión más nueva de cada pedido y arma el SQL. No pisa un pedido que en la base está más nuevo. Probado de punta a punta: respaldo, base nueva y comparación con la original.
+- Hasta dónde se copió queda en la tabla `respaldos` (migración `0013`); solo se escribe cuando hubo algo que copiar. Si Google falla, se reintenta desde el mismo punto, y si pasa un día con pedidos esperando, la revisión de las 7:30 deja un aviso urgente.
+- Las celdas van "tal cual" (RAW en Sheets; con apóstrofo en el Excel): un nombre que empieza con "=" no se ejecuta como fórmula.
+- No se respaldan las cuentas del panel ni sus claves, los avisos ni el historial.
+- CPU: convertir 1.500 fechas a la hora de Santiago con Intl costaba unos 10 ms por tanda (todo el plan gratis). Se calcula el desfase una vez por día y se usa la conversión exacta solo el día del cambio de horario: unos 2,5 ms, con las mismas horas (probado en dos años de fechas).
+- La planilla ya guarda los clientes, así que estos datos no salen a un tercero nuevo (D32).

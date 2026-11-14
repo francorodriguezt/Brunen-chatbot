@@ -90,6 +90,14 @@
         <button type="button" id="nuevo-repartidor" class="boton boton-principal">+ Nuevo repartidor</button>
       </div>
       <div id="lista-equipo" class="lista"></div>
+      <section class="tarjeta respaldo" aria-labelledby="titulo-respaldo">
+        <h2 id="titulo-respaldo" class="titulo-reparto">Respaldo</h2>
+        <p class="suave">Cada 30 minutos los pedidos se copian a la hoja <b>RESPALDO_PEDIDOS</b> de la planilla de Google, y cada noche las fichas de clientes a <b>RESPALDO_CLIENTES</b>. Si la base fallara, los datos siguen ahí.</p>
+        <ul id="estado-respaldo" class="lista-respaldo"></ul>
+        <div class="acciones">
+          <button type="button" id="descargar-respaldo" class="boton">Descargar todos los pedidos (Excel)</button>
+        </div>
+      </section>
     </section>
   </main>
 

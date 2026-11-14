@@ -18,6 +18,9 @@ Para quien confirma los pedidos y arma el reparto. El panel es una página priva
 - **Ver ficha**: cambiar el nombre, el tipo de cliente y las notas; agregar otro teléfono; ver todas sus direcciones (la primera es la vigente) y sus últimos pedidos.
 - **Unir con otro cliente**: si alguien aparece dos veces, escribe un teléfono de la otra ficha y todo pasa a esta. No se puede deshacer.
 
+## Respaldo
+En **Equipo > Respaldo** se ve cuándo se copiaron por última vez los pedidos y las fichas a la planilla de Google, y se pueden descargar todos los pedidos en Excel. Guarda ese archivo en un lugar seguro: tiene datos de clientes. Cómo restaurar: [RESPALDO.md](RESPALDO.md).
+
 ## Equipo
 - Lista de quienes pueden entrar, con cuántos dispositivos tienen la sesión abierta.
 - **Nuevo repartidor**: su nombre, su RUT y una clave de 4 dígitos, que se le dice en persona.

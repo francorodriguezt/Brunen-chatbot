@@ -25,6 +25,7 @@ import { RepositorioEntregas } from '../entregas';
 import { manejarRepartidor } from './repartidor-api';
 import { manejarRuta } from './ruta-api';
 import { RepositorioPuntos } from '../puntos';
+import { RepositorioRespaldo } from '../respaldo';
 import { Cuentas } from './cuentas';
 import { cookieDeSesion, esDelAdministrador, manejarSesionAdmin, manejarSesionPublica, manejarUsuarios, tokenDeCookie, type ContextoDeIngreso } from './ingreso';
 
@@ -160,7 +161,7 @@ async function apiDeAdministracion(request: Request, url: URL, env: EntornoPanel
       (await manejarUsuarios(request, interna, { ...ctx, yo: sesion.usuario })) ??
       (await manejarRuta(request, interna, { repositorio: ctx.repositorio, puntos: new RepositorioPuntos(env.DB as BaseDatos), ahoraSegundos })) ??
       (await manejarClientes(request, interna, { clientes, repositorio: ctx.repositorio, fijos: new RepositorioFijos(env.DB as BaseDatos), ahoraSegundos })) ??
-      (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes, entregas: new RepositorioEntregas(env.DB as BaseDatos) }));
+      (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes, entregas: new RepositorioEntregas(env.DB as BaseDatos), respaldo: new RepositorioRespaldo(env.DB as BaseDatos) }));
     if (sesion?.renovada && token) respuesta.headers.append('set-cookie', cookieDeSesion(token, true, ctx.cookieSegura));
     return respuesta;
   } catch (falla) {

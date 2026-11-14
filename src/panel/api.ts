@@ -12,6 +12,10 @@
 
 import { cierreDelDia } from '../caja';
 import { desdeParaEstadisticas, resumirEntregas } from '../estadisticas';
+import { ENCABEZADO_PEDIDOS, filaDePedido, type RepositorioRespaldo } from '../respaldo';
+
+/** Pedidos por página en la descarga del respaldo. */
+const PAGINA_DE_RESPALDO = 300;
 import { MOTIVOS_NO_ENTREGA, type RepositorioEntregas } from '../entregas';
 import { COMUNAS_ATENDIDAS } from '../comunas';
 import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
@@ -30,6 +34,8 @@ export interface ContextoApi {
   clientes?: RepositorioClientes;
   /** Lo que anota el repartidor (fase D, D61): si viene, el reparto lo muestra para seguir el avance. */
   entregas?: RepositorioEntregas;
+  /** Respaldo de la base (D66): la descarga en Excel y el estado de la copia en Google Sheets. */
+  respaldo?: RepositorioRespaldo;
 }
 
 const MAX_CUERPO_BYTES = 20_000;
@@ -177,6 +183,25 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       // planilla y el panel no tiene acceso a Google): la persona la revisa antes de guardar.
       const sugerida = calcularFechaEntrega(new Date(ahoraSegundos * 1000), { feriados: SIN_FERIADOS });
       return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha, ...OPCIONES_DE_PEDIDO });
+    }
+
+    // Respaldo (D66): todos los pedidos por páginas, para que la pantalla arme el Excel (así ninguna solicitud se pasa
+    // del tiempo de CPU del plan gratis), y cómo va la copia en Google Sheets.
+    if (ruta === '/api/respaldo' && metodo === 'GET') {
+      const despues = url.searchParams.get('despues') ?? '';
+      if (despues.length > 20) return error(400, 'Solicitud no válida.');
+      const ahora = ahoraSegundos;
+      if (!ctx.respaldo) return error(503, 'El respaldo no está disponible.');
+      const filas = await ctx.respaldo.pagina(despues, PAGINA_DE_RESPALDO);
+      return json({
+        encabezado: ENCABEZADO_PEDIDOS,
+        filas: filas.map((p) => filaDePedido(p, ahora)),
+        siguiente: filas.length === PAGINA_DE_RESPALDO ? String(filas[filas.length - 1]?.id ?? '') : null,
+      });
+    }
+    if (ruta === '/api/respaldo/estado' && metodo === 'GET') {
+      if (!ctx.respaldo) return error(503, 'El respaldo no está disponible.');
+      return json({ hojas: await ctx.respaldo.estado() });
     }
 
     // Bidones entregados por día, semana y mes, y vacíos por retirar (D65): lo que el dueño pidió ver.
