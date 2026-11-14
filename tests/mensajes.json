@@ -216,6 +216,106 @@
     {
       "mensaje": "hola me puede traer dos bidones grandes",
       "esperado": { "intencion": "pedido", "items": [{ "tipo": "no_especificado", "cantidad": 2 }], "accion": "preguntar_tipo" }
+    },
+    {
+      "mensaje": "2x20",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }] }
+    },
+    {
+      "mensaje": "3 x 20 lts",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 3 }] }
+    },
+    {
+      "mensaje": "20 lts x 3",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 3 }] }
+    },
+    {
+      "mensaje": "20x3",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 3 }] }
+    },
+    {
+      "mensaje": "15 de 20lts",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 15 }] }
+    },
+    {
+      "mensaje": "Holaa necesito 2 bidoness de 20",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }] }
+    },
+    {
+      "mensaje": "mañana no, el jueves",
+      "esperado": { "intencion": "desconocido", "fecha_texto": "jueves" }
+    },
+    {
+      "mensaje": "1 de 20 para el miércoles, no el jueves",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 1 }], "fecha_texto": "miércoles" }
+    },
+    {
+      "mensaje": "hoy no, mañana 2 de 20",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "fecha_texto": "mañana" }
+    },
+    {
+      "mensaje": "2 de 20 el 15",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "fecha_texto": "el 15" }
+    },
+    {
+      "mensaje": "cancelar pedido",
+      "esperado": { "intencion": "cambio", "accion": "escalar" }
+    },
+    {
+      "mensaje": "quiero cancelar el pedido de mañana",
+      "esperado": { "intencion": "cambio", "accion": "escalar" }
+    },
+    {
+      "mensaje": "no voy a estar, pueden venir otro dia",
+      "esperado": { "intencion": "cambio", "accion": "escalar" }
+    },
+    {
+      "mensaje": "cambiar el pedido a 3 de 20",
+      "esperado": { "intencion": "cambio", "accion": "escalar" }
+    },
+    {
+      "mensaje": "mejor que sean 3 de 20",
+      "esperado": { "intencion": "cambio", "accion": "escalar" }
+    },
+    {
+      "mensaje": "2 de 20 para mañana, cancelo en efectivo",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "fecha_texto": "mañana", "forma_pago": "efectivo" }
+    },
+    {
+      "mensaje": "como puedo cancelar?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "pago" }
+    },
+    {
+      "mensaje": "pago en efectivo",
+      "esperado": { "intencion": "desconocido", "forma_pago": "efectivo" }
+    },
+    {
+      "mensaje": "hola, pedido para mañana: 3 bidones de 20 litros, pago con transferencia",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 3 }], "fecha_texto": "mañana", "forma_pago": "transferencia" }
+    },
+    {
+      "mensaje": "dos de veinte para el lunes, pago con tarjeta",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "fecha_texto": "lunes", "forma_pago": "redcompra" }
+    },
+    {
+      "mensaje": "2 bidones de 20 con envase nuevo",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }], "pide_envase": true }
+    },
+    {
+      "mensaje": "quiero comprar bidones nuevos, no tengo envases",
+      "esperado": { "intencion": "pedido", "items": [], "accion": "preguntar_pedido", "pide_envase": true }
+    },
+    {
+      "mensaje": "el repartidor no llegó",
+      "esperado": { "intencion": "reclamo", "accion": "escalar" }
+    },
+    {
+      "mensaje": "Me traen 2 de 20 xfa",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 2 }] }
+    },
+    {
+      "mensaje": "buenas tardes me pueden traer 1 bidon de 20 a las condes",
+      "esperado": { "intencion": "pedido", "items": [{ "tipo": "20L", "cantidad": 1 }], "comuna_mencionada": "Las Condes" }
     }
   ]
 }

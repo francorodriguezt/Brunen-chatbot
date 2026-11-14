@@ -191,6 +191,11 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
     precioSeguro = false;
     motivos.push(`La hoja PRECIOS no es confiable (${e.precios.problemas[0] ?? 'sin detalle'}): se usaron los precios de respaldo.`);
   }
+  // La carga inicial (envase nuevo) cuesta más que la recarga: no se promete el precio de la recarga.
+  if (e.interpretacion.pide_envase) {
+    precioSeguro = false;
+    motivos.push('Pide envases nuevos (carga inicial): confirmar cuántos y su precio.');
+  }
   if (cliente && cliente.avisos.length > 0) {
     precioSeguro = false;
     motivos.push(...cliente.avisos.map((aviso) => `Ficha del cliente: ${aviso}`));
@@ -252,6 +257,7 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
     notasRepartidor: cliente ? [cliente.notas, cliente.avisoHora ? 'Avisar hora aproximada de entrega' : ''].filter(Boolean).join('. ') : (previo?.notasRepartidor ?? ''),
     envasesARetirar: cliente?.envasesPendientes ?? 0,
     observaciones: [...notas, ...motivos].join(' | '),
+    ...(e.interpretacion.forma_pago && { formaPago: e.interpretacion.forma_pago }),
   };
 
   const resumen = `${textos.resumenLineas(lineas)}${comuna ? ` · ${comuna}` : ''}`;
@@ -306,6 +312,9 @@ function decidirBase(e: EntradaMotor): Decision {
         alerta: alerta(e, 'envases', cantidad ? `Tiene ${cantidad} envase(s) vacío(s) para retirar` : 'Avisa que tiene envases vacíos para retirar'),
       };
     }
+    case 'cambio':
+      // No se anota otro pedido encima del que ya hizo: lo cancela o lo cambia una persona.
+      return escalar(e, 'escalamiento', 'Quiere cancelar, cambiar o mover un pedido: revísalo en el panel y respóndele');
     case 'pregunta':
       return responderPregunta(e);
     case 'repetir_pedido':
@@ -318,6 +327,7 @@ function decidirBase(e: EntradaMotor): Decision {
       if (e.pendienteDeDatos) return repreguntarDatos(e, e.pendienteDeDatos);
       // La respuesta del pedido invita a escribir la dirección nueva (D55): ese mensaje va a una persona, dicho claro.
       if (CAMBIO_DE_DIRECCION.test(e.texto)) return escalar(e, 'no_entendido', 'Avisa que cambió de dirección: corrígela en su último pedido y en su ficha de cliente');
+      if (i.forma_pago) return escalar(e, 'pago', `Dice que pagará con ${i.forma_pago}: anótalo en su pedido`);
       return escalar(e, 'no_entendido', 'El bot no entendió el mensaje');
   }
 }
