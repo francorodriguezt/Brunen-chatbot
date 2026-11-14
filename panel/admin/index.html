@@ -92,6 +92,12 @@
   <dialog id="dialogo-editar" aria-labelledby="titulo-editar">
     <form method="dialog" id="formulario-editar">
       <h2 id="titulo-editar">Cambiar pedido</h2>
+      <div class="pegar-mensaje solo-nuevo">
+        <label for="texto-pegado">Pega aquí el mensaje del cliente <span class="suave">(opcional: llena el formulario solo)</span></label>
+        <textarea id="texto-pegado" rows="3" maxlength="2000" placeholder="Cópialo desde WhatsApp, con o sin la hora y el número"></textarea>
+        <button type="button" class="boton boton-chico" id="llenar-con-mensaje">Llenar con el mensaje</button>
+        <ul class="avisos-pegado" id="avisos-pegado" role="status" hidden></ul>
+      </div>
       <div class="campos">
         <label class="solo-nuevo">Teléfono <input type="tel" name="telefono" maxlength="20" autocomplete="off" inputmode="tel" placeholder="9 1234 5678"></label>
         <label class="solo-nuevo">Nombre <input type="text" name="nombre" maxlength="80" autocomplete="off"></label>

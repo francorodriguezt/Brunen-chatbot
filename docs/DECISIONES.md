@@ -534,3 +534,18 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Navegar y Waze van a las coordenadas cuando la dirección tiene punto exacto; si no, a la dirección escrita, como antes.
 - Hecho a propósito así: no se instala MapLibre como dependencia de npm porque trae 25 paquetes para copiar 3 archivos.
 - Falta: probarlo con el repartidor (permiso de ubicación en su teléfono), y que el dueño confirme la hora de salida y los minutos por parada.
+
+### D64 · 2026-11-14 · Mejoras con lo aprendido: el bot entiende más, pedido rápido, cierre del día y mensajes por parada
+**Franco pidió aplicar las mejoras que no dependen de nadie. Se probó el bot con 46 mensajes nuevos al estilo de WhatsApp y se corrigió lo que entendía mal; en el panel se ataca el trabajo manual que más tiempo le quita a Constanza.**
+- Intérprete del bot (`src/interprete.ts`), cada caso queda en `tests/mensajes.json` (de 54 a 83):
+  - "2x20", "3 x 20 lts", "20 lts x 3", "20x3" y "bidoness" con letras repetidas.
+  - Días descartados: "mañana no, el jueves" es jueves y "el miércoles, no el jueves" es miércoles; se distinguen por la coma, así que se buscan en el texto con sus signos. "2 de 20 el 15" toma el día 15.
+  - Intención nueva **cambio**: cancelar, cambiar o mover un pedido ("cancelar pedido", "mejor que sean 3", "no voy a estar"). Antes "cambiar el pedido a 3 de 20" anotaba un pedido nuevo encima del anterior; ahora va a Constanza y no se anota nada. En Chile "cancelar" también es pagar: "cancelo en efectivo" y "ya cancelé" son pago, no anulación.
+  - Forma de pago: "pago en efectivo", "con transferencia", "con tarjeta" se guardan en el pedido (columna `forma_pago`, D52). Suelta, sin pedido, va a Constanza para anotarla, sin gastar una consulta a la IA.
+  - Envases nuevos: "2 de 20 con envase nuevo" antes se tomaba como devolución de envases; ahora es un pedido de carga inicial, que se anota sin prometer el precio de la recarga.
+  - La IA de respaldo conoce la intención "cambio" y también la escala.
+- **Pedido rápido** (`src/pegado.ts`, `POST /api/pedidos/interpretar`): en "Nuevo pedido" se pega el mensaje tal como se copia de WhatsApp (con o sin la hora y el número) y el formulario se llena: teléfono o nombre del contacto, bidones, fecha propuesta, comuna y forma de pago. Si el teléfono ya pidió antes, se completan su nombre y su dirección; si nombró otra comuna, se avisa en vez de mezclarlas. Usa el intérprete del bot por reglas: el texto no sale del panel ni pasa por la IA. No llena precios: el panel no lee la hoja PRECIOS y no se inventan.
+- **Cierre del día** (`src/caja.ts`, fase G): en Reparto, lo entregado, lo que no se pudo, el efectivo cobrado contra el esperado, las entregas en efectivo sin marcar como cobradas, los pedidos en efectivo sin precio y los vacíos retirados contra los esperados. Solo suma lo que marcó el repartidor; si algo no cuadra, se le pregunta.
+- **Mensajes por parada** (`mensajeDeParada` en `src/reparto.ts`): el botón "Copiar mensaje" de cada parada copia el mensaje con el formato que hoy se escribe a mano (número y nombre, dirección y notas, teléfono, cantidad y "*efectivo $X*"). Sirve mientras el repartidor no use su aplicación. La lista para copiar también marca lo que se cobra en efectivo.
+- **Pantalla encendida** en la aplicación del repartidor (wake lock del navegador): solo mientras quedan paradas y la aplicación está a la vista. Viene marcada y el repartidor la puede apagar. En iPhone hay que probarla con la aplicación instalada.
+- Diferencia conocida: la ruta del mapa (D63) se calcula con las paradas que faltan, así que a mitad del día sus cargas pueden no coincidir con las de la lista, que cuenta también las ya entregadas.

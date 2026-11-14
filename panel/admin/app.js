@@ -547,8 +547,55 @@ function abrirNuevoPedido() {
   formulario.elements.fecha.value = estado.opciones.fechaSugerida || hoyEnSantiago();
   $('editar-lineas').replaceChildren(filaDeLinea());
   actualizarTotalDelEditor();
+  $('avisos-pegado').hidden = true;
   $('dialogo-editar').showModal();
-  formulario.elements.telefono.focus();
+  // El camino corto es pegar el mensaje del cliente; quien prefiera escribir, baja al teléfono.
+  $('texto-pegado').focus();
+}
+
+/**
+ * Pedido rápido (D64): el mensaje pegado llena el formulario. Solo completa lo que encontró y nunca borra lo que la
+ * persona ya escribió en el teléfono o el nombre. Los bidones sí se reemplazan: son lo que dice el mensaje.
+ */
+async function llenarConMensaje() {
+  const texto = $('texto-pegado').value.trim();
+  const lista = $('avisos-pegado');
+  if (!texto) {
+    $('texto-pegado').focus();
+    return;
+  }
+  let leido;
+  try {
+    leido = await api('/api/pedidos/interpretar', { texto });
+  } catch (falla) {
+    lista.replaceChildren(h('li', {}, falla.message));
+    lista.hidden = false;
+    return;
+  }
+  const formulario = $('formulario-editar');
+  const campos = formulario.elements;
+  if (leido.telefono && !campos.telefono.value.trim()) campos.telefono.value = leido.telefono.replace(/^56/, '');
+  if (leido.nombre && !campos.nombre.value.trim()) campos.nombre.value = leido.nombre;
+  if (leido.fecha) campos.fecha.value = leido.fecha;
+  if (leido.formaPago) campos.formaPago.value = leido.formaPago;
+  if (leido.lineas.length > 0) {
+    // Sin litros se propone el de 20 L (19 de cada 20 pedidos), y el aviso pide revisarlo.
+    $('editar-lineas').replaceChildren(
+      ...leido.lineas.map((l) => filaDeLinea({ tipo: l.tipo === 'no_especificado' ? '20L' : l.tipo, cantidad: l.cantidad ?? 1, precioUnitario: null })),
+    );
+    actualizarTotalDelEditor();
+  }
+  // Primero el cliente conocido (su dirección y su comuna); después la comuna que nombró, solo si no hay otra.
+  if (leido.telefono) await reconocerCliente();
+  const avisos = [...leido.avisos];
+  const comunaConocida = campos.comuna.value.trim();
+  if (leido.comuna && !comunaConocida) campos.comuna.value = leido.comuna;
+  else if (leido.comuna && comunaConocida.toLowerCase() !== leido.comuna.toLowerCase()) {
+    avisos.push(`Nombró ${leido.comuna}, pero su última dirección es en ${comunaConocida}: confirma dónde se entrega.`);
+  }
+  if (avisos.length === 0) avisos.push('Listo: revisa los datos, completa el precio y guarda.');
+  lista.replaceChildren(...avisos.map((aviso) => h('li', {}, aviso)));
+  lista.hidden = false;
 }
 
 /** Si ese teléfono ya pidió antes, se completan su nombre y su dirección para no escribirlos de nuevo. Es solo una ayuda. */
@@ -690,7 +737,7 @@ function lineasDeEntrega(entrega, motivos, parada) {
   return lineas;
 }
 
-function tarjetaDeParada(parada, entrega, motivos) {
+function tarjetaDeParada(parada, entrega, motivos, mensaje) {
   const insignia = ESTADOS[parada.estado] ?? { texto: parada.estado, color: '' };
   const pedido = { id: parada.idPedido, nombre: parada.nombre, telefono: parada.telefono, actualizadoEn: parada.actualizadoEn };
   const entregado = boton('Entregado', 'boton boton-chico boton-principal', () => entregarPedido(pedido));
@@ -717,11 +764,42 @@ function tarjetaDeParada(parada, entrega, motivos) {
       parada.notas ? dato('Notas', parada.notas) : null,
       ...lineasDeEntrega(entrega, motivos, parada),
     ),
-    h('div', { clase: 'acciones' }, acciones, boton('Ver pedido', 'boton boton-chico', () => verPedido(parada.idPedido))),
+    h(
+      'div',
+      { clase: 'acciones' },
+      acciones,
+      boton('Ver pedido', 'boton boton-chico', () => verPedido(parada.idPedido)),
+      // Mientras el repartidor no use su aplicación, se le manda un mensaje por parada, en el orden de la ruta (D64).
+      mensaje ? boton('Copiar mensaje', 'boton boton-chico', () => copiar(mensaje, `Mensaje de la parada ${parada.orden} copiado: pégalo en el chat del repartidor.`)) : null,
+    ),
   );
 }
 
-function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {} }) {
+/**
+ * Cierre del día (D64): lo que el repartidor debería traer y lo que marcó. Se muestra desde que hay una entrega o un
+ * "No se pudo"; antes, solo lo esperado. Lo que no cuadra va destacado para preguntarle.
+ */
+function cierreDelDia(caja) {
+  if (!caja || caja.paradas === 0) return null;
+  const empezo = caja.entregadas + caja.noSePudo > 0;
+  const fila = (texto, destacar = false) => h('li', { clase: destacar ? 'falta' : '' }, texto);
+  const { efectivo, vacios } = caja;
+  const filas = [
+    empezo ? fila(`${caja.entregadas} de ${caja.paradas} entregadas${caja.pendientes > 0 ? `, ${caja.pendientes} por entregar` : ''}`) : null,
+    caja.noSePudo > 0 ? fila(`${caja.noSePudo} no se ${caja.noSePudo === 1 ? 'pudo' : 'pudieron'} entregar: hay que reagendar`, true) : null,
+    efectivo.esperado > 0 || efectivo.cobrado > 0
+      ? fila(empezo ? `Efectivo: cobró ${pesos.format(efectivo.cobrado)} de ${pesos.format(efectivo.esperado)}` : `Efectivo por cobrar: ${pesos.format(efectivo.esperado)}`)
+      : null,
+    efectivo.entregadosSinCobrar > 0 ? fila(`${efectivo.entregadosSinCobrar} ${efectivo.entregadosSinCobrar === 1 ? 'entrega' : 'entregas'} en efectivo sin marcar como cobrada: pregúntale`, true) : null,
+    efectivo.sinPrecio > 0 ? fila(`${efectivo.sinPrecio} ${efectivo.sinPrecio === 1 ? 'pedido' : 'pedidos'} en efectivo sin precio: complétalo para saber cuánto cobrar`, true) : null,
+    vacios.esperados > 0 || vacios.retirados > 0 ? fila(empezo ? `Vacíos: retiró ${vacios.retirados} de ${vacios.esperados}` : `Vacíos por retirar: ${vacios.esperados}`) : null,
+    vacios.paradasConFaltante > 0 ? fila(`En ${vacios.paradasConFaltante} ${vacios.paradasConFaltante === 1 ? 'parada' : 'paradas'} retiró menos vacíos de los que había`, true) : null,
+  ].filter(Boolean);
+  if (filas.length === 0) return null;
+  return h('div', { clase: 'cierre-dia' }, h('h3', {}, empezo ? 'Cierre del día' : 'Para el cierre del día'), h('ul', {}, ...filas));
+}
+
+function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja = null, mensajes = {} }) {
   const resumen = $('resumen-reparto');
   const lista = $('lista-reparto');
   const titulo = h('h2', { clase: 'titulo-reparto' }, `Reparto del ${fechaLarga(reparto.fecha)}`);
@@ -754,6 +832,7 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {} }) {
       reparto.cargas.length > 1 ? cifra(reparto.cargas.length, 'cargas del furgón') : null,
     ),
     sinConfirmar ?? '',
+    cierreDelDia(caja) ?? '',
     h(
       'div',
       { clase: 'acciones' },
@@ -770,7 +849,7 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {} }) {
       const titulo = carga
         ? h('h3', { clase: `titulo-carga${carga.excedeFurgon ? ' excede' : ''}` }, `Carga ${carga.numero}: ${carga.totalBidones} bidones${carga.excedeFurgon ? ' (no cabe en un viaje: divídelo)' : ''}`)
         : null;
-      const tarjeta = tarjetaDeParada(parada, entregas[parada.idPedido], motivos);
+      const tarjeta = tarjetaDeParada(parada, entregas[parada.idPedido], motivos, mensajes[parada.idPedido]);
       return titulo ? [titulo, tarjeta] : [tarjeta];
     }),
   );
@@ -1500,6 +1579,9 @@ function iniciar() {
   $('nuevo-pedido').addEventListener('click', abrirNuevoPedido);
   $('buscar-pedidos').addEventListener('input', alEscribirEnElBuscador);
   $('formulario-editar').elements.telefono.addEventListener('change', () => void reconocerCliente());
+  $('llenar-con-mensaje').addEventListener('click', () => void llenarConMensaje());
+  // Al pegar se llena solo: no hace falta tocar el botón.
+  $('texto-pegado').addEventListener('paste', () => setTimeout(() => void llenarConMensaje(), 0));
   $('reparto-hoy').addEventListener('click', () => elegirDiaDelReparto(hoyEnSantiago()));
   $('reparto-manana').addEventListener('click', () => elegirDiaDelReparto(sumarDias(hoyEnSantiago(), 1)));
   $('fecha-reparto').addEventListener('change', (evento) => elegirDiaDelReparto(evento.currentTarget.value));

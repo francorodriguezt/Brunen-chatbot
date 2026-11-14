@@ -10,12 +10,14 @@
  * condiciones sin permiso (no se habilita CORS), así que no puede mover pedidos con la sesión de la operadora.
  */
 
+import { cierreDelDia } from '../caja';
 import { MOTIVOS_NO_ENTREGA, type RepositorioEntregas } from '../entregas';
 import { COMUNAS_ATENDIDAS } from '../comunas';
 import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
-import { armarReparto, csvDeReparto, textoDeReparto, tsvDeReparto } from '../reparto';
+import { armarReparto, csvDeReparto, mensajeDeParada, textoDeReparto, tsvDeReparto } from '../reparto';
 import { ESTADOS_DE_PEDIDO, OPCIONES_DE_PEDIDO, type CambiosDePedido, type DatosDePago, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type PedidoManual, type RepositorioD1 } from '../repositorio';
 import type { RepositorioClientes } from '../fichas';
+import { leerPedidoPegado } from '../pegado';
 import { normalizarTelefono } from '../whatsapp';
 
 export interface ContextoApi {
@@ -179,10 +181,15 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
     if ((ruta === '/api/reparto' || ruta === '/api/reparto.csv') && metodo === 'GET') {
       const fecha = url.searchParams.get('fecha');
       if (!esFecha(fecha) || Number.isNaN(Date.parse(`${fecha}T00:00:00Z`))) return error(400, 'Fecha no válida.');
-      const reparto = armarReparto(await repositorio.pedidosDelDia(fecha), fecha);
+      const pedidos = await repositorio.pedidosDelDia(fecha);
+      const reparto = armarReparto(pedidos, fecha);
       if (ruta === '/api/reparto') {
-        const entregas = ctx.entregas ? Object.fromEntries(await ctx.entregas.deDia(fecha)) : {};
-        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas, motivos: MOTIVOS_NO_ENTREGA });
+        const delDia = ctx.entregas ? await ctx.entregas.deDia(fecha) : new Map();
+        // El cierre del día (D64): efectivo, vacíos y paradas, con lo que marcó el repartidor.
+        const caja = cierreDelDia(reparto, pedidos, delDia);
+        // Un mensaje por parada, como los que hoy se escriben a mano para el repartidor (D64).
+        const mensajes = Object.fromEntries(reparto.paradas.map((p) => [p.idPedido, mensajeDeParada(p)]));
+        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas: Object.fromEntries(delDia), motivos: MOTIVOS_NO_ENTREGA, caja, mensajes });
       }
       return new Response(csvDeReparto(reparto), {
         status: 200,
@@ -209,6 +216,15 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       }
       if (!esTexto(cuerpo.texto) || cuerpo.texto.trim().length < 2) return error(400, 'Escribe al menos 2 letras o números para buscar.');
       return json({ pedidos: await repositorio.buscarPedidos(cuerpo.texto) });
+    }
+
+    // Pedido rápido (D64): el mensaje pegado se lee aquí, con el intérprete del bot, y no sale del panel.
+    if (ruta === '/api/pedidos/interpretar' && metodo === 'POST') {
+      const rechazo = esperadoComoEscritura(request, url);
+      if (rechazo) return rechazo;
+      const cuerpo = await leerCuerpo(request);
+      if (!cuerpo || !esTexto(cuerpo.texto) || cuerpo.texto.trim() === '') return error(400, 'Pega el mensaje del cliente.');
+      return json(await leerPedidoPegado(cuerpo.texto, new Date(ahoraSegundos * 1000)));
     }
 
     if (ruta === '/api/pedidos' && metodo === 'POST') {

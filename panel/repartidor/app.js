@@ -15,6 +15,7 @@ const formatoDia = new Intl.DateTimeFormat('en-CA', { timeZone: ZONA });
 const pesos = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const CLAVE_RUTA = 'brunen-ruta';
 const CLAVE_COLA = 'brunen-pendientes';
+const CLAVE_PANTALLA = 'brunen-pantalla-encendida';
 const REINTENTO_MS = 30_000;
 
 let ruta = null;
@@ -134,6 +135,8 @@ async function cargarRuta() {
 }
 
 function pintar() {
+  // Cada cambio de la ruta (cargarla, marcar una parada) revisa si la pantalla sigue encendida.
+  if ('wakeLock' in navigator) void ajustarPantalla();
   const lista = $('paradas');
   const cifras = $('cifras-ruta');
   if (!ruta || ruta.paradas.length === 0) {
@@ -255,6 +258,49 @@ function formularioNoSePudo(p) {
   );
 }
 
+// ---- Pantalla encendida (D64) ----
+
+/**
+ * Que el teléfono no se bloquee en plena ruta ("wake lock" del navegador). Solo mientras quedan paradas y la aplicación
+ * está a la vista: el navegador lo suelta solo al cambiar de aplicación, y se pide de nuevo al volver. El repartidor
+ * lo puede apagar; la elección queda en el teléfono.
+ */
+let bloqueoDePantalla = null;
+let ajustandoPantalla = false; // dos repintados seguidos no deben pedir dos bloqueos
+const quierePantallaEncendida = () => leer(CLAVE_PANTALLA) !== false;
+
+async function ajustarPantalla() {
+  if (ajustandoPantalla) return;
+  ajustandoPantalla = true;
+  const quedan = ruta?.paradas.some((p) => p.estado === 'pendiente') ?? false;
+  const debe = quierePantallaEncendida() && quedan && document.visibilityState === 'visible';
+  try {
+    if (debe && !bloqueoDePantalla) {
+      bloqueoDePantalla = await navigator.wakeLock.request('screen');
+      bloqueoDePantalla.addEventListener('release', () => (bloqueoDePantalla = null));
+    } else if (!debe && bloqueoDePantalla) {
+      await bloqueoDePantalla.release();
+      bloqueoDePantalla = null;
+    }
+  } catch {
+    bloqueoDePantalla = null; // sin batería suficiente o sin permiso: el teléfono se comporta como siempre
+  } finally {
+    ajustandoPantalla = false;
+  }
+}
+
+function prepararPantalla() {
+  if (!('wakeLock' in navigator)) return; // navegadores antiguos: no se ofrece
+  const casilla = $('pantalla-encendida');
+  casilla.checked = quierePantallaEncendida();
+  casilla.addEventListener('change', () => {
+    guardar(CLAVE_PANTALLA, casilla.checked);
+    void ajustarPantalla();
+  });
+  $('opcion-pantalla').hidden = false;
+  document.addEventListener('visibilitychange', () => void ajustarPantalla());
+}
+
 // ---- Marcar y enviar ----
 
 /**
@@ -326,6 +372,7 @@ async function salir() {
   guardar(CLAVE_RUTA, null);
   guardar(CLAVE_COLA, null);
   ruta = null;
+  void bloqueoDePantalla?.release();
   pedirClave();
 }
 
@@ -334,6 +381,7 @@ async function iniciar() {
   $('salir').addEventListener('click', () => void salir());
   $('cambiar-sesion').addEventListener('click', () => void salir());
   $('actualizar-ruta').addEventListener('click', () => void vaciarCola());
+  prepararPantalla();
   window.addEventListener('online', () => void vaciarCola());
   setInterval(() => {
     if (cola().length > 0) void vaciarCola();

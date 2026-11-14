@@ -37,6 +37,8 @@ export interface ParadaDeReparto {
   notas: string;
   /** Lo que se cobra; null si al pedido le falta algún precio. */
   total: number | null;
+  /** Lo que el repartidor cobra en la puerta: pedidos en efectivo todavía sin pagar. null si no cobra nada ahí. */
+  cobrarEnEfectivo: number | null;
   /** Versión del pedido: la pantalla la devuelve al marcarlo en ruta o entregado, para no pisar un cambio ajeno. */
   actualizadoEn: number;
   /** En qué viaje del furgón va (1, 2...): el furgón lleva como máximo `CAPACIDAD_FURGON` bidones (fase C, D60). */
@@ -126,6 +128,7 @@ export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string):
       envasesARetirar: pedido.envasesARetirar,
       notas: pedido.notasRepartidor,
       total: pedido.total,
+      cobrarEnEfectivo: pedido.formaPago === 'efectivo' && pedido.estadoPago !== 'pagado' ? pedido.total : null,
       actualizadoEn: pedido.actualizadoEn,
       carga: 1,
     });
@@ -161,6 +164,25 @@ export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string):
 const plural = (cantidad: number, uno: string, varios: string): string => `${cantidad} ${cantidad === 1 ? uno : varios}`;
 const envases = (cantidad: number): string => plural(cantidad, 'envase', 'envases');
 
+/**
+ * El mensaje de una parada, con el formato que hoy se escribe a mano para el repartidor (D64, conocimiento §17): número y
+ * nombre; dirección con comuna y notas; teléfono; cantidad y, si paga en efectivo, cuánto cobrar. Uno por parada, para
+ * mandarlos por WhatsApp en el orden de la ruta mientras la aplicación del repartidor convive con la de hoy.
+ */
+export function mensajeDeParada(p: ParadaDeReparto): string {
+  const bidones = TAMANOS.filter((tipo) => p.bidones[tipo] > 0).map((tipo) => `${p.bidones[tipo]} de ${litros(tipo)}`).join(' y ');
+  return [
+    `${p.orden}. ${p.nombre || 'Sin nombre'}`,
+    [[p.direccion, p.comuna].filter(Boolean).join(', ') || 'Sin dirección', p.notas].filter(Boolean).join('. '),
+    p.telefono ? `+${p.telefono}` : '',
+    [bidones, p.envasesARetirar > 0 ? `retirar ${envases(p.envasesARetirar)}` : '', p.cobrarEnEfectivo !== null ? `*efectivo ${formatearCLP(p.cobrarEnEfectivo)}*` : '']
+      .filter(Boolean)
+      .join(' · '),
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 /** Texto para copiar y mandar al repartidor: el día, la carga y una línea por parada. */
 export function textoDeReparto(reparto: RepartoDelDia): string {
   const titulo = `Reparto del ${fechaEnPalabras(reparto.fecha)}`;
@@ -183,6 +205,7 @@ export function textoDeReparto(reparto: RepartoDelDia): string {
       p.nombre,
       TAMANOS.filter((tipo) => p.bidones[tipo] > 0).map((tipo) => `${p.bidones[tipo]} × ${litros(tipo)}`).join(', '),
       p.total === null ? 'sin precio' : formatearCLP(p.total),
+      p.cobrarEnEfectivo !== null ? `*efectivo ${formatearCLP(p.cobrarEnEfectivo)}*` : '',
       p.telefono ? `+${p.telefono}` : '',
       p.notas,
       p.envasesARetirar > 0 ? `Retirar ${envases(p.envasesARetirar)}` : '',

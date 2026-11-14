@@ -40,6 +40,7 @@ Para quien confirma los pedidos y arma el reparto. El panel es una página priva
 
 ## Nuevo pedido: los que no llegan por el bot
 Para una llamada, un audio o una empresa con plan mensual. Toca "+ Nuevo pedido":
+0. **Lo más rápido:** copia el mensaje del cliente en WhatsApp y pégalo en el cuadro de arriba. El formulario se llena solo (teléfono, bidones, fecha, comuna y forma de pago) y te avisa qué revisar. Después sigue con los pasos de abajo para revisar y completar el precio.
 1. Escribe el teléfono. Si ya pidió antes, el panel completa su nombre y su dirección: revísalos.
 2. Revisa la fecha de entrega. Viene sugerida con el corte de las 9:00, pero el panel no conoce los feriados.
 3. Agrega los bidones con su precio.
@@ -48,6 +49,9 @@ Para una llamada, un audio o una empresa con plan mensual. Toca "+ Nuevo pedido"
 ## Reparto
 - Muestra las entregas confirmadas de **Hoy**, de **Mañana** o del día que elijas, ordenadas por comuna y dirección, con lo que hay que cargar en el furgón, lo que se cobra en cada parada y los envases por retirar.
 - Si dice "Hay pedidos de este día sin confirmar", todavía no están en la lista: toca "Verlos".
+- **Ruta eficiente y mapa**: el orden que recorre menos kilómetros, desde la planta y de vuelta. Puedes subir o bajar paradas, ubicar en el mapa una dirección que sale "aproximada" y tocar **Publicar ruta**: el repartidor ve ese orden en su teléfono.
+- **Cierre del día**: cuánto efectivo cobró el repartidor contra lo que debía, las entregas sin cobrar, los vacíos que retiró y las paradas que no se pudieron entregar. Lo que sale en color hay que preguntárselo.
+- **Copiar mensaje** (en cada parada): el mensaje de esa parada, igual al que hoy se le escribe al repartidor, para pegarlo en su chat en el orden de la ruta.
 - **Copiar lista**: el texto para mandarle al repartidor por WhatsApp.
 - **Copiar para Excel**: para pegar en Excel o en la app de rutas.
 - **Descargar archivo**: lo mismo, en un archivo que Excel abre.
@@ -68,4 +72,4 @@ Lo que el bot no resuelve solo y deja para una persona: reclamos, facturas, comp
 | Hay una falla en el reparto | Los clientes tienen que saberlo | En CONFIGURACION pon `ESTADO_SERVICIO` en `reducido` y escribe el aviso en `MENSAJE_EXCEPCION`: el bot lo agrega a sus respuestas |
 
 ## Lo que el panel todavía no hace
-No le escribe al cliente, no guarda las imágenes de los comprobantes, no ordena la ruta (eso lo hace la app de rutas) y no tiene las fichas de los clientes ni los precios, que siguen en la planilla.
+No le escribe al cliente, no guarda las imágenes de los comprobantes y no tiene los precios, que siguen en la planilla. La ruta que calcula es aproximada (en línea recta): sirve para ordenar las paradas, no para prometer horas.
