@@ -717,6 +717,16 @@ describe('la API: reconocer al cliente por su teléfono', () => {
   });
 });
 
+describe('la API: bidones entregados (D65)', () => {
+  it('responde las cifras del día pedido, y una fecha mal escrita da 400', async () => {
+    const { env } = await entornoPanel();
+    const r = await pedir(env, '/api/estadisticas?hasta=2026-10-28');
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ hasta: '2026-10-28', dias: expect.any(Array), vacios: expect.any(Array) });
+    expect((await pedir(env, '/api/estadisticas?hasta=ayer')).status).toBe(400);
+  });
+});
+
 describe('la API: pedido rápido con el mensaje pegado (D64)', () => {
   it('lee el mensaje con el intérprete del bot y no guarda nada', async () => {
     const { env, repositorio } = await entornoPanel();

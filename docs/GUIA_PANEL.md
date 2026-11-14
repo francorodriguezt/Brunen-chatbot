@@ -51,6 +51,7 @@ Para una llamada, un audio o una empresa con plan mensual. Toca "+ Nuevo pedido"
 - Si dice "Hay pedidos de este día sin confirmar", todavía no están en la lista: toca "Verlos".
 - **Ruta eficiente y mapa**: el orden que recorre menos kilómetros, desde la planta y de vuelta. Puedes subir o bajar paradas, ubicar en el mapa una dirección que sale "aproximada" y tocar **Publicar ruta**: el repartidor ve ese orden en su teléfono.
 - **Cierre del día**: cuánto efectivo cobró el repartidor contra lo que debía, las entregas sin cobrar, los vacíos que retiró y las paradas que no se pudieron entregar. Lo que sale en color hay que preguntárselo.
+- **Bidones entregados y vacíos por retirar**: los bidones del día, la semana y el mes, un gráfico de los últimos 14 días y los clientes a los que les quedaron vacíos sin retirar.
 - **Copiar mensaje** (en cada parada): el mensaje de esa parada, igual al que hoy se le escribe al repartidor, para pegarlo en su chat en el orden de la ruta.
 - **Copiar lista**: el texto para mandarle al repartidor por WhatsApp.
 - **Copiar para Excel**: para pegar en Excel o en la app de rutas.
