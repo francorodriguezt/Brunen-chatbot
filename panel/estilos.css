@@ -243,3 +243,15 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
 .formulario-parada { display: grid; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--borde); }
 .formulario-parada select, .formulario-parada input[type="text"] { width: 100%; }
 .formulario-parada label { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+/* Celular (D63): las 5 pestañas caben en 375 px y los toques se pueden acertar con el pulgar */
+@media (max-width: 520px) {
+  .pestanas { gap: 0; padding-left: 0.25rem; padding-right: 0.25rem; }
+  .pestanas button { flex: 1 1 0; min-width: 0; justify-content: center; padding: 0.7rem 0.15rem; font-size: 0.88rem; gap: 0.2rem; }
+  .contador { min-width: 1.2rem; padding: 0 0.3rem; font-size: 0.72rem; line-height: 1.2rem; }
+}
+@media (pointer: coarse) {
+  .boton-chico, .filtros button, .formulario-parada select, .formulario-parada input { min-height: 44px; }
+  .cliente a { display: inline-block; padding: 0.6rem 0; }
+  .ingreso a { display: inline-block; padding: 0.7rem 0; }
+}
