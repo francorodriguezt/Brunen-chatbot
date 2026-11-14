@@ -68,7 +68,7 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 
 ### B. Datos y base 🟡
 - Fuerte: migraciones numeradas, historial de cada pedido, punto de restauración antes de cada cambio, 6.795 pedidos del Excel listos para cargar.
-- **B1 (Must).** Los respaldos semanales son manuales (D35). Time Travel guarda 7 días en el plan gratis (30 en el de pago). Se automatiza con una tarea programada del computador que exporte la base cada semana (gratis), o con R2 si se verifica que el plan gratis no exige tarjeta.
+- **B1 (Must, hecho el 2026-11-14 de otra forma, D66: copia en Google Sheets cada 30 minutos, Excel desde el panel y script de restauración).** Los respaldos semanales eran manuales (D35). Time Travel guarda 7 días en el plan gratis (30 en el de pago). Se automatiza con una tarea programada del computador que exporte la base cada semana (gratis), o con R2 si se verifica que el plan gratis no exige tarjeta.
 - **B2 (Should).** Las pruebas usan SQLite, no D1. Un conjunto corto de pruebas en el runtime real (`@cloudflare/vitest-pool-workers`) para las consultas críticas evita sorpresas de diferencias entre ambos.
 - **B3 (Should).** Desde el 2026-09-01 D1 corta las consultas al pasar 100.000 escrituras al día. Cada índice cuenta como otra escritura. Conviene un aviso cuando el uso pase del 70 %.
 - **B4 (Must antes del 1-dic).** Definir cuánto tiempo se guardan pedidos y fichas (Ley 21.719).

@@ -83,6 +83,7 @@ describe('migraciones', () => {
       { name: 'pedidos' },
       { name: 'pedidos_fijos' },
       { name: 'puntos' },
+      { name: 'respaldos' },
       { name: 'sesiones' },
       { name: 'telefonos_cliente' },
       { name: 'ultimos_pedidos' },

@@ -1409,6 +1409,72 @@ function tarjetaDePersona(persona) {
 async function cargarEquipo() {
   const { usuarios } = await api('/api/usuarios');
   $('lista-equipo').replaceChildren(...usuarios.map(tarjetaDePersona));
+  void mostrarEstadoDelRespaldo();
+}
+
+// ---- Respaldo (D66) ----
+
+const NOMBRES_DE_RESPALDO = { RESPALDO_PEDIDOS: 'Pedidos', RESPALDO_CLIENTES: 'Fichas de clientes' };
+
+async function mostrarEstadoDelRespaldo() {
+  const lista = $('estado-respaldo');
+  try {
+    const { hojas } = await api('/api/respaldo/estado');
+    if (hojas.length === 0) {
+      lista.replaceChildren(h('li', { clase: 'suave' }, 'Todavía no se ha hecho la primera copia.'));
+      return;
+    }
+    lista.replaceChildren(
+      ...hojas.map((hoja) => {
+        const nombre = NOMBRES_DE_RESPALDO[hoja.hoja] ?? hoja.hoja;
+        const ultima = hoja.ultimoOk ? `última copia ${cuando(hoja.ultimoOk)}` : 'sin copias todavía';
+        return h('li', { clase: hoja.ultimoError ? 'falta' : '' }, `${nombre}: ${ultima}${hoja.ultimoError ? `. Último error: ${hoja.ultimoError}` : ''}`);
+      }),
+    );
+  } catch (falla) {
+    lista.replaceChildren(h('li', { clase: 'falta' }, falla.message));
+  }
+}
+
+/** Una celda para Excel: entre comillas si hace falta, y como texto si empieza como una fórmula. */
+function celdaDeExcel(valor) {
+  if (typeof valor === 'number') return String(valor);
+  let texto = String(valor ?? '');
+  if (/^[=+\-@]/.test(texto)) texto = `'${texto}`;
+  return /[";\r\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
+}
+
+/** Baja todos los pedidos por páginas y arma el archivo en este equipo: ninguna solicitud se hace pesada para el servidor. */
+async function descargarRespaldo() {
+  const boton = $('descargar-respaldo');
+  boton.disabled = true;
+  const lineas = [];
+  let despues = '';
+  let total = 0;
+  try {
+    for (let pagina = 0; pagina < 200; pagina++) {
+      const datos = await api(`/api/respaldo?despues=${encodeURIComponent(despues)}`);
+      if (pagina === 0) lineas.push(datos.encabezado.map(celdaDeExcel).join(';'));
+      for (const fila of datos.filas) lineas.push(fila.map(celdaDeExcel).join(';'));
+      total += datos.filas.length;
+      boton.textContent = `Descargando… ${total.toLocaleString('es-CL')} pedidos`;
+      if (!datos.siguiente) break;
+      despues = datos.siguiente;
+    }
+    // El BOM y el punto y coma: así Excel en español abre el archivo con tildes y en columnas.
+    const archivo = new Blob([`\ufeff${lineas.join('\r\n')}\r\n`], { type: 'text/csv;charset=utf-8' });
+    const enlace = h('a', { href: URL.createObjectURL(archivo), download: `respaldo-pedidos-${hoyEnSantiago()}.csv` });
+    document.body.append(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(enlace.href), 10_000);
+    avisar(`Listo: ${total.toLocaleString('es-CL')} pedidos descargados. Guarda el archivo en un lugar seguro: tiene datos de clientes.`);
+  } catch (falla) {
+    avisar(falla.message, true);
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Descargar todos los pedidos (Excel)';
+  }
 }
 
 function abrirDialogoDeUsuario(persona = null) {
@@ -1642,6 +1708,7 @@ function iniciar() {
       void cargarEstadisticas();
     }
   });
+  $('descargar-respaldo').addEventListener('click', () => void descargarRespaldo());
   $('ruta-del-dia').addEventListener('toggle', (evento) => {
     if (evento.currentTarget.open) rutaDelDia().abrir(estado.fechaReparto || hoyEnSantiago());
   });
