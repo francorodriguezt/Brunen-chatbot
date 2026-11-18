@@ -4,6 +4,7 @@ import { autenticar, olvidarClavesDeAcceso, type EntornoAcceso } from '../src/pa
 import panel, { type EntornoPanel } from '../src/panel';
 import { manejarApi } from '../src/panel/api';
 import { Cuentas } from '../src/panel/cuentas';
+import { TABLA_PRECIOS } from '../src/precios';
 import { RepositorioD1 } from '../src/repositorio';
 import { AUD, DOMINIO, crearAccesoFalso, type AccesoFalso } from './acceso-falso';
 import { crearBaseSqlite } from './ayudas';
@@ -818,6 +819,8 @@ describe('la API: pago, documento y tipo de cliente (D52)', () => {
     expect(datos.estadoPago).toEqual(['pendiente', 'pagado']);
     expect(datos.documento).toEqual(['boleta', 'factura']);
     expect(datos.tipoCliente).toEqual(['hogar', 'minimarket', 'empresa']);
+    // La lista de precios para sugerirlos en el panel (D71): la misma del bot cuando la hoja falla.
+    expect(datos.precios).toEqual(TABLA_PRECIOS);
   });
 
   it('se cambian en un pedido y quedan en el historial', async () => {

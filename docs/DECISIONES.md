@@ -596,3 +596,9 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - **Celular y accesibilidad**: los campos tienen letra de 16 px (con menos el iPhone agranda la página al tocarlos); bordes de campos y texto de ejemplo con contraste suficiente; toques de 44 px en los desplegables y fechas. Que un pedido no esté pagado ya no sale en ámbar: es lo normal.
 - Estilos: se quitaron los bordes de color a un lado (cita, aviso urgente, parada no entregada) y el borde superior de las entradas de la portada; ahora es un borde completo o el color del título.
 - No hace: sugerir el precio (siguiente mejora, MEJORAS.md), guardar un borrador del pedido nuevo.
+
+### D71 · 2026-11-18 · Precio sugerido en el panel
+**Lo más lento al confirmar era escribir el precio a mano, aunque el sistema ya lo sabe calcular.** Al anotar o completar un pedido, junto a cada precio vacío aparece "Lista: $3.300": un toque lo llena. Nunca se llena solo: la persona decide.
+- Es el precio por tramos de `src/precios.ts`, con la cantidad total de ese tamaño en el pedido (3 de 20 L a $3.300 c/u, igual que cobra el bot). El panel lo recibe en `/api/opciones`.
+- Solo para tipo de cliente hogar o sin definir. Minimarket y empresa se cobran distinto y siguen a mano; los dos clientes con precio especial están en la planilla, que el panel no lee: si son de tipo hogar, la persona escribe su precio.
+- El bot usa la hoja PRECIOS y el panel no tiene acceso a Google. Para que la sugerencia no quede vieja sin que nadie lo sepa, la revisión de cada mañana (7:30) compara la hoja con la lista del código y, si son distintas, deja un aviso en el panel para que Franco las iguale.

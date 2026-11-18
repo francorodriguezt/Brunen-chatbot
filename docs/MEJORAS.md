@@ -34,7 +34,7 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] Confirmar varios pedidos de una vez, y "Deshacer" unos segundos después. (D70)
 - [x] "Nuevo pedido" más corto: pegar el mensaje primero; pago y factura plegados. (D70)
 - [x] Tarjetas cortas en "Por confirmar", letra de 16 px en los campos (el iPhone no hace zoom), contraste y toques de 44 px. (D70, encontrado en la revisión)
-- [ ] **Precio sugerido**: al pegar "3 de 20" o completar el precio, proponer el de la lista ($3.300 c/u) para que Coni solo lo acepte; un cliente especial o mayorista sigue a mano. (encontrado en la revisión)
+- [x] **Precio sugerido**: al pegar "3 de 20" o completar el precio, un botón "Lista: $3.300" lo llena; minimarket y empresa siguen a mano. (D71)
 - [ ] Llenar los envases por retirar y el tipo de cliente desde la ficha del cliente. (encontrado en la revisión)
 - [ ] Guardar un borrador del pedido nuevo: si Coni vuelve a WhatsApp a mitad, no se pierde. (encontrado en la revisión)
 - [ ] Reparto: la carga de la lista y la del mapa dicen números distintos el mismo día (una cuenta lo ya entregado); usar una sola cuenta. (encontrado en la revisión)
