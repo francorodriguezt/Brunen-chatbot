@@ -384,3 +384,8 @@ label.casilla input { width: 1.3rem; height: 1.3rem; }
 .campo-precio { display: grid; gap: 0.3rem; align-content: end; }
 .sugerencia { justify-self: start; border-color: var(--acento); color: var(--acento); background: var(--acento-suave); font-variant-numeric: tabular-nums; }
 .sugerencia:hover { background: var(--acento-suave); filter: brightness(0.97); }
+
+/* Borrador del pedido nuevo (D73) */
+.aviso-borrador { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; margin: -0.25rem 0 0.75rem; padding: 0.45rem 0.5rem 0.45rem 0.75rem; border-radius: 10px; background: var(--acento-suave); color: var(--acento); font-size: 0.9rem; font-weight: 600; }
+.aviso-borrador .boton { font-weight: 600; }
+.pista-campo { display: block; font-weight: 400; font-size: 0.8rem; margin-top: -0.15rem; }

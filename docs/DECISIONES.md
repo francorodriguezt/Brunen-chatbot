@@ -608,3 +608,8 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - "Vacíos esperados" de una parada = sus bidones + los vacíos extra que debía de antes (`vaciosEsperados` en `src/reparto.ts`). Lo usan el cierre del día, la lista de vacíos que faltan por cliente y la app del repartidor, que ahora propone ese número en "Vacíos que retiraste" (antes proponía 0 si el cliente no debía nada).
 - El campo del pedido (`envasesARetirar`) sigue siendo solo lo que debía de antes, como siempre lo llenó el bot desde la hoja CLIENTES: no hay que cambiar datos guardados. En el panel, el CSV y los mensajes se llama ahora "vacíos extra" para que no se confunda con el total.
 - Lo que el repartidor anota sigue mandando: si un cliente entrega menos, queda en el cierre y en "vacíos por retirar"; si entrega más, no se marca nada.
+
+### D73 · 2026-11-18 · Borrador del pedido nuevo
+**Al anotar un pedido a mano, la operadora sale a WhatsApp a copiar datos; si cerraba la ventana o el teléfono recargaba la página, perdía lo escrito.** Ahora lo escrito queda como borrador mientras la pestaña esté abierta y, al volver a "+ Nuevo pedido", sigue donde quedó, con "Empezar de nuevo" para descartarlo. Se borra al anotar el pedido.
+- Se guarda en `sessionStorage`, no en `localStorage`: trae datos de un cliente (teléfono, dirección) y no debe quedar guardado en el teléfono después de cerrar la pestaña. Vence a las 12 horas.
+- Si el navegador no deja guardar, el formulario funciona igual, sin borrador.

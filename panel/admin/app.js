@@ -700,6 +700,7 @@ function actualizarTotalDelEditor() {
   $('editar-total').textContent = total === null ? 'Total: falta precio' : `Total: ${pesos.format(total)}`;
   $('agregar-linea').disabled = lineas.length >= MAX_LINEAS;
   sugerirPrecios(lineas);
+  guardarBorrador(); // agregar o quitar una línea no dispara "input"
   // Antes se ignoraba en silencio: sin precio el pedido queda por confirmar aunque la casilla esté marcada.
   $('nota-confirmar').textContent = total === null ? '(falta el precio: quedará por confirmar)' : '';
   $('nota-confirmar').className = total === null ? 'falta' : 'suave';
@@ -749,6 +750,66 @@ function resumirMasDatos() {
   $('resumen-mas-datos').textContent = partes.length > 0 ? `· ${partes.join(' · ')}` : '';
   $('campo-numero').hidden = campos.documento.value === '';
   sugerirPrecios(leerLineasDelEditor()); // cambiar el tipo de cliente cambia si se sugiere
+  guardarBorrador();
+}
+
+// ---- Borrador del pedido nuevo (D73): si la operadora sale a WhatsApp, cierra sin querer o el teléfono recarga la página ----
+// Vive en sessionStorage: dura mientras la pestaña esté abierta y no queda guardado en el teléfono con datos de clientes.
+const CLAVE_BORRADOR = 'brunen-borrador-pedido';
+const VIGENCIA_BORRADOR_MS = 12 * 3600 * 1000;
+const CAMPOS_DEL_BORRADOR = ['telefono', 'nombre', 'fecha', 'comuna', 'direccion', 'notas', 'envases', 'tipoCliente', 'formaPago', 'estadoPago', 'documento', 'numeroDocumento'];
+
+function guardarBorrador() {
+  if (!anotandoNuevo) return;
+  const campos = $('formulario-editar').elements;
+  const borrador = {
+    en: Date.now(),
+    texto: $('texto-pegado').value,
+    campos: Object.fromEntries(CAMPOS_DEL_BORRADOR.map((nombre) => [nombre, campos[nombre].value])),
+    confirmar: campos.confirmar.checked,
+    lineas: leerLineasDelEditor(),
+  };
+  try {
+    sessionStorage.setItem(CLAVE_BORRADOR, JSON.stringify(borrador));
+  } catch {
+    /* sin almacenamiento no hay borrador: el formulario funciona igual */
+  }
+}
+
+function borrarBorrador() {
+  try {
+    sessionStorage.removeItem(CLAVE_BORRADOR);
+  } catch {
+    /* nada que borrar */
+  }
+}
+
+/** El borrador que vale la pena retomar: reciente y con algo escrito más allá de lo que trae un formulario vacío. */
+function leerBorrador() {
+  let borrador;
+  try {
+    borrador = JSON.parse(sessionStorage.getItem(CLAVE_BORRADOR) ?? 'null');
+  } catch {
+    return null;
+  }
+  if (!borrador || typeof borrador !== 'object' || Date.now() - Number(borrador.en) > VIGENCIA_BORRADOR_MS) return null;
+  const c = borrador.campos ?? {};
+  const escribioAlgo = Boolean(String(borrador.texto ?? '').trim() || c.telefono || c.nombre || c.direccion || c.notas);
+  return escribioAlgo ? borrador : null;
+}
+
+function retomarBorrador(borrador) {
+  const campos = $('formulario-editar').elements;
+  $('texto-pegado').value = String(borrador.texto ?? '');
+  for (const nombre of CAMPOS_DEL_BORRADOR) if (typeof borrador.campos?.[nombre] === 'string') campos[nombre].value = borrador.campos[nombre];
+  campos.confirmar.checked = borrador.confirmar !== false;
+  const lineas = Array.isArray(borrador.lineas) ? borrador.lineas.slice(0, MAX_LINEAS) : [];
+  if (lineas.length > 0) $('editar-lineas').replaceChildren(...lineas.map((l) => filaDeLinea({ tipo: l.tipo, cantidad: l.cantidad, precioUnitario: l.precioUnitario ?? null })));
+}
+
+function empezarDeNuevo() {
+  borrarBorrador();
+  abrirNuevoPedido({ sinBorrador: true });
 }
 
 function mostrarErrorDelEditor(texto) {
@@ -761,6 +822,7 @@ function prepararFormulario(esNuevo, titulo, textoDelBoton) {
   anotandoNuevo = esNuevo;
   for (const campo of document.querySelectorAll('#dialogo-editar .solo-nuevo')) campo.hidden = !esNuevo;
   $('cliente-reconocido').hidden = true;
+  $('aviso-borrador').hidden = true;
   $('titulo-editar').textContent = titulo;
   $('guardar-editar').textContent = textoDelBoton;
   mostrarErrorDelEditor('');
@@ -786,21 +848,24 @@ function abrirEditor(pedido) {
 }
 
 /** Para los pedidos que no llegan por el bot: una llamada, un audio, una empresa con plan mensual. */
-function abrirNuevoPedido() {
+function abrirNuevoPedido({ sinBorrador = false } = {}) {
   pedidoEnEdicion = null;
   prepararFormulario(true, 'Nuevo pedido', 'Anotar pedido');
   const formulario = $('formulario-editar');
+  const borrador = sinBorrador ? null : leerBorrador();
   formulario.reset();
   // La fecha sugerida ya aplica el corte de las 9:00 y salta el domingo; los feriados los revisa la persona.
   formulario.elements.fecha.value = estado.opciones.fechaSugerida || hoyEnSantiago();
   $('editar-lineas').replaceChildren(filaDeLinea());
+  if (borrador) retomarBorrador(borrador);
+  $('aviso-borrador').hidden = !borrador;
   actualizarTotalDelEditor();
   $('avisos-pegado').hidden = true;
   $('mas-datos').open = false; // en un pedido nuevo casi nunca se tocan: van plegados
   resumirMasDatos();
-  $('dialogo-editar').showModal();
+  if (!$('dialogo-editar').open) $('dialogo-editar').showModal();
   // El camino corto es pegar el mensaje del cliente; quien prefiera escribir, baja al teléfono.
-  $('texto-pegado').focus();
+  if (!borrador) $('texto-pegado').focus();
 }
 
 /**
@@ -926,6 +991,7 @@ async function guardarNuevoPedido(formulario, lineas) {
     const { pedido } = await api('/api/pedidos', cuerpo);
     $('dialogo-editar').close();
     const motivo = cuerpo.confirmar && pedido.total === null ? ' porque falta el precio' : '';
+    borrarBorrador();
     avisar(pedido.estado === 'Confirmado' ? `Pedido de ${nombreDe(pedido)} anotado y confirmado.` : `Pedido de ${nombreDe(pedido)} anotado: quedó por confirmar${motivo}.`);
   } catch (falla) {
     mostrarErrorDelEditor(falla.message);
@@ -2080,7 +2146,8 @@ function iniciar() {
   });
 
   $('ir-equipo').addEventListener('click', () => void activarVista('equipo'));
-  $('nuevo-pedido-hoy').addEventListener('click', abrirNuevoPedido);
+  $('nuevo-pedido-hoy').addEventListener('click', () => abrirNuevoPedido());
+  $('empezar-de-nuevo').addEventListener('click', empezarDeNuevo);
   $('elegir-todos').addEventListener('change', (evento) => elegirTodos(evento.currentTarget.checked));
   $('confirmar-elegidos').addEventListener('click', () => void confirmarPedidos(pedidosALaVista.filter((pedido) => elegidos.has(pedido.id))));
   $('formulario-editar').addEventListener('input', resumirMasDatos);
@@ -2103,7 +2170,7 @@ function iniciar() {
   $('formulario-cliente').addEventListener('submit', (evento) => void guardarCliente(evento));
   $('cerrar-cliente').addEventListener('click', () => $('dialogo-cliente').close());
 
-  $('nuevo-pedido').addEventListener('click', abrirNuevoPedido);
+  $('nuevo-pedido').addEventListener('click', () => abrirNuevoPedido());
   $('buscar-pedidos').addEventListener('input', alEscribirEnElBuscador);
   $('formulario-editar').elements.telefono.addEventListener('change', () => void reconocerCliente());
   $('llenar-con-mensaje').addEventListener('click', () => void llenarConMensaje());
