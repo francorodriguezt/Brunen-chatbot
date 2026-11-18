@@ -13,7 +13,8 @@ import type { BaseDatos } from './almacen';
 import { enteroValido, validarItems, type ItemInterpretado } from './interprete';
 
 /** Qué le preguntó el bot al cliente y espera que responda. */
-export type Espera = 'tipo' | 'cantidad' | 'pedido' | 'datos' | 'edificio';
+/** `lo_de_siempre`: se le ofreció su último pedido (D69) y un "sí" lo anota. */
+export type Espera = 'tipo' | 'cantidad' | 'pedido' | 'datos' | 'edificio' | 'lo_de_siempre';
 
 export interface EstadoConversacion {
   espera: Espera;
@@ -31,7 +32,7 @@ export const VIGENCIA_CONVERSACION_SEGUNDOS = 12 * 3600;
 const VIGENCIA_ULTIMO_PEDIDO_SEGUNDOS = 180 * 24 * 3600;
 const PROBABILIDAD_LIMPIEZA = 0.02; // limpia en 1 de cada ~50 mensajes
 const MAX_TEXTO = 40;
-const ESPERAS: ReadonlySet<string> = new Set<Espera>(['tipo', 'cantidad', 'pedido', 'datos', 'edificio']);
+const ESPERAS: ReadonlySet<string> = new Set<Espera>(['tipo', 'cantidad', 'pedido', 'datos', 'edificio', 'lo_de_siempre']);
 const ID_DE_PEDIDO = /^P\d{6}-[0-9A-Z]{5}$/; // el formato de `generarIdPedido`
 const MAX_INTENTOS = 3;
 

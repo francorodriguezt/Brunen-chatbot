@@ -156,6 +156,16 @@ function motivoDeAjuste(entrega: PropuestaEntrega): string {
 
 function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boolean): Decision {
   const falta = accionDePedido(items);
+  // "Hola, quiero pedir" sin detalle de un cliente que ya pidió (D69): se le ofrece lo de siempre; un "sí" lo anota.
+  const usual = (e.ultimoPedido ?? []).flatMap((i) => (i.tipo !== 'no_especificado' && i.cantidad !== null ? [{ tipo: i.tipo, cantidad: i.cantidad }] : []));
+  if (falta === 'preguntar_pedido' && !repite && usual.length > 0) {
+    const { fecha_texto: fecha, comuna_mencionada: comuna } = e.interpretacion;
+    return {
+      intencion: e.interpretacion.intencion,
+      respuesta: textos.ofrecerLoDeSiempre(usual),
+      memoria: { accion: 'guardar', estado: { espera: 'lo_de_siempre', items: usual, ...(fecha && { fecha_texto: fecha }), ...(comuna && { comuna_mencionada: comuna }) } },
+    };
+  }
   if (falta) return preguntar(e, items, falta);
   const completos = items as ItemCompleto[];
 
