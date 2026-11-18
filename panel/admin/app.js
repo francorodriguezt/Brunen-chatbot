@@ -864,6 +864,9 @@ async function reconocerCliente() {
       ([campo, valor]) => valor && formulario.elements[campo].value.trim() === '',
     );
     for (const [campo, valor] of completados) formulario.elements[campo].value = valor;
+    // El tipo de cliente decide si se sugiere el precio de lista (D71): un minimarket no paga el de hogar.
+    if (datos.tipoCliente && formulario.elements.tipoCliente.value === '') formulario.elements.tipoCliente.value = datos.tipoCliente;
+    resumirMasDatos();
     pista.textContent = completados.length > 0 ? `Ya pidió antes: completé sus datos con los del pedido ${datos.idPedido}. Revísalos.` : `Ya pidió antes (pedido ${datos.idPedido}).`;
     pista.hidden = false;
   } catch {

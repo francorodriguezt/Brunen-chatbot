@@ -44,6 +44,8 @@ export interface DatosPrevios {
   direccion: string;
   comuna: string;
   notasRepartidor: string;
+  /** hogar, minimarket o empresa (vacío = sin definir): el de su ficha o, si no, el de ese pedido. Lo usa el panel. */
+  tipoCliente?: string;
 }
 
 /** Lo que el bot agrega a un pedido ya anotado cuando el cliente le da sus datos (D37). */
