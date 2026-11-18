@@ -130,6 +130,8 @@ export async function avisarClientesEnEspera(env: EntornoAtencion, ahora: Date =
   }
 }
 
+const AVISO_DE_PRECIOS = 'La hoja PRECIOS tiene precios distintos';
+
 /** Si dos tablas de precios dicen algo distinto, sin importar el orden de las filas. */
 export function preciosDistintos(hoja: readonly TramoPrecio[], lista: readonly TramoPrecio[] = TABLA_PRECIOS): boolean {
   const clave = (tabla: readonly TramoPrecio[]) =>
@@ -171,7 +173,9 @@ export async function revisionDiaria(env: EntornoAtencion, ahora: Date = new Dat
     try {
       const precios = await cargarTablaPrecios(env, Math.floor(ahora.getTime() / 1000));
       if (precios.origen === 'hoja' && preciosDistintos(precios.tabla)) {
-        await avisarFalla(env, 'precios-panel', 'La hoja PRECIOS tiene precios distintos a la lista del panel: el precio que sugiere el panel quedó desactualizado (el bot usa la hoja). Avisa a Franco para igualarlos.', ahora);
+        // Mientras siga abierto el aviso de ayer, no se repite cada mañana en el panel ni en Telegram.
+        const yaAvisado = env.DB ? (await new RepositorioD1(env.DB).listarAvisos('abierto')).some((a) => a.resumen.startsWith(AVISO_DE_PRECIOS)) : false;
+        if (!yaAvisado) await avisarFalla(env, 'precios-panel', `${AVISO_DE_PRECIOS} a la lista del panel: el precio que sugiere el panel quedó desactualizado (el bot usa la hoja). Avisa a Franco para igualarlos.`, ahora);
       }
     } catch (falla) {
       console.error('No se pudo comparar la hoja PRECIOS:', falla instanceof Error ? falla.message : falla);

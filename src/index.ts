@@ -27,6 +27,8 @@ import {
 } from './atencion';
 import { anotarMensaje, esperarGrupo, reclamarGrupo } from './agrupador';
 import { leerBotActivo } from './configuracion';
+import { fechaHoraLocal } from './despacho';
+import { cargarDiasSinReparto } from './diasSinReparto';
 import { proponerEntrega, type PropuestaEntrega } from './entrega';
 import { almacenDe, esMensajeNuevo, liberarMensaje, limpiarAlmacen, marcarAtendidos } from './almacen';
 import { igualesTiempoConstante, verificarFirma } from './firma';
@@ -88,7 +90,10 @@ export function numerosPermitidos(env: Env): Set<string> {
 /** La fecha es una ayuda: si no se puede calcular (por ejemplo, Google caído), el pedido se atiende igual sin ella. */
 async function entregaPropuesta(env: Env, solicitada?: string): Promise<PropuestaEntrega | undefined> {
   try {
-    return await proponerEntrega(env, new Date(), { solicitada });
+    // Igual que el flujo real (atencion.ts): los días marcados sin reparto en el panel (D74) se saltan.
+    const ahora = new Date();
+    const diasSinReparto = await cargarDiasSinReparto(env.DB, fechaHoraLocal(ahora).fecha);
+    return await proponerEntrega(env, ahora, { solicitada, diasSinReparto });
   } catch (error) {
     console.error('No se pudo calcular la entrega:', error instanceof Error ? error.message : error);
     return undefined;

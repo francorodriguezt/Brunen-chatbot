@@ -168,6 +168,10 @@ describe('revisionDiaria: enterarse antes que el cliente', () => {
     const env = await entorno();
     await revisionDiaria(env, AHORA);
     expect(avisosEn(env.DB).map((a) => a.resumen)).toEqual([expect.stringContaining('hoja PRECIOS tiene precios distintos')]);
+    // Al día siguiente, con el aviso todavía abierto, no se repite.
+    olvidarFallas();
+    await revisionDiaria(env, new Date(AHORA.getTime() + 24 * 3600 * 1000));
+    expect(avisosEn(env.DB)).toHaveLength(1);
   });
 
   it('con la hoja PRECIOS igual a la lista (en otro orden), no avisa nada', async () => {

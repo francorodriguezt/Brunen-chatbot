@@ -37,7 +37,8 @@ const texto = (v: unknown): string => (typeof v === 'string' ? v : '');
 const numero = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0);
 
 export class RepositorioDiasSinReparto {
-  constructor(private readonly db: BaseDatos) {}
+  /** `db` es pública para las lecturas que nunca lanzan (`cargarDiasSinReparto`, `motivoSinReparto`). */
+  constructor(readonly db: BaseDatos) {}
 
   /** Desde `desde` (incluido) en adelante, en orden. */
   async listar(desde: string): Promise<DiaSinReparto[]> {
@@ -78,6 +79,22 @@ export class RepositorioDiasSinReparto {
       .bind(fecha)
       .run();
     return numero((r.results?.[0] as Record<string, unknown> | undefined)?.n);
+  }
+}
+
+/**
+ * El motivo si ese día está marcado sin reparto (puede ser ''), o null si no lo está. Nunca lanza: lo usan pantallas
+ * que tienen que cargar aunque la tabla falle (por ejemplo, antes de aplicar la migración 0014).
+ */
+export async function motivoSinReparto(db: BaseDatos | undefined, fecha: string): Promise<string | null> {
+  if (!db) return null;
+  try {
+    const r = await db.prepare('SELECT motivo FROM dias_sin_reparto WHERE fecha = ?1').bind(fecha).run();
+    const fila = r.results?.[0] as Record<string, unknown> | undefined;
+    return fila ? texto(fila.motivo) : null;
+  } catch (falla) {
+    console.error('No se pudo leer el día sin reparto:', falla instanceof Error ? falla.message : falla);
+    return null;
   }
 }
 

@@ -22,7 +22,7 @@ import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
 import { armarReparto, csvDeReparto, mensajeDeParada, textoDeReparto, tsvDeReparto } from '../reparto';
 import { ESTADOS_DE_PEDIDO, OPCIONES_DE_PEDIDO, type CambiosDePedido, type DatosDePago, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type PedidoManual, type RepositorioD1 } from '../repositorio';
 import type { RepositorioClientes } from '../fichas';
-import { fechaValida as fechaValidaSinReparto, limpiarMotivo, type RepositorioDiasSinReparto } from '../diasSinReparto';
+import { cargarDiasSinReparto, fechaValida as fechaValidaSinReparto, limpiarMotivo, motivoSinReparto, type RepositorioDiasSinReparto } from '../diasSinReparto';
 import { leerPedidoPegado } from '../pegado';
 import { TABLA_PRECIOS } from '../precios';
 import { normalizarTelefono } from '../whatsapp';
@@ -92,7 +92,6 @@ export async function leerCuerpo(request: Request): Promise<Record<string, unkno
 
 const esTexto = (valor: unknown): valor is string => typeof valor === 'string';
 const esFecha = (valor: string | null): valor is string => valor !== null && /^\d{4}-\d{2}-\d{2}$/.test(valor);
-const SIN_FERIADOS: ReadonlySet<string> = new Set();
 
 /**
  * La versión del pedido que la pantalla mostraba (`actualizadoEn`). Si viene, el repositorio rechaza el cambio cuando
@@ -186,7 +185,8 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       // La fecha sugerida aplica el corte de las 9:00 y salta los domingos, pero no conoce los feriados (viven en la
       // planilla y el panel no tiene acceso a Google): la persona la revisa antes de guardar.
       // Los días marcados sin reparto (D74) sí los conoce: están en la base.
-      const cerrados = ctx.dias ? new Set((await ctx.dias.proximos(fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha)).keys()) : SIN_FERIADOS;
+      // Lecturas que nunca lanzan: si la tabla falla (o falta la migración 0014), el panel carga igual, sin días cerrados.
+      const cerrados = new Set((await cargarDiasSinReparto(ctx.dias?.db, fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha)).keys());
       const sugerida = calcularFechaEntrega(new Date(ahoraSegundos * 1000), { feriados: cerrados });
       // `precios`: la lista por tramos para sugerir el precio de un pedido (D71). La persona lo acepta o lo cambia.
       return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha, precios: TABLA_PRECIOS, ...OPCIONES_DE_PEDIDO });
@@ -230,7 +230,7 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
         // Un mensaje por parada, como los que hoy se escriben a mano para el repartidor (D64).
         const mensajes = Object.fromEntries(reparto.paradas.map((p) => [p.idPedido, mensajeDeParada(p)]));
         // Si ese día se marcó sin reparto (D74), el panel lo dice arriba de la lista: los pedidos que tenga hay que moverlos.
-        const sinReparto = ctx.dias ? ((await ctx.dias.proximos(fecha)).get(fecha) ?? null) : null;
+        const sinReparto = await motivoSinReparto(ctx.dias?.db, fecha);
         return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas: Object.fromEntries(delDia), motivos: MOTIVOS_NO_ENTREGA, caja, mensajes, sinReparto });
       }
       return new Response(csvDeReparto(reparto), {
@@ -267,7 +267,7 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       const cuerpo = await leerCuerpo(request);
       if (!cuerpo || !esTexto(cuerpo.texto) || cuerpo.texto.trim() === '') return error(400, 'Pega el mensaje del cliente.');
       const ahora = new Date(ahoraSegundos * 1000);
-      const cerrados = ctx.dias ? await ctx.dias.proximos(fechaHoraLocal(ahora).fecha) : undefined;
+      const cerrados = await cargarDiasSinReparto(ctx.dias?.db, fechaHoraLocal(ahora).fecha);
       return json(await leerPedidoPegado(cuerpo.texto, ahora, cerrados));
     }
 
