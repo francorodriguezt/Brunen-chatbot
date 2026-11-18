@@ -15,6 +15,8 @@ export interface MensajeEntrante {
   medio?: { id: string; mime: string; nombre?: string };
   /** El texto que el cliente escribió junto a la foto o el archivo. */
   pie?: string;
+  /** Ubicación que compartió el cliente (D77). */
+  ubicacion?: { lat: number; lng: number };
 }
 
 type MedioDelPayload = { id?: string; mime_type?: string; caption?: string; filename?: string };
@@ -34,6 +36,7 @@ interface PayloadWebhook {
           image?: MedioDelPayload;
           audio?: MedioDelPayload;
           document?: MedioDelPayload;
+          location?: { latitude?: number; longitude?: number };
         }>;
       };
     }>;
@@ -65,6 +68,9 @@ export function extraerMensajes(payload: unknown): MensajeEntrante[] {
             medio: { id: medio.id, mime: medio.mime_type ?? '', ...(medio.filename && { nombre: medio.filename.slice(0, 100) }) },
           }),
           ...(medio?.caption && { pie: medio.caption.slice(0, 500) }),
+          ...(m.type === 'location' && Number.isFinite(m.location?.latitude) && Number.isFinite(m.location?.longitude) && {
+            ubicacion: { lat: Number(m.location?.latitude), lng: Number(m.location?.longitude) },
+          }),
         });
       }
     }

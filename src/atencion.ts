@@ -27,6 +27,7 @@ import { interpretarConRespaldo, type EntornoLlm } from './llm';
 import type { CompletarPedido, PedidoARegistrar } from './pedidos';
 import type { Resultado } from './planilla';
 import { cargarTablaPrecios } from './preciosHoja';
+import { RepositorioPuntos } from './puntos';
 import { RepositorioD1 } from './repositorio';
 import { configTelegram, enviarAlerta, esUrgente, type EntornoTelegram } from './telegram';
 import * as textos from './textos';
@@ -160,6 +161,28 @@ async function reenviarAlGrupo(env: EntornoAtencion, mensaje: MensajeEntrante): 
   }
 }
 
+/**
+ * Guarda la ubicación que mandó el cliente como el punto de su dirección vigente (D77). Nunca lanza: si algo falla, una
+ * persona la ve en el aviso.
+ */
+async function guardarUbicacionDelCliente(
+  env: EntornoAtencion,
+  telefono: string,
+  punto: { lat: number; lng: number },
+  ahora: Date,
+): Promise<'guardado' | 'ignorado' | 'sin_direccion'> {
+  if (!env.DB) return 'sin_direccion';
+  try {
+    const datos = await new RepositorioD1(env.DB).datosDelUltimoPedido(telefono);
+    if (!datos?.direccion) return 'sin_direccion';
+    const resultado = await new RepositorioPuntos(env.DB).guardar(datos.direccion, datos.comuna, { ...punto, origen: 'cliente' }, Math.floor(ahora.getTime() / 1000));
+    return resultado === 'guardado' ? 'guardado' : 'ignorado';
+  } catch (falla) {
+    console.error('No se pudo guardar la ubicación del cliente:', falla instanceof Error ? falla.message : falla);
+    return 'ignorado';
+  }
+}
+
 /** Las reacciones y los stickers se tratan como un "ok": ni respuesta ni aviso. */
 const SIN_RESPUESTA_NI_AVISO: ReadonlySet<string> = new Set(['reaction', 'sticker']);
 
@@ -176,6 +199,17 @@ export async function atenderNoTexto(mensaje: MensajeEntrante, env: EntornoAtenc
     const pista = transcripcion ? pistaDePedido(transcripcion) : null;
     const alerta = aviso('escalamiento', transcripcion ? 'Envió un audio (transcrito abajo): lo responde Constanza.' : 'Envió un audio: lo responde Constanza (el bot no responde audios).');
     efectos = { respuesta: null, alerta: { ...alerta, ...(pista && { motivos: [pista] }), ...(transcripcion && { texto: transcripcion }) }, textoDelCliente: transcripcion ?? '' };
+  } else if (mensaje.tipo === 'location' && mensaje.ubicacion) {
+    // Ubicación compartida (D77): queda como el punto de su dirección, para el mapa y el "Navegar" del repartidor.
+    const guardada = await guardarUbicacionDelCliente(env, mensaje.de, mensaje.ubicacion, ahora);
+    const enMapa = `https://www.google.com/maps?q=${mensaje.ubicacion.lat},${mensaje.ubicacion.lng}`;
+    efectos = {
+      respuesta: textos.ubicacionRecibida(),
+      // Sin dirección conocida (o con un punto mejor ya guardado) una persona decide a qué dirección corresponde.
+      alerta: guardada === 'guardado' ? undefined : aviso('escalamiento', guardada === 'sin_direccion' ? 'Mandó su ubicación, pero no tiene una dirección anotada: revísala.' : 'Mandó su ubicación; su dirección ya tenía un punto, no se cambió.'),
+      textoDelCliente: enMapa,
+    };
+    if (efectos.alerta) efectos.alerta = { ...efectos.alerta, texto: enMapa };
   } else if (mensaje.tipo === 'system') {
     // Aviso de WhatsApp, no del cliente (por ejemplo, que cambió de número): no se le responde; una persona revisa la ficha.
     efectos = { respuesta: null, alerta: aviso('escalamiento', 'WhatsApp avisa un cambio en este contacto (por ejemplo, que cambió de número): revisa su chat y agrega el número nuevo a su ficha.'), textoDelCliente: '' };

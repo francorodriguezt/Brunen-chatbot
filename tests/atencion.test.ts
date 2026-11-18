@@ -316,7 +316,28 @@ describe('lo que no es texto', () => {
     expect(avisosEn(env)).toEqual([]);
   });
 
-  it('otro tipo (por ejemplo una ubicación) lo ve una persona', async () => {
+  it('una ubicación de un cliente con dirección queda como el punto de esa dirección, sin aviso (D77)', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno();
+    await new RepositorioD1(env.DB).guardarPedido(
+      { idPedido: 'P261027-UBICA', telefono: CLIENTE, nombre: 'Ana Prueba', lineas: [{ tipo: '20L', cantidad: 2, precioUnitario: 3300, subtotal: 6600 }], fechaEntrega: '2026-10-28', estado: 'Pendiente_Confirmacion', comuna: 'Ñuñoa', direccion: 'Calle Falsa 123', notasRepartidor: '', envasesARetirar: 0, observaciones: '' },
+      1793000000 - 3600,
+    );
+    await enviarAviso(env, { id: 'wamid.LO2', from: CLIENTE, timestamp: '1793000000', type: 'location', location: { latitude: -33.4569, longitude: -70.5978 } });
+    expect(mundo.enviados[0]?.texto).toBe('¡Gracias! Guardamos tu ubicación para que el repartidor llegue directo.');
+    expect(env.DB.sql('SELECT lat, lng, origen FROM puntos')).toEqual([{ lat: -33.4569, lng: -70.5978, origen: 'cliente' }]);
+    expect(avisosEn(env)).toEqual([]);
+  });
+
+  it('una ubicación sin dirección conocida se agradece y la ve una persona, con el enlace al mapa (D77)', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno();
+    await enviarAviso(env, { id: 'wamid.LO3', from: CLIENTE, timestamp: '1793000000', type: 'location', location: { latitude: -33.4569, longitude: -70.5978 } });
+    expect(mundo.enviados[0]?.texto).toBe('¡Gracias! Guardamos tu ubicación para que el repartidor llegue directo.');
+    expect(env.DB.sql('SELECT texto FROM avisos')).toEqual([{ texto: 'https://www.google.com/maps?q=-33.4569,-70.5978' }]);
+  });
+
+  it('otro tipo (por ejemplo una ubicación sin coordenadas) lo ve una persona', async () => {
     const mundo = stubMundo({ hojas: HOJAS });
     const env = await entorno();
     await enviarAviso(env, { id: 'wamid.LO1', from: CLIENTE, timestamp: '1793000000', type: 'location' });

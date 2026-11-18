@@ -68,3 +68,31 @@ describe('puntos del mapa (fase C, D63)', () => {
     expect((await puntos.deDirecciones(direcciones)).size).toBe(1);
   });
 });
+
+describe('la ubicación que manda el cliente (D77)', () => {
+  const LEJOS = { lat: -33.43, lng: -70.6 };
+
+  it('se guarda si no hay punto, y una ubicación nueva del cliente reemplaza a la anterior', async () => {
+    const { puntos } = repo();
+    expect(await puntos.guardar('Calle Falsa 123', 'Ñuñoa', { ...LEJOS, origen: 'cliente' }, AHORA)).toBe('guardado');
+    expect(await puntos.guardar('Calle Falsa 123', 'Ñuñoa', { ...CERCA, origen: 'cliente' }, AHORA + 1)).toBe('guardado');
+    const mapa = await puntos.deDirecciones([{ direccion: 'Calle Falsa 123', comuna: 'Ñuñoa' }]);
+    expect(mapa.get(claveDePunto('Calle Falsa 123', 'Ñuñoa'))).toMatchObject({ ...CERCA, origen: 'cliente' });
+  });
+
+  it('no pisa un pin manual ni el GPS del repartidor', async () => {
+    const { puntos } = repo();
+    await puntos.guardar('Calle Falsa 123', 'Ñuñoa', { ...CERCA, origen: 'manual' }, AHORA);
+    expect(await puntos.guardar('Calle Falsa 123', 'Ñuñoa', { ...LEJOS, origen: 'cliente' }, AHORA + 1)).toBe('ignorado');
+    await puntos.guardar('Otra 9', 'Macul', { ...CERCA, origen: 'repartidor', precisionM: 60 }, AHORA);
+    expect(await puntos.guardar('Otra 9', 'Macul', { ...LEJOS, origen: 'cliente' }, AHORA + 1)).toBe('ignorado');
+  });
+
+  it('el GPS del repartidor reemplaza la ubicación del cliente (pudo mandarla desde otro lado)', async () => {
+    const { puntos } = repo();
+    await puntos.guardar('Calle Falsa 123', 'Ñuñoa', { ...LEJOS, origen: 'cliente' }, AHORA);
+    expect(await puntos.guardar('Calle Falsa 123', 'Ñuñoa', { ...CERCA, origen: 'repartidor', precisionM: 70 }, AHORA + 1)).toBe('guardado');
+    const mapa = await puntos.deDirecciones([{ direccion: 'Calle Falsa 123', comuna: 'Ñuñoa' }]);
+    expect(mapa.get(claveDePunto('Calle Falsa 123', 'Ñuñoa'))).toMatchObject({ ...CERCA, origen: 'repartidor', precisionM: 70 });
+  });
+});
