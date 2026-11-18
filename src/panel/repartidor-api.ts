@@ -16,7 +16,7 @@ import { COORDENADAS_DE_DEPOSITO, depositoQueDesviaMenos, enlacesDeMaps } from '
 import type { TipoBidon } from '../precios';
 import { PRECISION_BUENA_M, RepositorioPuntos, claveDePunto } from '../puntos';
 import { puntoDeParada } from '../ruta';
-import { armarReparto } from '../reparto';
+import { armarReparto, vaciosEsperados } from '../reparto';
 import type { RepositorioD1 } from '../repositorio';
 import { error, esperadoComoEscritura, json, leerCuerpo } from './api';
 
@@ -67,6 +67,8 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
       bidones: parada.bidones,
       totalBidones: parada.totalBidones,
       envasesARetirar: parada.envasesARetirar,
+      // Lo que se propone en "Vacíos que retiraste": uno por bidón, más los que debía (D72).
+      vaciosEsperados: vaciosEsperados(parada),
       notas: parada.notas,
       formaPago: pedido?.formaPago ?? '',
       cobrar: estado === 'entregado' || !efectivoPendiente ? null : parada.total,

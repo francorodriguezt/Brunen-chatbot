@@ -43,11 +43,11 @@ describe('bidones entregados por día, semana y mes (D65)', () => {
   it('los vacíos que faltan, por cliente, del que más debe al que menos; sin marca del repartidor no cuentan', () => {
     const e = resumirEntregas(
       [
-        entrega('2026-11-10', 3, { envasesARetirar: 3, vaciosRetirados: 1 }),
-        entrega('2026-11-12', 3, { envasesARetirar: 3, vaciosRetirados: 2 }),
-        entrega('2026-11-12', 5, { telefono: '56922222222', nombre: 'Luis Ficticio', envasesARetirar: 5, vaciosRetirados: 0 }),
-        entrega('2026-11-12', 4, { telefono: '56933333333', envasesARetirar: 4, vaciosRetirados: null }),
-        entrega('2026-11-12', 4, { telefono: '56944444444', envasesARetirar: 4, vaciosRetirados: 4 }),
+        entrega('2026-11-10', 3, { envasesARetirar: 0, vaciosRetirados: 1 }),
+        entrega('2026-11-12', 3, { envasesARetirar: 0, vaciosRetirados: 2 }),
+        entrega('2026-11-12', 5, { telefono: '56922222222', nombre: 'Luis Ficticio', envasesARetirar: 0, vaciosRetirados: 0 }),
+        entrega('2026-11-12', 4, { telefono: '56933333333', envasesARetirar: 0, vaciosRetirados: null }),
+        entrega('2026-11-12', 4, { telefono: '56944444444', envasesARetirar: 0, vaciosRetirados: 4 }),
       ],
       HASTA,
     );
