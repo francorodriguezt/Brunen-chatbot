@@ -5,6 +5,7 @@ import panel, { type EntornoPanel } from '../src/panel';
 import { manejarApi } from '../src/panel/api';
 import { Cuentas } from '../src/panel/cuentas';
 import { TABLA_PRECIOS } from '../src/precios';
+import { RepositorioPuntos } from '../src/puntos';
 import { RepositorioD1 } from '../src/repositorio';
 import { AUD, DOMINIO, crearAccesoFalso, type AccesoFalso } from './acceso-falso';
 import { crearBaseSqlite } from './ayudas';
@@ -914,6 +915,19 @@ describe('la API: clientes (D53)', () => {
     const { clientes } = (await (await pedir(env, '/api/clientes')).json()) as { clientes: Array<Record<string, unknown>> };
     expect(clientes).toHaveLength(1);
     expect(clientes[0]).toMatchObject({ nombre: 'Ana Prueba', telefonos: ['56911111111'], pedidos: 2 });
+  });
+
+  it('el mapa de clientes cuenta por comuna y ubica solo los puntos exactos, sin teléfonos ni direcciones (D75)', async () => {
+    const { env, db } = await entornoPanel();
+    await pedir(env, '/api/clientes'); // asocia los pedidos y crea la ficha con su dirección
+    await new RepositorioPuntos(db).guardar('Calle Falsa 123', 'Ñuñoa', { lat: -33.4569, lng: -70.5978, origen: 'manual' }, AHORA);
+    const datos = (await (await pedir(env, '/api/clientes/mapa')).json()) as { total: number; comunas: Array<Record<string, unknown>>; puntos: Array<Record<string, unknown>> };
+    expect(datos.total).toBe(1);
+    expect(datos.comunas).toMatchObject([{ comuna: 'Ñuñoa', clientes: 1 }]);
+    expect(datos.comunas[0]?.centro).not.toBeNull();
+    expect(datos.puntos).toEqual([{ id: expect.any(Number), nombre: 'Ana Prueba', lat: -33.4569, lng: -70.5978 }]);
+    expect(JSON.stringify(datos)).not.toContain('56911111111');
+    expect(JSON.stringify(datos)).not.toContain('Calle Falsa');
   });
 
   it('dice a quién le toca pedir (D58), solo a un administrador con sesión', async () => {

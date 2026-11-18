@@ -6,6 +6,7 @@
 
 import { darFormatoAlRut, mostrarIngreso, pedir, registrarAplicacion } from '/ingreso.js';
 import { crearRutaDelDia } from '/admin/mapa.js';
+import { crearMapaDeClientes } from '/admin/mapa-clientes.js';
 
 // Cada consulta es una solicitud al Worker (el plan gratis permite 100.000 al día): con la pestaña a la vista se consulta
 // seguido para enterarse rápido de un pedido, y con la pestaña oculta o la ventana tapada, más espaciado.
@@ -2286,6 +2287,23 @@ function iniciar() {
   $('reparto-hoy').addEventListener('click', () => elegirDiaDelReparto(hoyEnSantiago()));
   $('reparto-manana').addEventListener('click', () => elegirDiaDelReparto(sumarDias(hoyEnSantiago(), 1)));
   $('fecha-reparto').addEventListener('change', (evento) => elegirDiaDelReparto(evento.currentTarget.value));
+  // Clientes por comuna y en el mapa (D75): se arma la primera vez que se abre; tocar una comuna filtra la lista.
+  let mapaDeClientes = null;
+  $('clientes-por-comuna').addEventListener('toggle', (evento) => {
+    if (!evento.currentTarget.open) return;
+    mapaDeClientes ??= crearMapaDeClientes({
+      contenedor: $('contenido-por-comuna'),
+      api,
+      h,
+      alElegirComuna: (comuna) => {
+        const buscador = $('buscar-clientes');
+        buscador.value = comuna;
+        buscador.dispatchEvent(new Event('input', { bubbles: true }));
+        $('lista-clientes').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+    });
+    void mapaDeClientes.abrir();
+  });
   $('dias-sin-reparto').addEventListener('toggle', (evento) => {
     if (evento.currentTarget.open) void cargarDiasSinReparto();
   });

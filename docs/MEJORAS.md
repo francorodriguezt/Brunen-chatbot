@@ -44,8 +44,9 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] Vacíos esperados = uno por bidón más los que debía; el cierre compara lo retirado con lo ya entregado. (D72)
 - [x] Filtros de pedidos en una fila en el celular; dos columnas de pedidos en el computador. (D73)
 - [ ] Avisos en el iPhone con la app cerrada (instalada en la pantalla de inicio).
-- [ ] Pantalla de días sin reparto y promociones (sin tocar la planilla).
-- [ ] Mapa de clientes por comuna.
+- [x] Días sin reparto: el panel los marca con un motivo y el bot los salta y lo explica. (D74)
+- [ ] Promociones desde el panel (qué ofrecer y a quién lo decide el dueño). **(Dueño)**
+- [x] Clientes por comuna y en el mapa. (D75)
 - [ ] Probarlo con la operadora en una tarea real.
 
 ## 4. App del repartidor (Android)

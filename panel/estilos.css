@@ -418,3 +418,13 @@ label.casilla input { width: 1.3rem; height: 1.3rem; }
   .formulario-dia { grid-template-columns: 1fr; }
   .formulario-dia .motivo-dia { grid-column: 1; }
 }
+
+/* Clientes por comuna y en el mapa (D75) */
+.grafico.comunas li { grid-template-columns: minmax(7rem, 9rem) 1fr 2.5rem; }
+.enlace-comuna { appearance: none; border: 0; background: none; padding: 0.35rem 0; font: inherit; font-size: 0.9rem; color: var(--acento); text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.mapa-clientes { height: 360px; }
+.marcador-comuna {
+  display: grid; place-items: center; border-radius: 999px; border: 2px solid #ffffff; cursor: pointer; padding: 0;
+  background: rgba(11, 108, 176, 0.82); color: #ffffff; font: 700 0.8rem/1 system-ui, sans-serif; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+@media (pointer: coarse) { .enlace-comuna { min-height: 44px; } }
