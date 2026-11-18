@@ -994,7 +994,13 @@ async function guardarNuevoPedido(formulario, lineas) {
   try {
     const { pedido } = await api('/api/pedidos', cuerpo);
     $('dialogo-editar').close();
-    const motivo = cuerpo.confirmar && pedido.total === null ? ' porque falta el precio' : '';
+    const motivo = !cuerpo.confirmar
+      ? ''
+      : pedido.total === null
+        ? ' porque falta el precio'
+        : pedido.observaciones.includes('Ya tiene otro pedido') || pedido.observaciones.includes('pedidos para ese día')
+          ? ': ese cliente ya tenía otro pedido ese día, revisa si es el mismo'
+          : '';
     borrarBorrador();
     avisar(pedido.estado === 'Confirmado' ? `Pedido de ${nombreDe(pedido)} anotado y confirmado.` : `Pedido de ${nombreDe(pedido)} anotado: quedó por confirmar${motivo}.`);
   } catch (falla) {
