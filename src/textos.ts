@@ -143,7 +143,14 @@ export function pedidoAnotado(datos: {
     const fecha = `${datos.entrega.mismoDia ? 'hoy, ' : ''}${fechaEnPalabras(datos.entrega.fecha)}`;
     if (datos.entrega.motivoAjuste === 'sin_despacho') {
       // Brunen despacha los sábados: si el día pedido no es domingo, es un feriado.
-      const razon = datos.entrega.fechaPedida && diaSemana(datos.entrega.fechaPedida) === 0 ? 'Los domingos no despachamos' : 'Ese día es feriado y no despachamos';
+      const { fechaPedida, motivoSinReparto } = datos.entrega;
+      // Un día marcado en el panel (D74) lleva su motivo, escrito para el cliente.
+      const razon =
+        fechaPedida && motivoSinReparto !== undefined
+          ? `El ${fechaEnPalabras(fechaPedida)} no hay reparto${motivoSinReparto ? ` (${motivoSinReparto})` : ''}`
+          : fechaPedida && diaSemana(fechaPedida) === 0
+            ? 'Los domingos no despachamos'
+            : 'Ese día es feriado y no despachamos';
       partes.push(`${razon}; la entrega más cercana es el ${fecha}.`);
     }
     else if (datos.entrega.motivoAjuste === 'muy_pronto') partes.push(`Para ese día ya no alcanzamos; la entrega más cercana es ${fecha}.`);

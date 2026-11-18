@@ -177,3 +177,42 @@ describe('describirEntrega', () => {
     );
   });
 });
+
+describe('días marcados sin reparto en el panel (D74)', () => {
+  const cerrado = (fecha: string, motivo = 'mantención del furgón') => new Map([[fecha, motivo]]);
+
+  it('si el cliente pide un día cerrado, se propone el siguiente y se guarda el motivo para decírselo', async () => {
+    // Lunes 2 de noviembre de 2026, 10:00: pide el miércoles 4, que está cerrado.
+    const r = await proponerEntrega({}, verano('2026-11-02T10:00:00'), { cargar: cargar(FERIADOS), solicitada: 'miércoles', diasSinReparto: cerrado('2026-11-04') });
+    expect(r).toMatchObject({ fecha: '2026-11-05', motivoAjuste: 'sin_despacho', fechaPedida: '2026-11-04', motivoSinReparto: 'mantención del furgón' });
+  });
+
+  it('sin pedir día: si el primer día posible está cerrado, se salta y se dice por qué', async () => {
+    // Lunes 2 de noviembre a las 10:00: lo normal sería el martes 3, que está cerrado.
+    const r = await proponerEntrega({}, verano('2026-11-02T10:00:00'), { cargar: cargar(FERIADOS), diasSinReparto: cerrado('2026-11-03') });
+    expect(r).toMatchObject({ fecha: '2026-11-04', motivoAjuste: 'sin_despacho', fechaPedida: '2026-11-03', motivoSinReparto: 'mantención del furgón' });
+  });
+
+  it('un día cerrado que no toca no cambia nada', async () => {
+    const r = await proponerEntrega({}, verano('2026-11-02T10:00:00'), { cargar: cargar(FERIADOS), diasSinReparto: cerrado('2026-11-20') });
+    expect(r).toEqual({ fecha: '2026-11-03', mismoDia: false, feriadosAlDia: true });
+  });
+
+  it('un feriado de la hoja sigue diciendo "feriado", sin motivo del panel', async () => {
+    const r = await proponerEntrega({}, verano('2026-12-07T10:00:00'), { cargar: cargar(FERIADOS), solicitada: 'martes', diasSinReparto: cerrado('2026-12-20') });
+    expect(r.motivoSinReparto).toBeUndefined();
+  });
+});
+
+describe('pedir justo el día cerrado (D74)', () => {
+  it('si pide el primer día posible y está cerrado, se le dice que ese día no hay reparto, no que ya no alcanza', async () => {
+    // Miércoles 18 de noviembre a las 17:00: lo normal es el jueves 19, que está cerrado; pide "el jueves".
+    const r = await proponerEntrega({}, verano('2026-11-18T17:00:00'), { cargar: cargar(FERIADOS), solicitada: 'jueves', diasSinReparto: new Map([['2026-11-19', 'mantención del furgón']]) });
+    expect(r).toMatchObject({ fecha: '2026-11-20', motivoAjuste: 'sin_despacho', fechaPedida: '2026-11-19', motivoSinReparto: 'mantención del furgón' });
+  });
+
+  it('pedir un día que ya pasó el corte sigue siendo "no alcanza"', async () => {
+    const r = await proponerEntrega({}, verano('2026-11-18T17:00:00'), { cargar: cargar(FERIADOS), solicitada: 'hoy', diasSinReparto: new Map([['2026-11-19', '']]) });
+    expect(r).toMatchObject({ fecha: '2026-11-20', motivoAjuste: 'muy_pronto' });
+  });
+});

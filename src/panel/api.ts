@@ -22,6 +22,7 @@ import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
 import { armarReparto, csvDeReparto, mensajeDeParada, textoDeReparto, tsvDeReparto } from '../reparto';
 import { ESTADOS_DE_PEDIDO, OPCIONES_DE_PEDIDO, type CambiosDePedido, type DatosDePago, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type PedidoManual, type RepositorioD1 } from '../repositorio';
 import type { RepositorioClientes } from '../fichas';
+import { fechaValida as fechaValidaSinReparto, limpiarMotivo, type RepositorioDiasSinReparto } from '../diasSinReparto';
 import { leerPedidoPegado } from '../pegado';
 import { TABLA_PRECIOS } from '../precios';
 import { normalizarTelefono } from '../whatsapp';
@@ -37,6 +38,8 @@ export interface ContextoApi {
   entregas?: RepositorioEntregas;
   /** Respaldo de la base (D66): la descarga en Excel y el estado de la copia en Google Sheets. */
   respaldo?: RepositorioRespaldo;
+  /** Días sin reparto (D74): los marca una persona y el bot los salta. */
+  dias?: RepositorioDiasSinReparto;
 }
 
 const MAX_CUERPO_BYTES = 20_000;
@@ -182,7 +185,9 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
     if (ruta === '/api/opciones' && metodo === 'GET') {
       // La fecha sugerida aplica el corte de las 9:00 y salta los domingos, pero no conoce los feriados (viven en la
       // planilla y el panel no tiene acceso a Google): la persona la revisa antes de guardar.
-      const sugerida = calcularFechaEntrega(new Date(ahoraSegundos * 1000), { feriados: SIN_FERIADOS });
+      // Los días marcados sin reparto (D74) sí los conoce: están en la base.
+      const cerrados = ctx.dias ? new Set((await ctx.dias.proximos(fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha)).keys()) : SIN_FERIADOS;
+      const sugerida = calcularFechaEntrega(new Date(ahoraSegundos * 1000), { feriados: cerrados });
       // `precios`: la lista por tramos para sugerir el precio de un pedido (D71). La persona lo acepta o lo cambia.
       return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha, precios: TABLA_PRECIOS, ...OPCIONES_DE_PEDIDO });
     }
@@ -224,7 +229,9 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
         const caja = cierreDelDia(reparto, pedidos, delDia);
         // Un mensaje por parada, como los que hoy se escriben a mano para el repartidor (D64).
         const mensajes = Object.fromEntries(reparto.paradas.map((p) => [p.idPedido, mensajeDeParada(p)]));
-        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas: Object.fromEntries(delDia), motivos: MOTIVOS_NO_ENTREGA, caja, mensajes });
+        // Si ese día se marcó sin reparto (D74), el panel lo dice arriba de la lista: los pedidos que tenga hay que moverlos.
+        const sinReparto = ctx.dias ? ((await ctx.dias.proximos(fecha)).get(fecha) ?? null) : null;
+        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas: Object.fromEntries(delDia), motivos: MOTIVOS_NO_ENTREGA, caja, mensajes, sinReparto });
       }
       return new Response(csvDeReparto(reparto), {
         status: 200,
@@ -259,7 +266,9 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       if (rechazo) return rechazo;
       const cuerpo = await leerCuerpo(request);
       if (!cuerpo || !esTexto(cuerpo.texto) || cuerpo.texto.trim() === '') return error(400, 'Pega el mensaje del cliente.');
-      return json(await leerPedidoPegado(cuerpo.texto, new Date(ahoraSegundos * 1000)));
+      const ahora = new Date(ahoraSegundos * 1000);
+      const cerrados = ctx.dias ? await ctx.dias.proximos(fechaHoraLocal(ahora).fecha) : undefined;
+      return json(await leerPedidoPegado(cuerpo.texto, ahora, cerrados));
     }
 
     if (ruta === '/api/pedidos' && metodo === 'POST') {
@@ -321,6 +330,27 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
           }
         }
         return respuestaDeRepositorio(editado, 'pedido');
+      }
+    }
+
+    // Días sin reparto (D74): ver los próximos, marcar uno (o cambiar su motivo) y quitarlo.
+    if (ruta.startsWith('/api/dias-sin-reparto')) {
+      if (!ctx.dias) return error(404, 'No encontrado.');
+      const hoy = fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha;
+      if (ruta === '/api/dias-sin-reparto' && metodo === 'GET') return json({ dias: await ctx.dias.listar(hoy) });
+      if (metodo === 'POST' && (ruta === '/api/dias-sin-reparto' || ruta === '/api/dias-sin-reparto/quitar')) {
+        const rechazo = esperadoComoEscritura(request, url);
+        if (rechazo) return rechazo;
+        const cuerpo = await leerCuerpo(request);
+        if (!cuerpo || !fechaValidaSinReparto(cuerpo.fecha)) return error(400, 'Elige una fecha válida.');
+        const fecha = cuerpo.fecha;
+        if (ruta === '/api/dias-sin-reparto/quitar') {
+          return (await ctx.dias.quitar(fecha)) ? json({ ok: true }) : error(404, 'Ese día no estaba marcado.');
+        }
+        if (fecha < hoy) return error(400, 'Ese día ya pasó.');
+        await ctx.dias.marcar(fecha, limpiarMotivo(cuerpo.motivo), correo, ahoraSegundos);
+        // Los pedidos que ya tenía ese día no se mueven solos: se avisa cuántos son para que una persona los cambie.
+        return json({ ok: true, pedidos: await ctx.dias.pedidosDelDia(fecha) });
       }
     }
 

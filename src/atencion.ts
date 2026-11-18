@@ -18,6 +18,8 @@ import type { BaseDatos } from './almacen';
 import { buscarCliente } from './clientes';
 import { leerServicio } from './configuracion';
 import { MemoriaConversaciones } from './conversacion';
+import { fechaHoraLocal } from './despacho';
+import { cargarDiasSinReparto } from './diasSinReparto';
 import { proponerEntrega } from './entrega';
 import { atenderTexto, type Puertos } from './flujo';
 import type { EntornoHojas } from './hojas';
@@ -76,7 +78,9 @@ function puertosReales(env: EntornoAtencion, ahora: Date): Puertos {
       buscarUltimoPedidoGuardado: (telefono: string) => new RepositorioD1(db).itemsDelUltimoPedido(telefono),
     }),
     cargarPrecios: () => cargarTablaPrecios(env),
-    proponerEntrega: (solicitada) => proponerEntrega(env, ahora, { solicitada }),
+    // Los días que se marcaron sin reparto en el panel (D74) se saltan como un feriado. Si D1 falla, no se salta ninguno.
+    proponerEntrega: async (solicitada) =>
+      proponerEntrega(env, ahora, { solicitada, diasSinReparto: await cargarDiasSinReparto(db, fechaHoraLocal(ahora).fecha) }),
     servicio: () => leerServicio(env),
     interpretar: (texto) => interpretarConRespaldo(texto, env),
   };

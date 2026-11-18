@@ -406,3 +406,15 @@ label.casilla input { width: 1.3rem; height: 1.3rem; }
   #lista-pedidos { grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); align-items: start; }
   #lista-pedidos > .vacio { grid-column: 1 / -1; }
 }
+
+/* Días sin reparto (D74) */
+.formulario-dia { display: grid; grid-template-columns: auto 1fr; gap: 0.6rem 0.75rem; align-items: end; margin: 0.6rem 0; }
+.formulario-dia .motivo-dia { grid-column: 2; }
+.formulario-dia .boton { grid-column: 1 / -1; justify-self: start; }
+.lista-dias { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.4rem; }
+.lista-dias li { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.4rem 0; border-top: 1px solid var(--borde); }
+.aviso-sin-reparto { margin: 0.35rem 0 0; padding: 0.5rem 0.75rem; border-radius: 10px; background: var(--peligro-suave); color: var(--peligro); }
+@media (max-width: 520px) {
+  .formulario-dia { grid-template-columns: 1fr; }
+  .formulario-dia .motivo-dia { grid-column: 1; }
+}

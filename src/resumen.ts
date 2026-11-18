@@ -36,7 +36,11 @@ const NOMBRE_ACCION: Readonly<Record<string, string>> = {
  */
 export function describirEntrega(entrega: PropuestaEntrega): string {
   const avisos: string[] = [];
-  if (entrega.motivoAjuste === 'sin_despacho') avisos.push(`pidió ${entrega.pedida}: ese día no hay despacho`);
+  if (entrega.motivoAjuste === 'sin_despacho') {
+    const motivo = entrega.motivoSinReparto ? ` (${entrega.motivoSinReparto})` : '';
+    // Sin día pedido, el ajuste viene de un día marcado sin reparto en el panel (D74).
+    avisos.push(entrega.pedida ? `pidió ${entrega.pedida}: ese día no hay despacho${motivo}` : `el primer día posible no tiene reparto${motivo}`);
+  }
   if (entrega.motivoAjuste === 'muy_pronto') avisos.push(`pidió ${entrega.pedida}: no alcanza`);
   if (entrega.motivoAjuste === 'no_entendida') avisos.push(`no entendí la fecha "${entrega.pedida}"`);
   if (!entrega.feriadosAlDia) avisos.push('feriados sin cargar');

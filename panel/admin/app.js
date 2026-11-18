@@ -1130,10 +1130,21 @@ function cierreDelDia(caja) {
   return h('div', { clase: 'cierre-dia' }, h('h3', {}, empezo ? 'Cierre del día' : 'Para el cierre del día'), h('ul', {}, ...filas));
 }
 
-function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja = null, mensajes = {} }) {
+function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja = null, mensajes = {}, sinReparto = null }) {
   const resumen = $('resumen-reparto');
   const lista = $('lista-reparto');
-  const titulo = h('h2', { clase: 'titulo-reparto' }, `Reparto del ${fechaLarga(reparto.fecha)}`);
+  // Un día marcado sin reparto (D74): el bot ya no lo ofrece, pero lo que se anotó antes hay que moverlo.
+  const cerrado =
+    sinReparto !== null
+      ? h(
+          'p',
+          { clase: 'aviso-sin-reparto' },
+          h('b', {}, 'Día sin reparto'),
+          sinReparto ? ` (${sinReparto})` : '',
+          reparto.paradas.length + reparto.sinConfirmar > 0 ? '. Estos pedidos hay que cambiarlos a otro día.' : '. El bot no lo ofrece a los clientes.',
+        )
+      : null;
+  const titulo = h('div', {}, h('h2', { clase: 'titulo-reparto' }, `Reparto del ${fechaLarga(reparto.fecha)}`), cerrado);
   const sinConfirmar =
     reparto.sinConfirmar > 0
       ? h(
@@ -1269,6 +1280,70 @@ function pintarEstadisticas(e) {
     h('p', { clase: 'suave' }, 'Clientes a los que, al entregar, el repartidor les retiró menos vacíos de los que había (desde el mes pasado).'),
     vacios,
   );
+}
+
+// ---- Días sin reparto (D74) ----
+
+async function cargarDiasSinReparto() {
+  const lista = $('lista-dias-sin-reparto');
+  try {
+    const { dias } = await api('/api/dias-sin-reparto');
+    $('cuenta-dias-sin-reparto').textContent = dias.length > 0 ? `· ${dias.length} ${dias.length === 1 ? 'marcado' : 'marcados'}` : '';
+    lista.replaceChildren(
+      ...(dias.length === 0
+        ? [h('li', { clase: 'suave' }, 'No hay días marcados desde hoy.')]
+        : dias.map((dia) =>
+            h(
+              'li',
+              {},
+              h('span', {}, h('b', {}, fechaLarga(dia.fecha)), dia.motivo ? ` · ${dia.motivo}` : ''),
+              boton('Quitar', 'boton boton-chico', () => void quitarDiaSinReparto(dia)),
+            ),
+          )),
+    );
+  } catch (falla) {
+    lista.replaceChildren(h('li', { clase: 'falta' }, falla.message));
+  }
+}
+
+async function marcarDiaSinReparto(evento) {
+  evento.preventDefault();
+  const formulario = evento.currentTarget;
+  const fecha = formulario.elements.fecha.value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return avisar('Elige el día.', true);
+  const botonMarcar = formulario.querySelector('button[type=submit]');
+  botonMarcar.disabled = true;
+  try {
+    const { pedidos } = await api('/api/dias-sin-reparto', { fecha, motivo: formulario.elements.motivo.value });
+    formulario.reset();
+    const verlos = () => {
+      estado.grupo = 'todos';
+      estado.fecha = fecha;
+      limpiarBusqueda();
+      $('filtro-fecha').value = fecha;
+      pintarFiltros();
+      void activarVista('pedidos');
+    };
+    if (pedidos > 0) avisar(`Marcado. El ${fechaLarga(fecha)} ya tiene ${pedidos} ${pedidos === 1 ? 'pedido' : 'pedidos'}: cámbialos de día.`, false, { texto: 'Verlos', alHacerClic: verlos });
+    else avisar(`Listo: el ${fechaLarga(fecha)} no hay reparto. El bot ya no lo ofrece.`);
+  } catch (falla) {
+    avisar(falla.message, true);
+  } finally {
+    botonMarcar.disabled = false;
+  }
+  estado.firmas.reparto = '';
+  await Promise.all([cargarDiasSinReparto(), recargarVistaActual(), cargarOpciones()]);
+}
+
+async function quitarDiaSinReparto(dia) {
+  try {
+    await api('/api/dias-sin-reparto/quitar', { fecha: dia.fecha });
+    avisar(`Listo: el ${fechaLarga(dia.fecha)} vuelve a tener reparto.`);
+  } catch (falla) {
+    avisar(falla.message, true);
+  }
+  estado.firmas.reparto = '';
+  await Promise.all([cargarDiasSinReparto(), recargarVistaActual(), cargarOpciones()]);
 }
 
 async function cargarEstadisticas() {
@@ -1478,6 +1553,7 @@ async function cargarHoy() {
     resumen: estado.resumen,
     repartoHoy,
     repartoSiguiente: repartoSiguiente?.reparto ?? null,
+    cerradoSiguiente: repartoSiguiente?.sinReparto ?? null,
     avisos: avisos?.avisos ?? null,
     porPedir: porPedir?.clientes?.length ?? null,
   };
@@ -1491,7 +1567,8 @@ function filaDeHoy({ texto, detalle, tono = '', alTocar }) {
   return h('li', {}, h('button', { type: 'button', clase: `fila-hoy ${tono}`, onclick: alTocar }, h('span', { clase: 'fila-hoy-texto' }, texto), detalle ? h('span', { clase: 'fila-hoy-detalle' }, detalle) : null));
 }
 
-function pintarHoy({ hoy, siguiente, resumen, repartoHoy, repartoSiguiente, avisos, porPedir }) {
+function pintarHoy({ hoy, siguiente, resumen, repartoHoy, repartoSiguiente, cerradoSiguiente = null, avisos, porPedir }) {
+  const cerradoHoy = repartoHoy?.sinReparto ?? null;
   $('titulo-hoy').textContent = fechaLarga(hoy);
   const porConfirmar = resumen?.porConfirmar ?? 0;
   const urgentes = avisos ? avisos.filter((a) => AVISOS_URGENTES.has(a.tipo)).length : 0;
@@ -1546,33 +1623,53 @@ function pintarHoy({ hoy, siguiente, resumen, repartoHoy, repartoSiguiente, avis
       },
     }),
     filaDeHoy({
-      texto: paradas > 0 ? `Reparto de hoy: ${reparto.entregadas} de ${plural(paradas, 'entrega', 'entregas')}` : 'Hoy no hay entregas confirmadas',
+      texto:
+        cerradoHoy !== null
+          ? `Hoy no hay reparto${cerradoHoy ? ` (${cerradoHoy})` : ''}`
+          : paradas > 0
+            ? `Reparto de hoy: ${reparto.entregadas} de ${plural(paradas, 'entrega', 'entregas')}`
+            : 'Hoy no hay entregas confirmadas',
       detalle:
-        problemasDelReparto.length > 0
+        cerradoHoy !== null && paradas + (reparto?.sinConfirmar ?? 0) > 0
+          ? `Tiene ${plural(paradas + reparto.sinConfirmar, 'pedido', 'pedidos')}: cámbialos de día`
+          : problemasDelReparto.length > 0
           ? `${problemasDelReparto.join(' · ')}`
           : paradas > 0
             ? plural(bidonesDe(reparto), 'bidón', 'bidones')
             : reparto?.sinConfirmar > 0
               ? `${plural(reparto.sinConfirmar, 'pedido de hoy está', 'pedidos de hoy están')} sin confirmar`
               : null,
-      tono: problemasDelReparto.length > 0 ? 'urgente' : paradas > 0 ? 'con-algo' : 'tranquila',
+      tono:
+        cerradoHoy !== null ? (paradas + (reparto?.sinConfirmar ?? 0) > 0 ? 'urgente' : 'tranquila') : problemasDelReparto.length > 0 ? 'urgente' : paradas > 0 ? 'con-algo' : 'tranquila',
       alTocar: () => irAlReparto(hoy),
     }),
     repartoSiguiente
-      ? filaDeHoy({
-          texto:
-            repartoSiguiente.paradas.length > 0
-              ? `${plural(repartoSiguiente.paradas.length, 'entrega', 'entregas')} para el ${fechaLarga(siguiente)}`
-              : `Nada confirmado para el ${fechaLarga(siguiente)}`,
-          detalle: [
-            repartoSiguiente.paradas.length > 0 ? plural(bidonesDe(repartoSiguiente), 'bidón', 'bidones') : null,
-            repartoSiguiente.sinConfirmar > 0 ? `${repartoSiguiente.sinConfirmar} sin confirmar` : null,
-          ]
-            .filter(Boolean)
-            .join(' · ') || null,
-          tono: repartoSiguiente.paradas.length > 0 || repartoSiguiente.sinConfirmar > 0 ? 'con-algo' : 'tranquila',
-          alTocar: () => irAlReparto(siguiente),
-        })
+      ? (() => {
+          const pedidosSiguiente = repartoSiguiente.paradas.length + repartoSiguiente.sinConfirmar;
+          if (cerradoSiguiente !== null) {
+            return filaDeHoy({
+              texto: `El ${fechaLarga(siguiente)} no hay reparto${cerradoSiguiente ? ` (${cerradoSiguiente})` : ''}`,
+              detalle: pedidosSiguiente > 0 ? `Tiene ${plural(pedidosSiguiente, 'pedido', 'pedidos')}: cámbialos de día` : 'El bot no lo ofrece a los clientes',
+              tono: pedidosSiguiente > 0 ? 'urgente' : 'tranquila',
+              alTocar: () => irAlReparto(siguiente),
+            });
+          }
+          return filaDeHoy({
+            texto:
+              repartoSiguiente.paradas.length > 0
+                ? `${plural(repartoSiguiente.paradas.length, 'entrega', 'entregas')} para el ${fechaLarga(siguiente)}`
+                : `Nada confirmado para el ${fechaLarga(siguiente)}`,
+            detalle:
+              [
+                repartoSiguiente.paradas.length > 0 ? plural(bidonesDe(repartoSiguiente), 'bidón', 'bidones') : null,
+                repartoSiguiente.sinConfirmar > 0 ? `${repartoSiguiente.sinConfirmar} sin confirmar` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || null,
+            tono: pedidosSiguiente > 0 ? 'con-algo' : 'tranquila',
+            alTocar: () => irAlReparto(siguiente),
+          });
+        })()
       : null,
     porPedir !== null
       ? filaDeHoy({
@@ -2189,6 +2286,11 @@ function iniciar() {
   $('reparto-hoy').addEventListener('click', () => elegirDiaDelReparto(hoyEnSantiago()));
   $('reparto-manana').addEventListener('click', () => elegirDiaDelReparto(sumarDias(hoyEnSantiago(), 1)));
   $('fecha-reparto').addEventListener('change', (evento) => elegirDiaDelReparto(evento.currentTarget.value));
+  $('dias-sin-reparto').addEventListener('toggle', (evento) => {
+    if (evento.currentTarget.open) void cargarDiasSinReparto();
+  });
+  $('formulario-dia-sin-reparto').addEventListener('submit', (evento) => void marcarDiaSinReparto(evento));
+  $('formulario-dia-sin-reparto').elements.fecha.min = hoyEnSantiago();
   $('bidones-entregados').addEventListener('toggle', (evento) => {
     if (evento.currentTarget.open) {
       estadisticasDe = null; // al abrir se piden de nuevo: pudo haber entregas desde la última vez

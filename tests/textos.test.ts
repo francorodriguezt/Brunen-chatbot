@@ -54,6 +54,15 @@ describe('textos al cliente', () => {
     expect(texto.split('\n').length).toBeLessThanOrEqual(5);
   });
 
+  it('un día marcado sin reparto en el panel se explica con su motivo (D74)', () => {
+    const entrega = { fecha: '2026-11-05', mismoDia: false, feriadosAlDia: true, motivoAjuste: 'sin_despacho' as const, fechaPedida: '2026-11-04', motivoSinReparto: 'mantención del furgón' };
+    const texto = textos.pedidoAnotado({ lineas: [{ tipo: '20L', cantidad: 2, subtotal: 6600 }], total: 6600, entrega, fechaSegura: true });
+    expect(texto).toContain('El miércoles 4 de noviembre no hay reparto (mantención del furgón); la entrega más cercana es el jueves 5 de noviembre.');
+    // Sin motivo escrito, solo dice que ese día no hay reparto.
+    const sinMotivo = textos.pedidoAnotado({ lineas: [{ tipo: '20L', cantidad: 2, subtotal: 6600 }], total: 6600, entrega: { ...entrega, motivoSinReparto: '' }, fechaSegura: true });
+    expect(sinMotivo).toContain('El miércoles 4 de noviembre no hay reparto; la entrega');
+  });
+
   describe('Entrega en (D55)', () => {
     const base = { lineas: [{ tipo: '20L' as const, cantidad: 2, subtotal: 6600 }], total: 6600, entrega: { fecha: '2026-10-29', mismoDia: false, feriadosAlDia: true }, fechaSegura: true };
 
