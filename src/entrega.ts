@@ -35,6 +35,11 @@ export interface PropuestaEntrega extends FechaEntrega {
   motivoAjuste?: MotivoAjuste;
   /** Con `sin_despacho`: el día que pidió, ya como fecha, para poder decir si es domingo o feriado. */
   fechaPedida?: string;
+  /**
+   * Con `sin_despacho`: el día que se saltó es uno de los marcados en el panel (D74), con este motivo para el cliente
+   * (puede venir vacío). Sin pedir día también se avisa, si el primer día posible estaba cerrado.
+   */
+  motivoSinReparto?: string;
 }
 
 export interface OpcionesEntrega {
@@ -42,6 +47,8 @@ export interface OpcionesEntrega {
   solicitada?: string;
   /** Para pruebas: reemplaza la lectura de la hoja FERIADOS. */
   cargar?: (env: EntornoHojas, ahoraSegundos: number) => Promise<ReadonlySet<string>>;
+  /** Los días que se marcaron sin reparto en el panel (D74): fecha -> motivo. */
+  diasSinReparto?: ReadonlyMap<string, string>;
 }
 
 export async function proponerEntrega(
@@ -50,9 +57,15 @@ export async function proponerEntrega(
   opciones: OpcionesEntrega = {},
 ): Promise<PropuestaEntrega> {
   const cargar = opciones.cargar ?? cargarFeriados;
-  const feriados = await cargar(env, Math.floor(instante.getTime() / 1000));
+  const feriadosDeLaHoja = await cargar(env, Math.floor(instante.getTime() / 1000));
+  const cerrados = opciones.diasSinReparto ?? new Map<string, string>();
+  // Un día sin reparto se salta igual que un feriado; la hoja sigue siendo la que dice si los feriados están al día.
+  const feriados: ReadonlySet<string> = cerrados.size > 0 ? new Set([...feriadosDeLaHoja, ...cerrados.keys()]) : feriadosDeLaHoja;
   const hoy = fechaHoraLocal(instante).fecha;
   const masTemprana = calcularFechaEntrega(instante, { feriados }).fecha;
+  // El primer día posible si no hubiera días cerrados: pedir antes de este es "ya no alcanzamos"; pedir un día cerrado
+  // que viene después es "ese día no hay reparto" (si no, el cliente oiría que no alcanza, cuando el día está cerrado).
+  const sinCerrar = cerrados.size > 0 ? calcularFechaEntrega(instante, { feriados: feriadosDeLaHoja }).fecha : masTemprana;
 
   let fecha = masTemprana;
   let motivoAjuste: MotivoAjuste | undefined;
@@ -61,24 +74,33 @@ export async function proponerEntrega(
     const pedida = resolverFechaTexto(opciones.solicitada, hoy);
     if (!pedida) {
       motivoAjuste = 'no_entendida';
-    } else if (pedida < masTemprana) {
+    } else if (pedida < sinCerrar) {
       motivoAjuste = 'muy_pronto';
     } else if (esDiaDespacho(pedida, feriados)) {
       fecha = pedida;
     } else {
-      fecha = siguienteDiaDespacho(pedida, feriados);
+      const siguiente = siguienteDiaDespacho(pedida, feriados);
+      fecha = siguiente > masTemprana ? siguiente : masTemprana;
       motivoAjuste = 'sin_despacho';
       fechaPedida = pedida;
     }
+  } else if (cerrados.size > 0) {
+    // Sin pedir día: si el primer día posible estaba cerrado, se le dice por qué la entrega es más tarde.
+    if (sinCerrar !== masTemprana && cerrados.has(sinCerrar)) {
+      motivoAjuste = 'sin_despacho';
+      fechaPedida = sinCerrar;
+    }
   }
+  const motivoSinReparto = fechaPedida !== undefined && cerrados.has(fechaPedida) ? (cerrados.get(fechaPedida) ?? '') : undefined;
 
   const ano = fecha.slice(0, 4);
   return {
     fecha,
     mismoDia: fecha === hoy,
-    feriadosAlDia: [...feriados].some((feriado) => feriado.startsWith(ano)),
+    feriadosAlDia: [...feriadosDeLaHoja].some((feriado) => feriado.startsWith(ano)),
     ...(opciones.solicitada && { pedida: opciones.solicitada }),
     ...(motivoAjuste && { motivoAjuste }),
     ...(fechaPedida && { fechaPedida }),
+    ...(motivoSinReparto !== undefined && { motivoSinReparto }),
   };
 }

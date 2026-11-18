@@ -90,6 +90,16 @@
         <summary>Bidones entregados y vacíos por retirar</summary>
         <div id="contenido-estadisticas"><p class="suave">Cargando…</p></div>
       </details>
+      <details id="dias-sin-reparto" class="ruta-del-dia">
+        <summary>Días sin reparto <span class="suave" id="cuenta-dias-sin-reparto"></span></summary>
+        <p class="suave">Un feriado que no está en la planilla, un cierre o una falla del furgón. El bot no ofrece esos días y le explica al cliente el motivo.</p>
+        <form id="formulario-dia-sin-reparto" class="formulario-dia" novalidate>
+          <label>Día <input type="date" name="fecha" required></label>
+          <label class="motivo-dia">Motivo <span class="suave pista-campo">lo lee el cliente</span><input type="text" name="motivo" maxlength="80" autocomplete="off" placeholder="mantención del furgón"></label>
+          <button type="submit" class="boton boton-principal">Marcar sin reparto</button>
+        </form>
+        <ul id="lista-dias-sin-reparto" class="lista-dias"></ul>
+      </details>
       <div id="lista-reparto" class="lista"></div>
     </section>
     <section id="vista-avisos" role="tabpanel" aria-labelledby="pestana-avisos" hidden>

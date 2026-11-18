@@ -42,7 +42,7 @@ export interface PedidoPegado {
 }
 
 /** Lee el mensaje pegado. `ahora` decide "mañana" y el corte de las 9:00. */
-export async function leerPedidoPegado(pegado: string, ahora: Date): Promise<PedidoPegado> {
+export async function leerPedidoPegado(pegado: string, ahora: Date, diasSinReparto?: ReadonlyMap<string, string>): Promise<PedidoPegado> {
   const textos: string[] = [];
   let remitente: string | null = null;
   for (const linea of pegado.slice(0, MAX_PEGADO).split(/\r?\n/)) {
@@ -65,7 +65,8 @@ export async function leerPedidoPegado(pegado: string, ahora: Date): Promise<Ped
   const lineas = interpretacion.items.map((item) => ({ tipo: item.tipo, cantidad: item.cantidad }));
   const comuna = interpretacion.comuna_mencionada ?? null;
   // Sin acceso a la planilla, el panel no conoce los feriados: se propone igual y se avisa.
-  const entrega = await proponerEntrega({}, ahora, { cargar: async () => new Set<string>(), solicitada: interpretacion.fecha_texto });
+  // Los feriados de la hoja no los conoce; los días marcados sin reparto en el panel (D74), sí.
+  const entrega = await proponerEntrega({}, ahora, { cargar: async () => new Set<string>(), solicitada: interpretacion.fecha_texto, ...(diasSinReparto && { diasSinReparto }) });
 
   const avisos: string[] = [];
   if (interpretacion.intencion === 'cambio') avisos.push('El mensaje parece cancelar o cambiar un pedido que ya existe: búscalo antes de anotar uno nuevo.');
@@ -75,7 +76,14 @@ export async function leerPedidoPegado(pegado: string, ahora: Date): Promise<Ped
   if (lineas.some((l) => l.cantidad === null)) avisos.push('Dijo el bidón pero no cuántos: escribe la cantidad.');
   if (entrega.motivoAjuste === 'no_entendida') avisos.push(`No entendí el día que pidió ("${interpretacion.fecha_texto}"): elige la fecha.`);
   else if (entrega.motivoAjuste === 'muy_pronto') avisos.push(`Pidió "${interpretacion.fecha_texto}", pero ya pasó el corte: propuse el primer día posible.`);
-  else if (entrega.motivoAjuste === 'sin_despacho') avisos.push(`Pidió "${interpretacion.fecha_texto}", que no tiene despacho: propuse el siguiente día.`);
+  else if (entrega.motivoAjuste === 'sin_despacho') {
+    const motivo = entrega.motivoSinReparto ? ` (${entrega.motivoSinReparto})` : '';
+    avisos.push(
+      interpretacion.fecha_texto
+        ? `Pidió "${interpretacion.fecha_texto}", que no tiene despacho${motivo}: propuse el siguiente día.`
+        : `El primer día posible está marcado sin reparto${motivo}: propuse el siguiente.`,
+    );
+  }
   if (interpretacion.pide_envase) avisos.push('Pide envases nuevos: es carga inicial, revisa el precio.');
   if (!telefono) avisos.push('No encontré el teléfono: escríbelo para reconocer al cliente.');
 

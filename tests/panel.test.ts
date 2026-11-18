@@ -797,6 +797,44 @@ describe('la API: la versión del pedido que la pantalla estaba mostrando', () =
   });
 });
 
+describe('la API: días sin reparto (D74)', () => {
+  it('marcar un día dice cuántos pedidos tenía, el motivo queda limpio y el reparto de ese día lo muestra', async () => {
+    const { env } = await entornoPanel();
+    const r = await pedir(env, '/api/dias-sin-reparto', { metodo: 'POST', cuerpo: { fecha: '2026-10-29', motivo: '  Mantención\n del furgón ' } });
+    expect([r.status, await r.json()]).toEqual([200, { ok: true, pedidos: 2 }]);
+    const lista = (await (await pedir(env, '/api/dias-sin-reparto')).json()) as { dias: Array<{ fecha: string; motivo: string }> };
+    expect(lista.dias).toMatchObject([{ fecha: '2026-10-29', motivo: 'Mantención del furgón' }]);
+    const reparto = (await (await pedir(env, '/api/reparto?fecha=2026-10-29')).json()) as { sinReparto: string | null };
+    expect(reparto.sinReparto).toBe('Mantención del furgón');
+  });
+
+  it('la fecha sugerida de un pedido nuevo salta un día cerrado', async () => {
+    const { env } = await entornoPanel();
+    // AHORA es lunes 26 a las 04:33: lo normal es el mismo día.
+    await pedir(env, '/api/dias-sin-reparto', { metodo: 'POST', cuerpo: { fecha: '2026-10-26', motivo: 'Feriado' } });
+    expect(((await (await pedir(env, '/api/opciones')).json()) as { fechaSugerida: string }).fechaSugerida).toBe('2026-10-27');
+  });
+
+  it('no se marca un día que ya pasó ni una fecha que no existe; quitar uno que no estaba es 404', async () => {
+    const { env } = await entornoPanel();
+    expect((await pedir(env, '/api/dias-sin-reparto', { metodo: 'POST', cuerpo: { fecha: '2026-10-20' } })).status).toBe(400);
+    expect((await pedir(env, '/api/dias-sin-reparto', { metodo: 'POST', cuerpo: { fecha: '2026-02-30' } })).status).toBe(400);
+    expect((await pedir(env, '/api/dias-sin-reparto/quitar', { metodo: 'POST', cuerpo: { fecha: '2026-11-03' } })).status).toBe(404);
+    await pedir(env, '/api/dias-sin-reparto', { metodo: 'POST', cuerpo: { fecha: '2026-11-03', motivo: '' } });
+    expect((await pedir(env, '/api/dias-sin-reparto/quitar', { metodo: 'POST', cuerpo: { fecha: '2026-11-03' } })).status).toBe(200);
+  });
+
+  it('marcar o quitar exige la cabecera del panel (como toda escritura)', async () => {
+    const { env } = await entornoPanel();
+    const r = await panel.fetch(
+      new Request('https://panel.example/admin/api/dias-sin-reparto', { method: 'POST', headers: { 'cf-access-jwt-assertion': await acceso.token(), cookie: cookieDePrueba(), 'content-type': 'application/json' }, body: JSON.stringify({ fecha: '2026-11-03' }) }),
+      env,
+    );
+    expect(r.status).toBe(400); // sin X-Panel: el mismo rechazo de toda escritura
+    expect(((await (await pedir(env, '/api/dias-sin-reparto')).json()) as { dias: unknown[] }).dias).toEqual([]);
+  });
+});
+
 describe('la API: envases por retirar al editar', () => {
   it('se pueden corregir desde "Cambiar"', async () => {
     const { env } = await entornoPanel();

@@ -75,6 +75,7 @@ describe('migraciones', () => {
       { name: 'clientes' },
       { name: 'conversaciones' },
       { name: 'conversaciones_tomadas' },
+      { name: 'dias_sin_reparto' },
       { name: 'direcciones_cliente' },
       { name: 'historial_pedidos' },
       { name: 'intentos_de_ingreso' },
