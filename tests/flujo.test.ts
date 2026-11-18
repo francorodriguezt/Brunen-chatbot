@@ -7,6 +7,7 @@ import { interpretar, type ItemInterpretado } from '../src/interprete';
 import type { DatosPrevios } from '../src/pedidos';
 import { TABLA_PRECIOS } from '../src/precios';
 import type { TablaPrecios } from '../src/preciosHoja';
+import * as textos from '../src/textos';
 import { FERIADOS_2026_2027, crearBaseSqlite } from './ayudas';
 
 afterEach(() => vi.restoreAllMocks());
@@ -871,5 +872,38 @@ describe('cambios, envases nuevos y forma de pago (mensajes reales mal entendido
     const d = await conversacion().decir('pago en efectivo');
     expect(d.pedido).toBeUndefined();
     expect(d.alerta).toMatchObject({ tipo: 'pago', resumen: expect.stringContaining('efectivo') });
+  });
+});
+
+describe('"¿cuándo llega?" (D78)', () => {
+  it('con un pedido vivo responde en qué está, sin pasar por el intérprete', async () => {
+    let interpretados = 0;
+    const charla = conversacion({
+      puertos: {
+        estadoDeMiPedido: async () => ({ tipo: 'en_reparto', antes: 3 }),
+        interpretar: async (texto) => (interpretados++, { interpretacion: interpretar(texto), conIa: false }),
+      },
+    });
+    const d = await charla.decir('hola, ¿a qué hora llega mi pedido?');
+    expect(d.respuesta).toBe('Tu pedido va en el reparto de hoy: antes del tuyo quedan 3 entregas.');
+    expect(d.pedido).toBeUndefined();
+    expect(interpretados).toBe(0);
+  });
+
+  it('sin pedido vivo sigue la respuesta de siempre (los horarios)', async () => {
+    const d = await conversacion({ puertos: { estadoDeMiPedido: async () => null } }).decir('¿cuándo llegan los pedidos?');
+    expect(d.respuesta).toBe(textos.horarios());
+  });
+
+  it('"no me ha llegado" no pregunta por el estado: va por el camino de siempre', async () => {
+    let consultas = 0;
+    await conversacion({ puertos: { estadoDeMiPedido: async () => (consultas++, { tipo: 'entregado' }) } }).decir('no me ha llegado el pedido');
+    expect(consultas).toBe(0);
+  });
+
+  it('si consultar el estado falla, responde lo de siempre', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const d = await conversacion({ puertos: { estadoDeMiPedido: async () => { throw new Error('D1 caída'); } } }).decir('¿cuándo llega?');
+    expect(d.respuesta).toBe(textos.horarios());
   });
 });

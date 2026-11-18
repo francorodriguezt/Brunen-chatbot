@@ -21,6 +21,7 @@ import { MemoriaConversaciones } from './conversacion';
 import { fechaHoraLocal } from './despacho';
 import { cargarDiasSinReparto } from './diasSinReparto';
 import { proponerEntrega } from './entrega';
+import { estadoDeMiPedido } from './llegada';
 import { atenderTexto, type Puertos } from './flujo';
 import type { EntornoHojas } from './hojas';
 import { interpretarConRespaldo, type EntornoLlm } from './llm';
@@ -84,6 +85,7 @@ function puertosReales(env: EntornoAtencion, ahora: Date): Puertos {
       proponerEntrega(env, ahora, { solicitada, diasSinReparto: await cargarDiasSinReparto(db, fechaHoraLocal(ahora).fecha) }),
     servicio: () => leerServicio(env),
     interpretar: (texto) => interpretarConRespaldo(texto, env),
+    ...(db && { estadoDeMiPedido: (telefono: string) => estadoDeMiPedido(db, telefono, fechaHoraLocal(ahora).fecha) }),
   };
 }
 

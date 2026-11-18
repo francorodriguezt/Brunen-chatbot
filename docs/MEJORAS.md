@@ -9,8 +9,8 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] Botón "Ruta en Google Maps" por carga: todas las paradas en orden, en tramos si son muchas.
 - [x] La app del repartidor dice dónde recargar (planta o Actum) según la ruta, no siempre "Actum".
 - [x] Cuántos bidones de cada tamaño cargar en cada viaje.
-- [ ] Que las cargas del mapa y de la lista coincidan a mitad del día.
-- [ ] Elegir en conjunto dónde cortar cada viaje y dónde recargar (no viaje por viaje).
+- [x] Que las cargas del mapa y de la lista coincidan: arman los viajes igual; el mapa dice "lo que queda" y la lista dice si va en el orden publicado o por comuna. (D73)
+- [ ] Elegir en conjunto dónde cortar cada viaje y dónde recargar (no viaje por viaje). Antes hay que guardar los cortes al publicar la ruta: si no, la lista y la app del repartidor (que no tienen coordenadas) cortarían distinto que el mapa.
 - [ ] Aprender los tiempos reales (entre paradas y en cada parada) con la hora de cada entrega.
 - [ ] Recalcular desde donde está el repartidor.
 - [ ] Horarios de clientes ("solo en la tarde") como condición de la ruta.
@@ -20,11 +20,11 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 ## 2. Bot de WhatsApp
 - [x] Comprobantes: la foto que manda el cliente llega a Telegram para revisarla (y queda el aviso en el panel).
 - [x] Audios: transcribirlos y mostrar el texto en el aviso. El bot sigue sin responder audios (regla del dueño).
-- [ ] Ubicación que manda el cliente por WhatsApp: se guarda como el punto exacto de su dirección.
+- [x] Ubicación que manda el cliente por WhatsApp: se guarda como el punto exacto de su dirección. (D77)
 - [x] "Hola, quiero pedir" de un cliente conocido: ofrecerle "lo de siempre" con su detalle.
-- [ ] Responder "¿cuándo llega?" con la ruta del día y el avance.
-- [ ] Detectar pedidos repetidos (mismo cliente, mismo día).
-- [ ] Días sin reparto con su motivo (no solo feriados), dicho al cliente.
+- [x] Responder "¿cuándo llega?" con el estado del pedido y, con la ruta publicada, cuántas entregas quedan antes. (D78)
+- [x] Detectar pedidos repetidos (mismo cliente, mismo día). (D76)
+- [x] Días sin reparto con su motivo (no solo feriados), dicho al cliente. (D74)
 - [ ] Promociones con fechas que el bot cotiza solo. **(Dueño: precios y condiciones)**
 - [ ] Recordatorio a los clientes frecuentes que les toca pedir: pagado (plantilla de Meta) o gratis desde la lista del panel. **(Dueño)**
 - [ ] Sumar a las pruebas cada mensaje real mal entendido y medir el acierto.
