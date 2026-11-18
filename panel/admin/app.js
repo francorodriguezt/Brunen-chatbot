@@ -320,7 +320,7 @@ function datosDelPedido(pedido) {
     // Que no esté pagado es lo normal (muchos pagan al recibir): no va en ámbar como lo que falta de verdad.
     dato('Pago', [ETIQUETAS.formaPago[pedido.formaPago] ?? pedido.formaPago, ETIQUETAS.estadoPago[pedido.estadoPago]].join(' · ')),
     pedido.documento ? dato(ETIQUETAS.documento[pedido.documento], pedido.numeroDocumento || 'sin número', !pedido.numeroDocumento) : null,
-    pedido.envasesARetirar > 0 ? dato('Envases por retirar', pedido.envasesARetirar) : null,
+    pedido.envasesARetirar > 0 ? dato('Vacíos extra por retirar', pedido.envasesARetirar) : null,
     pedido.notasRepartidor ? dato('Notas', pedido.notasRepartidor) : null,
     pedido.confirmadoPor ? dato('Confirmó', pedido.confirmadoPor) : null,
   );
@@ -743,7 +743,7 @@ function resumirMasDatos() {
     ETIQUETAS.formaPago[campos.formaPago.value] ?? campos.formaPago.value,
     ETIQUETAS.estadoPago[campos.estadoPago.value],
     campos.documento.value ? ETIQUETAS.documento[campos.documento.value] : null,
-    envases > 0 ? `${envases} ${envases === 1 ? 'envase' : 'envases'}` : null,
+    envases > 0 ? `${envases} ${envases === 1 ? 'vacío extra' : 'vacíos extra'}` : null,
     campos.notas.value.trim() ? 'con notas' : null,
   ].filter(Boolean);
   $('resumen-mas-datos').textContent = partes.length > 0 ? `· ${partes.join(' · ')}` : '';
@@ -1015,7 +1015,7 @@ function tarjetaDeParada(parada, entrega, motivos, mensaje) {
       { clase: 'datos' },
       dato('Deja', bidones || 'sin bidones'),
       dato('Cobra', parada.total === null ? h('span', { clase: 'falta' }, 'sin precio') : pesos.format(parada.total)),
-      parada.envasesARetirar > 0 ? dato('Retira', `${parada.envasesARetirar} ${parada.envasesARetirar === 1 ? 'envase' : 'envases'}`) : null,
+      parada.envasesARetirar > 0 ? dato('Vacíos extra', `${parada.envasesARetirar} además del cambio`) : null,
       parada.notas ? dato('Notas', parada.notas) : null,
       ...lineasDeEntrega(entrega, motivos, parada),
     ),
@@ -1082,7 +1082,7 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja 
       { clase: 'cifras' },
       cifra(reparto.paradas.length, reparto.paradas.length === 1 ? 'parada' : 'paradas'),
       ...TAMANOS_DE_MAYOR_A_MENOR.filter(([tipo]) => reparto.carga[tipo] > 0).map(([tipo, nombre]) => cifra(reparto.carga[tipo], `de ${nombre}`)),
-      reparto.envasesARetirar > 0 ? cifra(reparto.envasesARetirar, reparto.envasesARetirar === 1 ? 'envase por retirar' : 'envases por retirar') : null,
+      reparto.envasesARetirar > 0 ? cifra(reparto.envasesARetirar, reparto.envasesARetirar === 1 ? 'vacío extra por retirar' : 'vacíos extra por retirar') : null,
       reparto.entregadas > 0 ? cifra(reparto.entregadas, reparto.entregadas === 1 ? 'entregada' : 'entregadas') : null,
       reparto.cargas.length > 1 ? cifra(reparto.cargas.length, 'cargas del furgón') : null,
     ),

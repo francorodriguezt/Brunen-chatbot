@@ -8,7 +8,7 @@
 
 import type { EstadoDeEntrega } from './entregas';
 import type { TipoBidon } from './precios';
-import type { ParadaDeReparto, RepartoDelDia } from './reparto';
+import { vaciosEsperados, type ParadaDeReparto, type RepartoDelDia } from './reparto';
 import type { PedidoGuardado } from './repositorio';
 
 export interface CierreDelDia {
@@ -57,10 +57,10 @@ export function cierreDelDia(reparto: RepartoDelDia, pedidos: readonly PedidoGua
     else cierre.pendientes++;
 
     if (entregada) sumarBidones(cierre.bidonesEntregados, parada);
-    cierre.vacios.esperados += parada.envasesARetirar;
+    cierre.vacios.esperados += vaciosEsperados(parada);
     if (entrega?.vaciosRetirados !== null && entrega?.vaciosRetirados !== undefined) {
       cierre.vacios.retirados += entrega.vaciosRetirados;
-      if (entregada && entrega.vaciosRetirados < parada.envasesARetirar) cierre.vacios.paradasConFaltante++;
+      if (entregada && entrega.vaciosRetirados < vaciosEsperados(parada)) cierre.vacios.paradasConFaltante++;
     }
 
     if (entrega?.cobrado) cierre.efectivo.cobrado += entrega.cobrado;

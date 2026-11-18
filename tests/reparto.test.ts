@@ -142,17 +142,17 @@ describe('textoDeReparto: lo que se copia para mandarle al repartidor', () => {
     );
     expect(textoDeReparto(reparto).split('\n')).toEqual([
       'Reparto del martes 10 de noviembre',
-      '2 paradas · 7 bidones (6 de 20 L, 1 de 12 L) · retirar 2 envases',
+      '2 paradas · 7 bidones (6 de 20 L, 1 de 12 L) · retirar 2 vacíos extra',
       '',
       '1. Avenida Ficticia 987, Macul · Pedro Muestra · 4 × 20 L, 1 × 12 L · $13.500 · +56955550004',
-      '2. Calle Falsa 123, Ñuñoa · Ana Prueba · 2 × 20 L · $6.600 · +56955550001 · Tocar el timbre · Retirar 2 envases',
+      '2. Calle Falsa 123, Ñuñoa · Ana Prueba · 2 × 20 L · $6.600 · +56955550001 · Tocar el timbre · Retirar 2 vacíos extra',
     ]);
   });
 
   it('una sola parada y un solo envase se escriben en singular', () => {
     const texto = textoDeReparto(armarReparto([pedido('P261109-AAAAA', { envasesARetirar: 1, lineas: [{ tipo: '20L', cantidad: 1, precioUnitario: 4500, subtotal: 4500 }], total: 4500 })], DIA));
-    expect(texto).toContain('1 parada · 1 bidón (1 de 20 L) · retirar 1 envase');
-    expect(texto).toContain('Retirar 1 envase');
+    expect(texto).toContain('1 parada · 1 bidón (1 de 20 L) · retirar 1 vacío extra');
+    expect(texto).toContain('Retirar 1 vacío extra');
   });
 
   it('sin precio dice "sin precio" y una entrega ya hecha queda marcada', () => {
@@ -172,7 +172,7 @@ describe('tsvDeReparto: lo que se pega en Excel', () => {
   it('tiene encabezado y una fila por parada, separadas por tabuladores', () => {
     const tsv = tsvDeReparto(armarReparto([pedido('P261109-AAAAA', { envasesARetirar: 2, notasRepartidor: 'Tocar el timbre' })], DIA));
     expect(tsv.split('\n').map((fila) => fila.split('\t'))).toEqual([
-      ['Orden', 'Pedido', 'Nombre', 'Teléfono', 'Dirección', 'Comuna', '20 L', '12 L', '10 L', 'Bidones', 'Envases por retirar', 'Total', 'Notas', 'Estado'],
+      ['Orden', 'Pedido', 'Nombre', 'Teléfono', 'Dirección', 'Comuna', '20 L', '12 L', '10 L', 'Bidones', 'Vacíos extra por retirar', 'Total', 'Notas', 'Estado'],
       ['1', 'P261109-AAAAA', 'Ana Prueba', '56955550001', 'Calle Falsa 123', 'Ñuñoa', '2', '0', '0', '2', '2', '6600', 'Tocar el timbre', 'Confirmado'],
     ]);
   });
@@ -199,7 +199,7 @@ describe('tsvDeReparto: lo que se pega en Excel', () => {
 describe('csvDeReparto: el archivo que se descarga', () => {
   it('empieza con la marca que hace que Excel lea bien los acentos, separa con punto y coma y termina cada fila con CRLF', () => {
     const csv = csvDeReparto(armarReparto([pedido('P261109-AAAAA')], DIA));
-    expect(csv.startsWith('﻿Orden;Pedido;Nombre;Teléfono;Dirección;Comuna;20 L;12 L;10 L;Bidones;Envases por retirar;Total;Notas;Estado\r\n')).toBe(true);
+    expect(csv.startsWith('﻿Orden;Pedido;Nombre;Teléfono;Dirección;Comuna;20 L;12 L;10 L;Bidones;Vacíos extra por retirar;Total;Notas;Estado\r\n')).toBe(true);
     expect(csv.endsWith('1;P261109-AAAAA;Ana Prueba;56955550001;Calle Falsa 123;Ñuñoa;2;0;0;2;0;6600;;Confirmado\r\n')).toBe(true);
   });
 
@@ -280,7 +280,7 @@ describe('mensajeDeParada: un mensaje por parada, como el que hoy se escribe a m
       [pedido('P261109-AAAAA', { notasRepartidor: 'Portería', envasesARetirar: 2, formaPago: 'efectivo', lineas: [{ tipo: '20L', cantidad: 15, precioUnitario: 2750, subtotal: 41250 }], total: 41250 })],
       DIA,
     ).paradas;
-    expect(mensajeDeParada(parada!)).toBe('1. Ana Prueba\nCalle Falsa 123, Ñuñoa. Portería\n+56955550001\n15 de 20 L · retirar 2 envases · *efectivo $41.250*');
+    expect(mensajeDeParada(parada!)).toBe('1. Ana Prueba\nCalle Falsa 123, Ñuñoa. Portería\n+56955550001\n15 de 20 L · retirar 2 vacíos extra · *efectivo $41.250*');
   });
 
   it('por transferencia, o en efectivo ya pagado, no dice que cobre', () => {

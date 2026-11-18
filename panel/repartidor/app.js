@@ -215,7 +215,8 @@ function tarjeta(p) {
       { clase: 'datos' },
       h('span', {}, h('b', {}, 'Dirección: '), lugar),
       h('span', {}, h('b', {}, 'Deja: '), textoBidones(p.bidones)),
-      p.envasesARetirar > 0 ? h('span', {}, h('b', {}, 'Retirar: '), `${p.envasesARetirar} ${p.envasesARetirar === 1 ? 'vacío' : 'vacíos'}`) : null,
+      // Uno por bidón es lo normal; esto avisa solo cuando además debe vacíos de antes (D72).
+      p.envasesARetirar > 0 ? h('span', {}, h('b', {}, 'Retirar: '), `${p.vaciosEsperados ?? p.envasesARetirar} vacíos (${p.envasesARetirar} que debía)`) : null,
       p.cobrar !== null ? h('span', { clase: 'cobrar' }, h('b', {}, 'Cobrar en efectivo: '), pesos.format(p.cobrar)) : p.formaPago ? h('span', {}, h('b', {}, 'Pago: '), p.formaPago) : null,
       p.notas ? h('span', {}, h('b', {}, 'Notas: '), p.notas) : null,
       p.estado === 'entregado' && p.vaciosRetirados !== null ? h('span', { clase: 'suave' }, `Retiró ${p.vaciosRetirados} ${p.vaciosRetirados === 1 ? 'vacío' : 'vacíos'}.`) : null,
@@ -240,7 +241,7 @@ function abrir(id, tipo) {
 }
 
 function formularioEntregado(p) {
-  const vacios = h('input', { type: 'number', min: 0, max: 200, inputmode: 'numeric', value: p.vaciosRetirados ?? p.envasesARetirar, clase: 'campo-corto', 'aria-label': 'Vacíos que retiraste' });
+  const vacios = h('input', { type: 'number', min: 0, max: 200, inputmode: 'numeric', value: p.vaciosRetirados ?? p.vaciosEsperados ?? p.envasesARetirar, clase: 'campo-corto', 'aria-label': 'Vacíos que retiraste' });
   // Al corregir una entrega, la casilla muestra lo que ya cobró: si no, se borraría el cobro.
   const corrigiendo = p.estado === 'entregado';
   const monto = corrigiendo ? (p.cobrado ?? p.montoEfectivo) : p.cobrar;

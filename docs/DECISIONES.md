@@ -602,3 +602,9 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Es el precio por tramos de `src/precios.ts`, con la cantidad total de ese tamaño en el pedido (3 de 20 L a $3.300 c/u, igual que cobra el bot). El panel lo recibe en `/api/opciones`.
 - Solo para tipo de cliente hogar o sin definir. Minimarket y empresa se cobran distinto y siguen a mano; los dos clientes con precio especial están en la planilla, que el panel no lee: si son de tipo hogar, la persona escribe su precio.
 - El bot usa la hoja PRECIOS y el panel no tiene acceso a Google. Para que la sugerencia no quede vieja sin que nadie lo sepa, la revisión de cada mañana (7:30) compara la hoja con la lista del código y, si son distintas, deja un aviso en el panel para que Franco las iguale.
+
+### D72 · 2026-11-18 · Vacíos esperados: uno por bidón, más los que debía
+**Franco confirmó la regla: casi siempre el cliente entrega un vacío por cada bidón lleno que recibe (deja 3 de 20 L, recibe 3 vacíos de 20 L); muy pocas veces entrega menos o más.**
+- "Vacíos esperados" de una parada = sus bidones + los vacíos extra que debía de antes (`vaciosEsperados` en `src/reparto.ts`). Lo usan el cierre del día, la lista de vacíos que faltan por cliente y la app del repartidor, que ahora propone ese número en "Vacíos que retiraste" (antes proponía 0 si el cliente no debía nada).
+- El campo del pedido (`envasesARetirar`) sigue siendo solo lo que debía de antes, como siempre lo llenó el bot desde la hoja CLIENTES: no hay que cambiar datos guardados. En el panel, el CSV y los mensajes se llama ahora "vacíos extra" para que no se confunda con el total.
+- Lo que el repartidor anota sigue mandando: si un cliente entrega menos, queda en el cierre y en "vacíos por retirar"; si entrega más, no se marca nada.

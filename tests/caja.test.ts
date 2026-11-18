@@ -21,7 +21,7 @@ function pedido(id: string, bidones: number, cambios: Partial<PedidoARegistrar> 
     comuna: 'Ñuñoa',
     direccion: `Calle ${id}`,
     notasRepartidor: '',
-    envasesARetirar: bidones,
+    envasesARetirar: 0, // no debe vacíos de antes: se esperan tantos como bidones (D72)
     observaciones: '',
     ...cambios,
   };
@@ -65,5 +65,14 @@ describe('cierre del día (D64)', () => {
     expect(c.bidonesEntregados).toEqual({ '10L': 0, '12L': 0, '20L': 12 });
     expect(c.efectivo).toEqual({ esperado: 16500, cobrado: 11000, entregadosSinCobrar: 1, sinPrecio: 1 });
     expect(c.vacios).toEqual({ esperados: 13, retirados: 11, paradasConFaltante: 1 });
+  });
+
+  it('un cliente que debía vacíos de antes: se esperan uno por bidón más los que debía (D72)', async () => {
+    const db = crearBaseSqlite();
+    const repositorio = new RepositorioD1(db, () => 1);
+    await repositorio.guardarPedido(pedido('P261113-EEEEE', 3, { envasesARetirar: 2 }), AHORA);
+    const pedidos = await repositorio.pedidosDelDia(FECHA);
+    const c = cierreDelDia(armarReparto(pedidos, FECHA), pedidos, new Map());
+    expect(c.vacios.esperados).toBe(5);
   });
 });

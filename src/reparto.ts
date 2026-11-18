@@ -162,7 +162,16 @@ export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string):
 }
 
 const plural = (cantidad: number, uno: string, varios: string): string => `${cantidad} ${cantidad === 1 ? uno : varios}`;
-const envases = (cantidad: number): string => plural(cantidad, 'envase', 'envases');
+// `envasesARetirar` son los vacíos que el cliente debe de antes, ADEMÁS del cambio de cada bidón (D72).
+const envases = (cantidad: number): string => plural(cantidad, 'vacío extra', 'vacíos extra');
+
+/**
+ * Cuántos vacíos debería traer el repartidor de una parada (D72): casi siempre el cliente entrega un vacío por cada bidón
+ * lleno que recibe, más los que debía de antes. A veces entrega menos o más: por eso el repartidor anota lo que retiró.
+ */
+export function vaciosEsperados(parada: { totalBidones: number; envasesARetirar: number }): number {
+  return parada.totalBidones + parada.envasesARetirar;
+}
 
 /**
  * El mensaje de una parada, con el formato que hoy se escribe a mano para el repartidor (D64, conocimiento §17): número y
@@ -217,7 +226,7 @@ export function textoDeReparto(reparto: RepartoDelDia): string {
   return [titulo, resumen.join(' · '), '', ...lineas].join('\n');
 }
 
-const ENCABEZADO = ['Orden', 'Pedido', 'Nombre', 'Teléfono', 'Dirección', 'Comuna', '20 L', '12 L', '10 L', 'Bidones', 'Envases por retirar', 'Total', 'Notas', 'Estado'] as const;
+const ENCABEZADO = ['Orden', 'Pedido', 'Nombre', 'Teléfono', 'Dirección', 'Comuna', '20 L', '12 L', '10 L', 'Bidones', 'Vacíos extra por retirar', 'Total', 'Notas', 'Estado'] as const;
 
 /**
  * Lo que escribe un cliente (su nombre, su dirección) termina en una celda de Excel: si empieza con =, +, - o @, Excel lo

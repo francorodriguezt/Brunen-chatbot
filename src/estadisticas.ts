@@ -92,10 +92,12 @@ export function resumirEntregas(entregas: readonly EntregaParaContar[], hasta: s
     const delDia = porDia.get(e.dia);
     if (delDia) sumar(delDia, e.lineas);
 
-    if (e.vaciosRetirados !== null && e.vaciosRetirados < e.envasesARetirar) {
+    // Un vacío por cada bidón entregado, más los que debía de antes (D72).
+    const esperados = e.lineas.reduce((suma, l) => suma + l.cantidad, 0) + e.envasesARetirar;
+    if (e.vaciosRetirados !== null && e.vaciosRetirados < esperados) {
       const clave = e.telefono || e.nombre || '(sin datos)';
       const previo = faltantes.get(clave) ?? { telefono: e.telefono, nombre: e.nombre, faltan: 0, ultimoDia: e.dia };
-      previo.faltan += e.envasesARetirar - e.vaciosRetirados;
+      previo.faltan += esperados - e.vaciosRetirados;
       if (e.dia >= previo.ultimoDia) {
         previo.ultimoDia = e.dia;
         if (e.nombre) previo.nombre = e.nombre;
