@@ -162,6 +162,22 @@ describe('revisionDiaria: enterarse antes que el cliente', () => {
     expect([avisosEn(env.DB), mundo.telegram]).toEqual([[], []]);
   });
 
+  it('si la hoja PRECIOS cambió, avisa que el precio sugerido del panel quedó viejo (D71)', async () => {
+    const precios = [['Tipo', 'Desde', 'Hasta', 'Precio'], ['20', '1', '1', '4800'], ['20', '2', '3', '3300'], ['20', '4', '', '2750'], ['12', '1', '1', '2500'], ['12', '2', '', '2400'], ['10', '1', '', '2200']];
+    stubMundo({ hojas: { ...HOJAS, PRECIOS: precios } });
+    const env = await entorno();
+    await revisionDiaria(env, AHORA);
+    expect(avisosEn(env.DB).map((a) => a.resumen)).toEqual([expect.stringContaining('hoja PRECIOS tiene precios distintos')]);
+  });
+
+  it('con la hoja PRECIOS igual a la lista (en otro orden), no avisa nada', async () => {
+    const precios = [['Tipo', 'Desde', 'Hasta', 'Precio'], ['10', '1', '', '2200'], ['20', '1', '1', '4500'], ['20', '2', '3', '3300'], ['20', '4', '', '2750'], ['12', '1', '1', '2500'], ['12', '2', '', '2400']];
+    stubMundo({ hojas: { ...HOJAS, PRECIOS: precios } });
+    const env = await entorno();
+    await revisionDiaria(env, AHORA);
+    expect(avisosEn(env.DB)).toEqual([]);
+  });
+
   it('un tropiezo de Meta que no es del token (un error 500) no levanta una falsa alarma', async () => {
     stubMundo({ hojas: HOJAS, whatsapp: 500 });
     const env = await entorno();

@@ -23,6 +23,7 @@ import { armarReparto, csvDeReparto, mensajeDeParada, textoDeReparto, tsvDeRepar
 import { ESTADOS_DE_PEDIDO, OPCIONES_DE_PEDIDO, type CambiosDePedido, type DatosDePago, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type PedidoManual, type RepositorioD1 } from '../repositorio';
 import type { RepositorioClientes } from '../fichas';
 import { leerPedidoPegado } from '../pegado';
+import { TABLA_PRECIOS } from '../precios';
 import { normalizarTelefono } from '../whatsapp';
 
 export interface ContextoApi {
@@ -182,7 +183,8 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       // La fecha sugerida aplica el corte de las 9:00 y salta los domingos, pero no conoce los feriados (viven en la
       // planilla y el panel no tiene acceso a Google): la persona la revisa antes de guardar.
       const sugerida = calcularFechaEntrega(new Date(ahoraSegundos * 1000), { feriados: SIN_FERIADOS });
-      return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha, ...OPCIONES_DE_PEDIDO });
+      // `precios`: la lista por tramos para sugerir el precio de un pedido (D71). La persona lo acepta o lo cambia.
+      return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha, precios: TABLA_PRECIOS, ...OPCIONES_DE_PEDIDO });
     }
 
     // Respaldo (D66): todos los pedidos por páginas, para que la pantalla arme el Excel (así ninguna solicitud se pasa

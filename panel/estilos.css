@@ -379,3 +379,8 @@ label.casilla input { width: 1.3rem; height: 1.3rem; }
   .filtro-fecha input, .buscador { min-height: 44px; }
 }
 .barra-derecha .boton[aria-pressed="true"] { background: var(--acento-suave); border-color: var(--acento); color: var(--acento); }
+
+/* Precio sugerido (D71): un toque llena el precio de lista */
+.campo-precio { display: grid; gap: 0.3rem; align-content: end; }
+.sugerencia { justify-self: start; border-color: var(--acento); color: var(--acento); background: var(--acento-suave); font-variant-numeric: tabular-nums; }
+.sugerencia:hover { background: var(--acento-suave); filter: brightness(0.97); }

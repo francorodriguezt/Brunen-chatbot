@@ -664,7 +664,21 @@ function filaDeLinea(linea = { tipo: '20L', cantidad: 1, precioUnitario: null })
     { clase: 'linea-editable' },
     h('label', {}, 'Cantidad', h('input', { type: 'number', name: 'cantidad', min: 1, max: 999, step: 1, inputmode: 'numeric', value: linea.cantidad, required: true })),
     h('label', {}, 'Bidón', h('select', { name: 'tipo' }, TIPOS_BIDON.map(([valor, texto]) => h('option', { value: valor, selected: valor === linea.tipo }, texto)))),
-    h('label', {}, 'Precio c/u ($)', h('input', { type: 'number', name: 'precio', min: 0, max: 1000000, step: 1, inputmode: 'numeric', value: linea.precioUnitario ?? '', placeholder: 'sin precio' })),
+    h(
+      'div',
+      { clase: 'campo-precio' },
+      h('label', {}, 'Precio c/u ($)', h('input', { type: 'number', name: 'precio', min: 0, max: 1000000, step: 1, inputmode: 'numeric', value: linea.precioUnitario ?? '', placeholder: 'sin precio' })),
+      // Se llena solo con un toque: la persona decide (D71).
+      h('button', {
+        type: 'button',
+        clase: 'boton boton-chico sugerencia',
+        hidden: true,
+        onclick: (evento) => {
+          fila.querySelector('[name=precio]').value = evento.currentTarget.dataset.precio;
+          actualizarTotalDelEditor();
+        },
+      }),
+    ),
     boton('Quitar', 'boton boton-chico', () => {
       fila.remove();
       actualizarTotalDelEditor();
@@ -685,9 +699,40 @@ function actualizarTotalDelEditor() {
   const total = totalDe(lineas);
   $('editar-total').textContent = total === null ? 'Total: falta precio' : `Total: ${pesos.format(total)}`;
   $('agregar-linea').disabled = lineas.length >= MAX_LINEAS;
+  sugerirPrecios(lineas);
   // Antes se ignoraba en silencio: sin precio el pedido queda por confirmar aunque la casilla esté marcada.
   $('nota-confirmar').textContent = total === null ? '(falta el precio: quedará por confirmar)' : '';
   $('nota-confirmar').className = total === null ? 'falta' : 'suave';
+}
+
+/**
+ * Precio sugerido (D71): el de la lista por tramos, con la cantidad total de ese tamaño en el pedido (como cobra el bot:
+ * "2 de 20 y 1 de 20" son 3 de 20). Solo para hogar o sin definir: un minimarket, una empresa o un cliente con precio
+ * especial se cobran distinto y se escriben a mano. Si el dueño cambia la hoja PRECIOS, el vigía avisa que esta lista
+ * quedó vieja.
+ */
+function precioDeLista(tipo, cantidad) {
+  const tramo = (estado.opciones.precios ?? []).find((t) => t.tipo === tipo && cantidad >= t.desde && (t.hasta === null || cantidad <= t.hasta));
+  return tramo ? tramo.precio : null;
+}
+
+function sugerirPrecios(lineas) {
+  const tipoCliente = $('formulario-editar').elements.tipoCliente.value;
+  const seSugiere = tipoCliente === '' || tipoCliente === 'hogar';
+  const porTipo = new Map();
+  for (const linea of lineas) if (Number.isInteger(linea.cantidad) && linea.cantidad > 0) porTipo.set(linea.tipo, (porTipo.get(linea.tipo) ?? 0) + linea.cantidad);
+  const filas = [...$('editar-lineas').querySelectorAll('.linea-editable')];
+  filas.forEach((fila, i) => {
+    const sugerencia = fila.querySelector('.sugerencia');
+    const linea = lineas[i];
+    const precio = seSugiere && linea && linea.precioUnitario === null ? precioDeLista(linea.tipo, porTipo.get(linea.tipo) ?? 0) : null;
+    sugerencia.hidden = precio === null;
+    if (precio !== null) {
+      sugerencia.dataset.precio = String(precio);
+      sugerencia.textContent = `Lista: ${pesos.format(precio)}`;
+      sugerencia.setAttribute('aria-label', `Usar el precio de lista, ${pesos.format(precio)} cada uno`);
+    }
+  });
 }
 
 /** Lo plegado se resume en una línea, para ver de un vistazo qué quedó elegido sin abrirlo. */
@@ -703,6 +748,7 @@ function resumirMasDatos() {
   ].filter(Boolean);
   $('resumen-mas-datos').textContent = partes.length > 0 ? `· ${partes.join(' · ')}` : '';
   $('campo-numero').hidden = campos.documento.value === '';
+  sugerirPrecios(leerLineasDelEditor()); // cambiar el tipo de cliente cambia si se sugiere
 }
 
 function mostrarErrorDelEditor(texto) {
@@ -2005,7 +2051,7 @@ async function cargarOpciones() {
   try {
     const opciones = await api('/api/opciones');
     const { comunas, fechaSugerida } = opciones;
-    estado.opciones = { comunas: comunas ?? [], fechaSugerida: fechaSugerida ?? '' };
+    estado.opciones = { comunas: comunas ?? [], fechaSugerida: fechaSugerida ?? '', precios: Array.isArray(opciones.precios) ? opciones.precios : [] };
     llenarListasDePago(opciones);
     $('lista-comunas').replaceChildren(...estado.opciones.comunas.map((comuna) => h('option', { value: comuna })));
   } catch {

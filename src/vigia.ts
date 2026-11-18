@@ -23,6 +23,8 @@ import { fechaHoraLocal } from './despacho';
 import { RepositorioClientes } from './fichas';
 import { RepositorioFijos } from './fijos';
 import { cerrarPausasVencidas } from './relevo';
+import { TABLA_PRECIOS, type TramoPrecio } from './precios';
+import { cargarTablaPrecios } from './preciosHoja';
 import { RepositorioD1 } from './repositorio';
 import { hojasDeRespaldo, respaldarClientes, respaldarPedidos, respaldoAtrasado } from './respaldo';
 import { configTelegram, enviarAlerta } from './telegram';
@@ -128,6 +130,16 @@ export async function avisarClientesEnEspera(env: EntornoAtencion, ahora: Date =
   }
 }
 
+/** Si dos tablas de precios dicen algo distinto, sin importar el orden de las filas. */
+export function preciosDistintos(hoja: readonly TramoPrecio[], lista: readonly TramoPrecio[] = TABLA_PRECIOS): boolean {
+  const clave = (tabla: readonly TramoPrecio[]) =>
+    tabla
+      .map((t) => `${t.tipo}|${t.desde}|${t.hasta ?? ''}|${t.precio}`)
+      .sort()
+      .join(';');
+  return clave(hoja) !== clave(lista);
+}
+
 /**
  * Comprueba lo que el bot necesita para atender, sin escribirle a nadie. Un tropiezo momentáneo de Meta no es una
  * alarma: solo se avisa cuando el token ya no sirve o cuando la planilla no se puede leer.
@@ -152,6 +164,17 @@ export async function revisionDiaria(env: EntornoAtencion, ahora: Date = new Dat
       }
     } catch (falla) {
       console.error('No se pudo revisar el respaldo:', falla instanceof Error ? falla.message : falla);
+    }
+  }
+  // El panel sugiere los precios de la lista del código (D71); si el dueño cambió la hoja PRECIOS, la sugerencia quedó vieja.
+  if (hayPlanilla) {
+    try {
+      const precios = await cargarTablaPrecios(env, Math.floor(ahora.getTime() / 1000));
+      if (precios.origen === 'hoja' && preciosDistintos(precios.tabla)) {
+        await avisarFalla(env, 'precios-panel', 'La hoja PRECIOS tiene precios distintos a la lista del panel: el precio que sugiere el panel quedó desactualizado (el bot usa la hoja). Avisa a Franco para igualarlos.', ahora);
+      }
+    } catch (falla) {
+      console.error('No se pudo comparar la hoja PRECIOS:', falla instanceof Error ? falla.message : falla);
     }
   }
   if (hayPlanilla && (await leerConfiguracion(env)) === undefined) {
