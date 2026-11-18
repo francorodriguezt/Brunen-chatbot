@@ -37,10 +37,12 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] **Precio sugerido**: al pegar "3 de 20" o completar el precio, un botón "Lista: $3.300" lo llena; minimarket y empresa siguen a mano. (D71)
 - [x] El tipo de cliente se llena solo al reconocer el teléfono (de su ficha o su último pedido). (D71)
 - [ ] Llenar los envases por retirar al reconocer al cliente. Falta la regla: ¿se retiran tantos vacíos como bidones entrega, o lo que dice su ficha? **(Dueño)**
-- [ ] Guardar un borrador del pedido nuevo: si Coni vuelve a WhatsApp a mitad, no se pierde. (encontrado en la revisión)
-- [ ] Reparto: la carga de la lista y la del mapa dicen números distintos el mismo día (una cuenta lo ya entregado); usar una sola cuenta. (encontrado en la revisión)
-- [ ] Reparto: en cada parada, el botón principal del administrador debería ser "Copiar mensaje", no "Entregado". (encontrado en la revisión)
-- [ ] Mismo nombre para el cliente sin ficha en Pedidos ("Cliente sin ficha") y en Clientes ("Sin nombre"). (encontrado en la revisión)
+- [x] Borrador del pedido nuevo mientras la pestaña esté abierta. (D73)
+- [x] Reparto: "viaje" en la lista y en el mapa, y el mapa dice "lo que queda" cuando ya hay entregas. (D73) Que los dos usen exactamente los mismos viajes queda en la sección 1 (ruta).
+- [x] Reparto: "Copiar mensaje" es el botón principal de cada parada. (D73)
+- [x] "Sin nombre" en Pedidos y en Clientes. (D73)
+- [x] Vacíos esperados = uno por bidón más los que debía; el cierre compara lo retirado con lo ya entregado. (D72)
+- [x] Filtros de pedidos en una fila en el celular; dos columnas de pedidos en el computador. (D73)
 - [ ] Avisos en el iPhone con la app cerrada (instalada en la pantalla de inicio).
 - [ ] Pantalla de días sin reparto y promociones (sin tocar la planilla).
 - [ ] Mapa de clientes por comuna.

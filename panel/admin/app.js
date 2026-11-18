@@ -397,7 +397,8 @@ function bidonesEnCorto(pedido) {
 function tarjetaPorConfirmar(pedido) {
   const confirmable = sePuedeConfirmar(pedido);
   const faltas = [!pedido.comuna && 'la comuna', !pedido.direccion && 'la dirección'].filter(Boolean);
-  const observaciones = pedido.observaciones.split(' | ').filter(Boolean);
+  // "Falta el precio" ya se ve junto al total: no se repite en "Revisar".
+  const observaciones = pedido.observaciones.split(' | ').filter((o) => o && !/^falta el precio/i.test(o));
   const casilla = confirmable
     ? h(
         'label',
@@ -428,7 +429,7 @@ function tarjetaPorConfirmar(pedido) {
       h(
         'div',
         { clase: 'compacta-titulo' },
-        h('strong', { clase: pedido.nombre ? null : 'nuevo' }, pedido.nombre || 'Cliente sin ficha'),
+        h('strong', { clase: pedido.nombre ? null : 'nuevo' }, pedido.nombre || 'Sin nombre'),
         h('span', { clase: 'suave' }, [pedido.comuna, cuando(pedido.creadoEn)].filter(Boolean).join(' · ')),
       ),
       pedido.estado === 'Fuera_de_zona' ? h('span', { clase: 'insignia rojo' }, 'Fuera de zona') : null,
@@ -548,7 +549,7 @@ function tarjetaDePedido(pedido) {
     'article',
     { clase: 'tarjeta', id: `pedido-${pedido.id}` },
     h('div', { clase: 'tarjeta-cabecera' }, h('span', { clase: 'id' }, pedido.id), h('span', { clase: `insignia ${insignia.color}` }, insignia.texto), h('span', { clase: 'hora' }, cuando(pedido.creadoEn))),
-    h('div', { clase: 'cliente' }, pedido.nombre ? h('strong', {}, pedido.nombre) : h('strong', { clase: 'nuevo' }, 'Cliente sin ficha'), enlaceWhatsApp(pedido.telefono)),
+    h('div', { clase: 'cliente' }, pedido.nombre ? h('strong', {}, pedido.nombre) : h('strong', { clase: 'nuevo' }, 'Sin nombre'), enlaceWhatsApp(pedido.telefono)),
     pedido.mensajeCliente ? h('blockquote', { clase: 'cita' }, h('small', {}, 'El cliente escribió'), h('div', {}, pedido.mensajeCliente)) : null,
     listaDeLineas(pedido),
     datosDelPedido(pedido),
@@ -1061,8 +1062,10 @@ function lineasDeEntrega(entrega, motivos, parada) {
 function tarjetaDeParada(parada, entrega, motivos, mensaje) {
   const insignia = ESTADOS[parada.estado] ?? { texto: parada.estado, color: '' };
   const pedido = { id: parada.idPedido, nombre: parada.nombre, telefono: parada.telefono, actualizadoEn: parada.actualizadoEn };
-  const entregado = boton('Entregado', 'boton boton-chico boton-principal', () => entregarPedido(pedido));
-  const acciones = parada.estado === 'Confirmado' ? [boton('En ruta', 'boton boton-chico', () => cambiarEstado(pedido, 'En_Ruta')), entregado] : parada.estado === 'En_Ruta' ? [entregado] : [];
+  // Lo que más hace aquí la administración es mandarle la parada al repartidor; "Entregado" lo marca él desde su app,
+  // y queda aquí solo para cuando avisa por teléfono. "En ruta" sigue en la tarjeta del pedido.
+  const pendiente = parada.estado === 'Confirmado' || parada.estado === 'En_Ruta';
+  const acciones = pendiente ? [boton('Entregado', 'boton boton-chico', () => entregarPedido(pedido))] : [];
   const bidones = TAMANOS_DE_MAYOR_A_MENOR.filter(([tipo]) => parada.bidones[tipo] > 0).map(([tipo, texto]) => `${parada.bidones[tipo]} × ${texto}`).join(', ');
   const dato = (nombre, valor) => h('span', {}, h('b', {}, `${nombre}: `), valor);
   return h(
@@ -1088,10 +1091,10 @@ function tarjetaDeParada(parada, entrega, motivos, mensaje) {
     h(
       'div',
       { clase: 'acciones' },
+      // Mientras el repartidor no use su aplicación, se le manda un mensaje por parada, en el orden de la ruta (D64).
+      mensaje && pendiente ? boton('Copiar mensaje', 'boton boton-chico boton-principal', () => copiar(mensaje, `Mensaje de la parada ${parada.orden} copiado: pégalo en el chat del repartidor.`)) : null,
       acciones,
       boton('Ver pedido', 'boton boton-chico', () => verPedido(parada.idPedido)),
-      // Mientras el repartidor no use su aplicación, se le manda un mensaje por parada, en el orden de la ruta (D64).
-      mensaje ? boton('Copiar mensaje', 'boton boton-chico', () => copiar(mensaje, `Mensaje de la parada ${parada.orden} copiado: pégalo en el chat del repartidor.`)) : null,
     ),
   );
 }
@@ -1113,7 +1116,14 @@ function cierreDelDia(caja) {
       : null,
     efectivo.entregadosSinCobrar > 0 ? fila(`${efectivo.entregadosSinCobrar} ${efectivo.entregadosSinCobrar === 1 ? 'entrega' : 'entregas'} en efectivo sin marcar como cobrada: pregúntale`, true) : null,
     efectivo.sinPrecio > 0 ? fila(`${efectivo.sinPrecio} ${efectivo.sinPrecio === 1 ? 'pedido' : 'pedidos'} en efectivo sin precio: complétalo para saber cuánto cobrar`, true) : null,
-    vacios.esperados > 0 || vacios.retirados > 0 ? fila(empezo ? `Vacíos: retiró ${vacios.retirados} de ${vacios.esperados}` : `Vacíos por retirar: ${vacios.esperados}`) : null,
+    // A mitad del día se compara con lo ya entregado; el total del día va aparte (D72).
+    vacios.esperados > 0 || vacios.retirados > 0
+      ? fila(
+          empezo
+            ? `Vacíos: retiró ${vacios.retirados} de ${vacios.esperadosEntregadas ?? vacios.esperados}${caja.pendientes > 0 ? ` (del día: ${vacios.esperados})` : ''}`
+            : `Vacíos por retirar: ${vacios.esperados}`,
+        )
+      : null,
     vacios.paradasConFaltante > 0 ? fila(`En ${vacios.paradasConFaltante} ${vacios.paradasConFaltante === 1 ? 'parada' : 'paradas'} retiró menos vacíos de los que había`, true) : null,
   ].filter(Boolean);
   if (filas.length === 0) return null;
@@ -1150,7 +1160,7 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja 
       ...TAMANOS_DE_MAYOR_A_MENOR.filter(([tipo]) => reparto.carga[tipo] > 0).map(([tipo, nombre]) => cifra(reparto.carga[tipo], `de ${nombre}`)),
       reparto.envasesARetirar > 0 ? cifra(reparto.envasesARetirar, reparto.envasesARetirar === 1 ? 'vacío extra por retirar' : 'vacíos extra por retirar') : null,
       reparto.entregadas > 0 ? cifra(reparto.entregadas, reparto.entregadas === 1 ? 'entregada' : 'entregadas') : null,
-      reparto.cargas.length > 1 ? cifra(reparto.cargas.length, 'cargas del furgón') : null,
+      reparto.cargas.length > 1 ? cifra(reparto.cargas.length, 'viajes del furgón') : null,
     ),
     sinConfirmar ?? '',
     cierreDelDia(caja) ?? '',
@@ -1168,7 +1178,7 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja 
     ...reparto.paradas.flatMap((parada) => {
       const carga = conCargas ? reparto.cargas.find((c) => c.desde === parada.orden) : undefined;
       const titulo = carga
-        ? h('h3', { clase: `titulo-carga${carga.excedeFurgon ? ' excede' : ''}` }, `Carga ${carga.numero}: ${carga.totalBidones} bidones${carga.excedeFurgon ? ' (no cabe en un viaje: divídelo)' : ''}`)
+        ? h('h3', { clase: `titulo-carga${carga.excedeFurgon ? ' excede' : ''}` }, `Viaje ${carga.numero}: ${carga.totalBidones} bidones${carga.excedeFurgon ? ' (no cabe en un viaje: divídelo)' : ''}`)
         : null;
       const tarjeta = tarjetaDeParada(parada, entregas[parada.idPedido], motivos, mensajes[parada.idPedido]);
       return titulo ? [titulo, tarjeta] : [tarjeta];

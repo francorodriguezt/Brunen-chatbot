@@ -389,3 +389,20 @@ label.casilla input { width: 1.3rem; height: 1.3rem; }
 .aviso-borrador { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; margin: -0.25rem 0 0.75rem; padding: 0.45rem 0.5rem 0.45rem 0.75rem; border-radius: 10px; background: var(--acento-suave); color: var(--acento); font-size: 0.9rem; font-weight: 600; }
 .aviso-borrador .boton { font-weight: 600; }
 .pista-campo { display: block; font-weight: 400; font-size: 0.8rem; margin-top: -0.15rem; }
+
+/* Celular: los filtros de pedidos en una sola fila que se desliza, para que el primer pedido se vea antes (D73) */
+@media (max-width: 520px) {
+  #filtros-pedidos {
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: -1rem; margin-right: -1rem; padding: 0.15rem 1rem;
+    -webkit-mask-image: linear-gradient(90deg, #000 90%, transparent); mask-image: linear-gradient(90deg, #000 90%, transparent);
+  }
+  #filtros-pedidos::-webkit-scrollbar { display: none; }
+  #filtros-pedidos > * { flex: none; }
+  #filtros-pedidos .filtro-fecha { margin-left: 0; }
+}
+
+/* Computador: dos columnas de pedidos, para ver varios a la vez (D73) */
+@media (min-width: 56rem) {
+  #lista-pedidos { grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); align-items: start; }
+  #lista-pedidos > .vacio { grid-column: 1 / -1; }
+}
