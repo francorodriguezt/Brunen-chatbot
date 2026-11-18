@@ -88,6 +88,11 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 16. Dirección en la respuesta (D55): cuando el bot conoce la dirección del cliente, la respuesta del pedido dice "Entrega en: …" e invita a escribir la nueva si cambió; ese mensaje llega a una persona. No muestra lo que va entre paréntesis (D57).
 17. Si la hoja CLIENTES no se puede leer, el pedido se anota igual, sin prometer precio, y lo revisa una persona (D57). El cliente también se reconoce por su ficha en la base.
 18. Pedidos fijos (D59): un cliente que recibe lo mismo cada cierta cantidad de días tiene su pedido creado dos días antes, pendiente de confirmar y sin precio. Al cliente no se le escribe.
+19. Días sin reparto (D74): los marca una persona en el panel con un motivo; el bot no los ofrece y le explica el motivo al cliente. Un pedido fijo que cae ese día pasa al siguiente.
+20. Pedido repetido (D76): si el cliente ya tiene otro pedido sin entregar para ese día, el nuevo se anota igual y queda marcado para que una persona vea si es el mismo o se suma.
+21. Ubicación (D77): la que comparte el cliente queda como el punto de su dirección (no pisa un pin manual ni el GPS del repartidor). Se le agradece en un mensaje.
+22. "¿Cuándo llega?" (D78): con un pedido vivo, el bot dice en qué está (agendado, por confirmar, en el reparto de hoy y cuántas entregas quedan antes si la ruta está publicada, o entregado). Nunca promete una hora. "No me ha llegado" es un reclamo y lo ve una persona.
+23. Vacíos (Franco, 2026-11-18, D72): casi siempre el cliente entrega un vacío por cada bidón que recibe; muy pocas veces entrega menos o más. "Vacíos extra" son los que debía de antes.
 
 ## 10. Arquitectura (actualizada 2026-10-28)
 - Canal: WhatsApp Cloud API (Meta). Número: el dueño eligió el actual con coexistencia (2026-10-29). Según la documentación oficial de Meta (revisada el 2026-10-29), el alta de coexistencia pasa por un Tech Provider o Solution Partner y exige la app WhatsApp Business 2.24.17 o superior; confirmado el 2026-11-10 que no se puede hacer directo (D45): como el número se mantiene, hay que elegir entre un proveedor autorizado o que Brunen sea su propio Tech Provider; un número nuevo queda solo como último recurso. Con coexistencia se desactivan las listas de difusión y hay que abrir la app al menos cada 14 días.
