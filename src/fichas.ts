@@ -248,6 +248,21 @@ export class RepositorioClientes {
     return (await this.clienteDeTelefono(telefono)) ?? id;
   }
 
+  /**
+   * Para el mapa de clientes (D75): cada cliente con su dirección vigente. Los que no tienen dirección quedan fuera. Sin
+   * teléfonos: el mapa solo necesita dónde y cuántos.
+   */
+  async paraMapa(limite = 3000): Promise<Array<{ id: number; nombre: string; direccion: string; comuna: string }>> {
+    const filas = await this.filas(
+      `SELECT c.id, c.nombre, d.direccion, d.comuna FROM clientes c
+       JOIN direcciones_cliente d ON d.id = (
+         SELECT x.id FROM direcciones_cliente x WHERE x.cliente_id = c.id ORDER BY x.ultimo_uso DESC, x.id DESC LIMIT 1)
+       LIMIT ?1`,
+      Math.max(1, Math.min(Math.trunc(limite), 5000)),
+    );
+    return filas.map((f) => ({ id: Number(f.id), nombre: String(f.nombre ?? ''), direccion: String(f.direccion ?? ''), comuna: String(f.comuna ?? '') }));
+  }
+
   /** Los clientes con su dirección vigente. Con `buscar`, por nombre, teléfono o dirección; si no, los que pidieron hace menos. */
   async listar(buscar = '', limite = 50): Promise<ResumenDeCliente[]> {
     const tope = Math.max(1, Math.min(Math.trunc(limite), 100));

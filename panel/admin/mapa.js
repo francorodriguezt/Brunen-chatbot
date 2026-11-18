@@ -8,12 +8,25 @@
  */
 
 const ESTILO_DEL_MAPA = 'https://tiles.openfreemap.org/styles/liberty';
+
+/** Los textos que muestra MapLibre (vienen en inglés): en el celular aparece "Use two fingers to move the map". */
+export const TEXTOS_DEL_MAPA = {
+  'CooperativeGesturesHandler.WindowsHelpText': 'Usa Ctrl + rueda del mouse para acercar el mapa',
+  'CooperativeGesturesHandler.MacHelpText': 'Usa ⌘ + rueda del mouse para acercar el mapa',
+  'CooperativeGesturesHandler.MobileHelpText': 'Usa dos dedos para mover el mapa',
+  'NavigationControl.ZoomIn': 'Acercar',
+  'NavigationControl.ZoomOut': 'Alejar',
+  'NavigationControl.ResetBearing': 'Volver al norte',
+  'AttributionControl.ToggleAttribution': 'Ver créditos del mapa',
+  'Map.Title': 'Mapa',
+  'Marker.Title': 'Marcador',
+};
 const NOMBRES_DE_DEPOSITO = { planta: 'la planta', actum: 'Actum' };
 
 let bibliotecaDelMapa = null;
 
 /** MapLibre pesa más de 1 MB: se baja solo la primera vez que alguien abre el mapa. */
-function cargarBiblioteca() {
+export function cargarBiblioteca() {
   if (!bibliotecaDelMapa) {
     if (!document.querySelector('link[data-mapa]')) {
       const estilos = document.createElement('link');
@@ -294,6 +307,7 @@ export function crearRutaDelDia({ contenedor, api, h, boton, avisar, alPublicar 
         zoom: 11,
         cooperativeGestures: true, // en el celular se mueve con dos dedos: con uno se sigue bajando por la página
         attributionControl: { compact: true },
+        locale: TEXTOS_DEL_MAPA,
       });
       mapa.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right');
       mapa.on('load', () => {

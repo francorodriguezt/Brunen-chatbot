@@ -6,7 +6,10 @@
  * pestaña está al día aunque la tarea programada todavía no haya pasado.
  */
 
+import { detectarComuna } from '../comunas';
 import { fechaHoraLocal } from '../despacho';
+import { claveDePunto, type RepositorioPuntos } from '../puntos';
+import { CENTRO_DE_COMUNA } from '../ruta';
 import type { RepositorioClientes } from '../fichas';
 import type { RepositorioFijos } from '../fijos';
 import type { RepositorioD1 } from '../repositorio';
@@ -18,6 +21,8 @@ export interface ContextoClientes {
   repositorio: RepositorioD1;
   /** Pedidos fijos (D59). */
   fijos: RepositorioFijos;
+  /** Puntos exactos de las direcciones (D63): para el mapa de clientes. */
+  puntos?: RepositorioPuntos;
   ahoraSegundos: number;
 }
 
@@ -57,6 +62,25 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
   }
 
   // A quién le toca pedir según su ritmo (D58). Lee los pedidos una vez: se pide con un botón, no al abrir la pestaña.
+  // Clientes por comuna y en el mapa (D75): cuántos hay en cada comuna (con el centro de la comuna) y, de los que tienen
+  // el punto exacto guardado por el repartidor o a mano, dónde están. No viajan teléfonos ni direcciones.
+  if (ruta === '/api/clientes/mapa' && request.method === 'GET') {
+    const lista = await clientes.paraMapa();
+    const exactos = ctx.puntos ? await ctx.puntos.deDirecciones(lista) : new Map();
+    const porComuna = new Map<string, number>();
+    const puntos: Array<{ id: number; nombre: string; lat: number; lng: number }> = [];
+    for (const c of lista) {
+      const comuna = detectarComuna(c.comuna)?.nombre ?? (c.comuna.trim() || 'Sin comuna');
+      porComuna.set(comuna, (porComuna.get(comuna) ?? 0) + 1);
+      const exacto = c.direccion.trim() ? exactos.get(claveDePunto(c.direccion, c.comuna)) : undefined;
+      if (exacto) puntos.push({ id: c.id, nombre: c.nombre, lat: exacto.lat, lng: exacto.lng });
+    }
+    const comunas = [...porComuna]
+      .map(([comuna, cantidad]) => ({ comuna, clientes: cantidad, centro: CENTRO_DE_COMUNA[comuna] ?? null }))
+      .sort((a, b) => b.clientes - a.clientes || a.comuna.localeCompare(b.comuna, 'es'));
+    return json({ total: lista.length, comunas, puntos });
+  }
+
   if (ruta === '/api/clientes/por-pedir' && request.method === 'GET') {
     return json(await clientes.porPedir(fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha));
   }

@@ -40,7 +40,7 @@ const DEPOSITOS: ReadonlyArray<readonly [Deposito, Punto]> = [
  * Centro aproximado de cada comuna que se atiende, para ubicar sin datos una parada cuyo punto exacto todavía no se
  * conoce. Es una aproximación: la pantalla las marca como "aproximadas" y se corrigen al entregar o con un pin.
  */
-const CENTRO_DE_COMUNA: Readonly<Record<string, Punto>> = {
+export const CENTRO_DE_COMUNA: Readonly<Record<string, Punto>> = {
   'Ñuñoa': { lat: -33.4569, lng: -70.5976 },
   Macul: { lat: -33.49, lng: -70.594 },
   'San Joaquín': { lat: -33.495, lng: -70.623 },

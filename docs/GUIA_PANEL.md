@@ -20,6 +20,10 @@ Es lo primero que se ve. Arriba, en una frase, cómo va el día (entregas, efect
 - **Buscar**: por nombre, parte del teléfono, dirección o comuna.
 - **Ver ficha**: cambiar el nombre, el tipo de cliente y las notas; agregar otro teléfono; ver todas sus direcciones (la primera es la vigente) y sus últimos pedidos.
 - **Unir con otro cliente**: si alguien aparece dos veces, escribe un teléfono de la otra ficha y todo pasa a esta. No se puede deshacer.
+- **Por comuna y en el mapa**: cuántos clientes hay en cada comuna (toca una para ver sus clientes) y el mapa con un círculo por comuna. Los puntos son los clientes cuyo lugar exacto ya se conoce: aparecen a medida que el repartidor entrega.
+
+## Días sin reparto
+En **Reparto > Días sin reparto** se marca un día que no se reparte (un feriado que no está en la planilla, un cierre, una falla del furgón) con un motivo corto: el cliente lo lee. Desde ese momento el bot no ofrece ese día y le explica al cliente por qué ("El jueves 19 de noviembre no hay reparto (mantención del furgón); la entrega más cercana es el viernes 20"). Si ese día ya tenía pedidos, el panel avisa cuántos y te lleva a verlos: hay que cambiarlos de día a mano. "Quitar" lo devuelve a la normalidad.
 
 ## Respaldo
 En **Equipo > Respaldo** se ve cuándo se copiaron por última vez los pedidos y las fichas a la planilla de Google, y se pueden descargar todos los pedidos en Excel. Guarda ese archivo en un lugar seguro: tiene datos de clientes. Cómo restaurar: [RESPALDO.md](RESPALDO.md).

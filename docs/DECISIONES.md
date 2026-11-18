@@ -622,3 +622,9 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Vive en D1 (migración 0014, tabla `dias_sin_reparto`), no en la planilla: el panel no tiene acceso a Google. La hoja FERIADOS sigue siendo la fuente de los feriados oficiales.
 - Corrección encontrada al probar: si el cliente pedía justo el día cerrado, el bot iba a decir "ya no alcanzamos"; ahora dice que ese día no hay reparto.
 - Falta: aplicar la migración 0014 en la base real (con permiso de Franco) y publicar el bot y el panel.
+
+### D75 · 2026-11-18 · Clientes por comuna y en el mapa
+**El dueño pidió ver los clientes por comuna y en un mapa (2026-10-29).** En Clientes > "Por comuna y en el mapa": una barra por comuna (tocarla filtra la lista) y un mapa con un círculo por comuna, de tamaño según la cantidad, más un punto por cada cliente cuyo lugar exacto ya se conoce (lo guardó el repartidor al entregar o alguien a mano en la ruta, D63).
+- `/api/clientes/mapa` no manda teléfonos ni direcciones: solo nombres, cantidades y coordenadas. Los mosaicos siguen saliendo de OpenFreeMap, que solo recibe la zona que se mira.
+- Los círculos se dibujan aunque los mosaicos tarden o fallen. Los textos de MapLibre (que venían en inglés, "Use two fingers to move the map") quedaron en español en los dos mapas.
+- Una comuna que no se atiende (por ejemplo Maipú, que aparece en datos viejos) sale en la lista pero no tiene círculo.
