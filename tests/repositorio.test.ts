@@ -674,6 +674,29 @@ describe('anotar un pedido a mano desde el panel', () => {
     expect(res).toMatchObject({ ok: true, valor: { estado: 'Pendiente_Confirmacion', total: null } });
   });
 
+  it('si ese cliente ya tiene otro pedido ese día, lo anota y no lo confirma solo (D76)', async () => {
+    // Un azar que cambia, para que los dos pedidos no saquen el mismo número.
+    let n = 0;
+    const r = new RepositorioD1(crearBaseSqlite(), () => (n++ % 36) / 36);
+    const primero = await r.crearPedido({ ...MANUAL, confirmar: true }, OPERADORA, AHORA, '2026-10-28');
+    const segundo = await r.crearPedido({ ...MANUAL, confirmar: true }, OPERADORA, AHORA + 5, '2026-10-28');
+    const idPrimero = primero.ok ? primero.valor.id : '';
+    expect(segundo).toMatchObject({ ok: true, valor: { estado: 'Pendiente_Confirmacion' } });
+    expect(segundo.ok && segundo.valor.observaciones).toBe(`Anotado a mano en el panel. | Ya tiene otro pedido para ese día (${idPrimero}): revisar si es el mismo o si se suma.`);
+    // Otro día o un pedido cancelado no cuentan.
+    expect(await r.otrosPedidosDelDia('56922222222', '2026-10-31')).toEqual([]);
+    await r.cambiarEstado(idPrimero, 'Cancelado', OPERADORA, AHORA + 10);
+    expect(await r.otrosPedidosDelDia('56922222222', '2026-10-30')).toHaveLength(1);
+  });
+
+  it('el bot también marca el pedido que se repite el mismo día (D76)', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA);
+    await r.guardarPedido(pedido({ idPedido: 'P261028-ZZZZZ', observaciones: 'Pidió lo de siempre.' }), AHORA + 60);
+    expect((await r.obtenerPedido('P261028-ZZZZZ'))?.observaciones).toBe('Pidió lo de siempre. | Ya tiene otro pedido para ese día (P261028-AAAAA): revisar si es el mismo o si se suma.');
+    expect((await r.obtenerPedido('P261028-AAAAA'))?.observaciones).not.toContain('Ya tiene');
+  });
+
   it('se puede anotar sin teléfono ni dirección (se completan después con "Cambiar")', async () => {
     const res = await repo().r.crearPedido({ ...MANUAL, telefono: '', direccion: '', comuna: '', nombre: 'Empresa Ejemplo' }, OPERADORA, AHORA, '2026-10-28');
     expect(res).toMatchObject({ ok: true, valor: { telefono: '', direccion: '' } });

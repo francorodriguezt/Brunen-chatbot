@@ -160,6 +160,10 @@ const TIPOS: ReadonlySet<string> = new Set<TipoBidon>(['10L', '12L', '20L']);
 export const VIGENCIA_DEL_PEDIDO_ANTERIOR_SEGUNDOS = 365 * 24 * 3600;
 const CLAVES_DE_PAGO: ReadonlySet<string> = new Set(['formaPago', 'estadoPago', 'documento', 'numeroDocumento']);
 const MAX_TEXTO = 500;
+
+/** La observación de un pedido que se suma a otro del mismo cliente y día (D76). */
+const avisoDeRepetido = (otros: readonly string[]): string =>
+  `Ya tiene ${otros.length === 1 ? 'otro pedido' : `${otros.length} pedidos`} para ese día (${otros.join(', ')}): revisar si es el mismo o si se suma.`;
 const MAX_LINEAS = 5;
 const INTENTOS_DE_ID = 5;
 const RETENCION_TEXTO_SEGUNDOS = 90 * 24 * 3600;
@@ -330,7 +334,25 @@ export class RepositorioD1 {
   // ---- Lo que escribe el bot ----
 
   /** true si el pedido era nuevo; false si ya estaba (un reintento del mismo mensaje). */
+  /**
+   * Pedidos vivos (sin entregar ni cancelar) del mismo teléfono para el mismo día (D76): un cliente que vuelve a escribir
+   * "mándame 3" pudo pedir lo mismo dos veces o querer sumar. No se decide solo: se anota para que una persona lo vea.
+   */
+  async otrosPedidosDelDia(telefono: string, fecha: string, excepto = ''): Promise<string[]> {
+    if (!telefono) return [];
+    const filas = await this.filas(
+      `SELECT id FROM pedidos WHERE telefono = ?1 AND COALESCE(fecha_confirmada, fecha_entrega) = ?2
+         AND estado NOT IN ('Entregado', 'Cancelado') AND id != ?3 ORDER BY creado_en LIMIT 5`,
+      telefono,
+      fecha,
+      excepto,
+    );
+    return filas.map((f) => texto(f.id));
+  }
+
   async guardarPedido(p: PedidoARegistrar, ahoraSegundos: number): Promise<boolean> {
+    const otros = await this.otrosPedidosDelDia(p.telefono, p.fechaEntrega, p.idPedido);
+    if (otros.length > 0) p = { ...p, observaciones: [p.observaciones, avisoDeRepetido(otros)].filter(Boolean).join(' | ') };
     const total = calcularTotal(p.lineas);
     const nuevo =
       (await this.cambios(
@@ -579,20 +601,23 @@ export class RepositorioD1 {
     if (!lineas || !telefonoOk || !envasesOk || !datosDePagoValidos(p)) return { ok: false, error: 'datos_invalidos' };
 
     const total = calcularTotal(lineas);
+    // Si ese cliente ya tiene otro pedido ese día (D76), se anota y no se confirma solo: que una persona lo mire.
+    const otros = await this.otrosPedidosDelDia(p.telefono, p.fecha);
+    const observaciones = ['Anotado a mano en el panel.', otros.length > 0 ? avisoDeRepetido(otros) : ''].filter(Boolean).join(' | ');
     const prefijo = `P${hoyLocal.slice(2, 4)}${hoyLocal.slice(5, 7)}${hoyLocal.slice(8, 10)}-`;
     for (let intento = 0; intento < INTENTOS_DE_ID; intento++) {
       const id = prefijo + Array.from({ length: 5 }, () => Math.min(35, Math.floor(this.azar() * 36)).toString(36).toUpperCase()).join('');
       const creado = await this.cambios(
         `INSERT INTO pedidos (id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, actualizado_en,
                               forma_pago, estado_pago, documento, numero_documento, tipo_cliente)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'Pendiente_Confirmacion', ?8, ?9, ?10, ?11, 'Anotado a mano en el panel.', ?2, ?12, ?13, ?14, ?15, ?16) ON CONFLICT(id) DO NOTHING`,
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'Pendiente_Confirmacion', ?8, ?9, ?10, ?11, ?17, ?2, ?12, ?13, ?14, ?15, ?16) ON CONFLICT(id) DO NOTHING`,
         id, ahoraSegundos, p.telefono, p.nombre.trim().slice(0, 80), p.comuna.trim().slice(0, 80), p.direccion.trim().slice(0, 200), p.fecha,
         JSON.stringify(lineas), total, p.notasRepartidor.trim().slice(0, MAX_TEXTO), p.envasesARetirar,
-        p.formaPago ?? '', p.estadoPago ?? 'pendiente', p.documento ?? '', (p.numeroDocumento ?? '').trim(), p.tipoCliente ?? '',
+        p.formaPago ?? '', p.estadoPago ?? 'pendiente', p.documento ?? '', (p.numeroDocumento ?? '').trim(), p.tipoCliente ?? '', observaciones,
       );
       if (creado === 0) continue; // ese número ya existe: se sortea otro
       await this.anotarHistorial(id, ahoraSegundos, quien, 'creado', 'a mano en el panel');
-      if (p.confirmar && total !== null) await this.cambiarEstado(id, 'Confirmado', quien, ahoraSegundos);
+      if (p.confirmar && total !== null && otros.length === 0) await this.cambiarEstado(id, 'Confirmado', quien, ahoraSegundos);
       return { ok: true, valor: (await this.obtenerPedido(id)) as PedidoGuardado };
     }
     return { ok: false, error: 'conflicto' };

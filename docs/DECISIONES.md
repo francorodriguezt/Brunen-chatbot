@@ -628,3 +628,8 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - `/api/clientes/mapa` no manda teléfonos ni direcciones: solo nombres, cantidades y coordenadas. Los mosaicos siguen saliendo de OpenFreeMap, que solo recibe la zona que se mira.
 - Los círculos se dibujan aunque los mosaicos tarden o fallen. Los textos de MapLibre (que venían en inglés, "Use two fingers to move the map") quedaron en español en los dos mapas.
 - Una comuna que no se atiende (por ejemplo Maipú, que aparece en datos viejos) sale en la lista pero no tiene círculo.
+
+### D76 · 2026-11-18 · Pedidos repetidos del mismo cliente y día
+**Un cliente que vuelve a escribir "mándame 3" pudo pedir lo mismo dos veces o querer sumar.** El sistema no lo decide: al guardar un pedido (del bot, de un pedido fijo o anotado a mano), si ese teléfono ya tiene otro pedido sin entregar ni cancelar para el mismo día, se agrega a las observaciones "Ya tiene otro pedido para ese día (P…): revisar si es el mismo o si se suma." y sale en "Revisar" de la tarjeta.
+- Uno anotado a mano con "Dejarlo confirmado" queda por confirmar si se repite, y el aviso dice por qué.
+- Al cliente se le responde lo mismo de siempre: no se suma ningún mensaje.
