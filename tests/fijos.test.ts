@@ -3,6 +3,7 @@ import { RepositorioClientes } from '../src/fichas';
 import { RepositorioFijos, idDePedidoFijo } from '../src/fijos';
 import type { PedidoARegistrar } from '../src/pedidos';
 import { RepositorioD1 } from '../src/repositorio';
+import { RepositorioDiasSinReparto } from '../src/diasSinReparto';
 import { crearBaseSqlite } from './ayudas';
 
 const AHORA = 1793000000;
@@ -88,5 +89,17 @@ describe('pedidos fijos (D59)', () => {
     await fijos.guardar(id, { ...FIJO, proximaFecha: '2026-11-15' }, AHORA); // domingo
     expect(await fijos.crearLosQueTocan('2026-11-14', AHORA)).toBe(1);
     expect(await pedidos.obtenerPedido(idDePedidoFijo(fijo.id, '2026-11-16'))).not.toBeNull();
+  });
+});
+
+describe('pedidos fijos y días sin reparto (D74)', () => {
+  it('si la entrega cae en un día marcado sin reparto, pasa al siguiente día de despacho y lo anota', async () => {
+    const { db, fijos, pedidos, id } = await conCliente();
+    const { fijo } = (await fijos.guardar(id, FIJO, AHORA)) as { ok: true; fijo: { id: number } };
+    await new RepositorioDiasSinReparto(db).marcar('2026-11-16', 'feriado', 'prueba', AHORA);
+    expect(await fijos.crearLosQueTocan('2026-11-14', AHORA)).toBe(1);
+    const creado = await pedidos.obtenerPedido(idDePedidoFijo(fijo.id, '2026-11-17'));
+    expect(creado?.fechaEntrega).toBe('2026-11-17');
+    expect(creado?.observaciones).toContain('Se pasó del 2026-11-16 porque ese día no hay reparto.');
   });
 });
