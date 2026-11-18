@@ -32,6 +32,10 @@ export function preguntarCantidad(items: readonly ItemInterpretado[]): string {
 
 export const preguntarPedido = (): string => '¿Qué necesitas? Dime cuántos bidones y de cuántos litros (20, 12 o 10).';
 
+/** A un cliente conocido que escribe "quiero pedir" sin detalle (D69): su último pedido, para que conteste solo "sí". */
+export const ofrecerLoDeSiempre = (lineas: readonly Pick<LineaTexto, 'tipo' | 'cantidad'>[]): string =>
+  `¿Te mandamos lo de siempre: ${resumenLineas(lineas)}? Responde «sí», o dime qué necesitas.`;
+
 export const repetirSinHistorial = (): string =>
   'No tengo anotado tu último pedido. ¿Cuántos bidones necesitas y de cuántos litros (20, 12 o 10)?';
 

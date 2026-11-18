@@ -145,7 +145,8 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
   const intencion = interpretacion.intencion;
 
   // 2. Reunir solo lo que esta intención necesita (cada lectura de hoja gasta tiempo y cupo de Google).
-  const repite = intencion === 'repetir_pedido' && !cancelo;
+  // "Lo de siempre" (repetir) o un "quiero pedir" sin detalle: en los dos sirve el último pedido (para ofrecérselo, D69).
+  const repite = (intencion === 'repetir_pedido' || (intencion === 'pedido' && interpretacion.items.length === 0)) && !cancelo;
   const [cliente, servicio, precios, entrega, ultimoPedido] = await Promise.all([
     intencion === 'cierre' ? ({ estado: 'nuevo' } as BusquedaCliente) : p.buscarCliente(entrada.telefono),
     intencion === 'cierre' ? { reducido: false, mensajeExcepcion: '' } : p.servicio(),

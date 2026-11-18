@@ -24,6 +24,9 @@ export type RespuestaContextual =
   | { tipo: 'sin_edificio' };
 
 const RELLENO = /\b(?:por favor|porfa|porfis|gracias|dale|ok|okey|si)\b/g;
+// "sí", "dale", "ya", "perfecto", "lo mismo", "sí, gracias"... para aceptar lo de siempre (D69).
+const ACEPTA =
+  /^(?:si+|sip|sii|dale|ya|ok|okey|oka|bueno|perfecto|claro|eso|eso mismo|lo mismo|lo de siempre|de una|obvio|correcto|exacto|confirmo)(?: (?:si|dale|porfa|por favor|gracias|igual|nomas|no mas|lo mismo|lo de siempre|eso|perfecto|muchas gracias))*$/;
 const CANCELAR = /^(?:no|nada|nada mas|ya no|no gracias|no quiero|no necesito|mejor no|cancela|cancelar|cancelalo|olvidalo|olvida|dejalo|dejalo asi|no importa)$/;
 // "20", "de 20", "los de 20 litros", "quiero 12"...
 const SOLO_TIPO = /^(?:(?:los|las|el|la|del|es|son|seria|serian|quiero|necesito|bidones|bidon|botellones|botellon|de) )*(10|12|20)(?: (?:l|lt|lts|ltr|ltrs|litros|litro))?$/;
@@ -52,6 +55,12 @@ export function responderEnContexto(texto: string, estado: EstadoConversacion): 
     const edificio = leerEdificio(texto);
     if (edificio) return { tipo: 'edificio', edificio };
     return diceQueNoHayEdificio(texto) ? { tipo: 'sin_edificio' } : null;
+  }
+
+  // Se le ofreció lo de siempre (D69): un "sí" lo anota tal cual. Se mira antes de quitar el relleno, que borra el "si".
+  if (estado.espera === 'lo_de_siempre' && ACEPTA.test(preparar(texto).replace(/[?/!.]/g, ' ').replace(/\s+/g, ' ').trim())) {
+    const items = validarItems(estado.items);
+    return items && items.length > 0 ? { tipo: 'interpretacion', interpretacion: comoPedido(estado, items) } : null;
   }
 
   const t = preparar(texto).replace(RELLENO, ' ').replace(/[?/]/g, ' ').replace(/\s+/g, ' ').trim();

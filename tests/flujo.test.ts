@@ -819,6 +819,31 @@ describe('un cliente nuevo da su nombre y su dirección (D37)', () => {
   });
 });
 
+describe('lo de siempre sin que el cliente lo diga (D69)', () => {
+  it('un cliente que ya pidió y escribe "quiero hacer un pedido" recibe su último pedido; con "sí" queda anotado', async () => {
+    const charla = conversacion();
+    await charla.decir('quiero 4 de 20 y 1 de 12');
+    const oferta = await charla.decir('hola, quiero hacer un pedido');
+    expect(oferta.pedido).toBeUndefined();
+    expect(oferta.respuesta).toBe('¿Te mandamos lo de siempre: 4 bidones de 20 L y 1 bidón de 12 L? Responde «sí», o dime qué necesitas.');
+    const si = await charla.decir('sí, gracias');
+    expect(si.pedido?.lineas.map((l) => [l.tipo, l.cantidad])).toEqual([['20L', 4], ['12L', 1]]);
+  });
+
+  it('si en vez de "sí" pide otra cosa, se anota lo nuevo', async () => {
+    const charla = conversacion();
+    await charla.decir('quiero 4 de 20');
+    await charla.decir('quiero pedir');
+    const otro = await charla.decir('mejor 3 de 12');
+    expect(otro.pedido?.lineas.map((l) => [l.tipo, l.cantidad])).toEqual([['12L', 3]]);
+  });
+
+  it('un cliente sin pedidos anteriores recibe la pregunta de siempre', async () => {
+    const d = await conversacion().decir('hola, quiero hacer un pedido');
+    expect(d.respuesta).toContain('¿Qué necesitas?');
+  });
+});
+
 describe('cambios, envases nuevos y forma de pago (mensajes reales mal entendidos)', () => {
   it('cancelar o cambiar un pedido no anota otro encima: lo ve una persona', async () => {
     const charla = conversacion();

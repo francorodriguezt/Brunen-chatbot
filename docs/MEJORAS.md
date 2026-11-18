@@ -21,7 +21,7 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] Comprobantes: la foto que manda el cliente llega a Telegram para revisarla (y queda el aviso en el panel).
 - [x] Audios: transcribirlos y mostrar el texto en el aviso. El bot sigue sin responder audios (regla del dueño).
 - [ ] Ubicación que manda el cliente por WhatsApp: se guarda como el punto exacto de su dirección.
-- [ ] "Hola, quiero pedir" de un cliente conocido: ofrecerle "lo de siempre" con su detalle.
+- [x] "Hola, quiero pedir" de un cliente conocido: ofrecerle "lo de siempre" con su detalle.
 - [ ] Responder "¿cuándo llega?" con la ruta del día y el avance.
 - [ ] Detectar pedidos repetidos (mismo cliente, mismo día).
 - [ ] Días sin reparto con su motivo (no solo feriados), dicho al cliente.
