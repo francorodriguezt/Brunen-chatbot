@@ -10,6 +10,7 @@
 
 import type { BaseDatos } from './almacen';
 import { diaSemana, sumarDias } from './despacho';
+import { cargarDiasSinReparto } from './diasSinReparto';
 import type { PedidoARegistrar } from './pedidos';
 import type { ItemPedido, TipoBidon } from './precios';
 import { RepositorioD1 } from './repositorio';
@@ -140,6 +141,8 @@ export class RepositorioFijos {
       Math.max(1, Math.min(limite, 20)),
     );
     const repositorio = new RepositorioD1(this.db);
+    // Un día marcado sin reparto en el panel (D74) se salta: el pedido fijo pasa al siguiente día de despacho.
+    const cerrados = fijos.length > 0 ? await cargarDiasSinReparto(this.db, hoy) : new Map<string, string>();
     let creados = 0;
     for (const fila of fijos) {
       const fijo = aFijo(fila);
@@ -147,7 +150,12 @@ export class RepositorioFijos {
       let fecha = fijo.proximaFecha;
       while (fecha < hoy) fecha = sumarDias(fecha, fijo.cadaDias);
       if (fecha <= hasta) {
-        const entrega = sinDomingo(fecha);
+        let entrega = sinDomingo(fecha);
+        let movidoDe = '';
+        for (let vueltas = 0; cerrados.has(entrega) && vueltas < 30; vueltas++) {
+          movidoDe ||= entrega;
+          entrega = sinDomingo(sumarDias(entrega, 1));
+        }
         const pedido: PedidoARegistrar = {
           idPedido: idDePedidoFijo(fijo.id, entrega),
           telefono: fijo.telefono,
@@ -159,7 +167,7 @@ export class RepositorioFijos {
           direccion: texto(fila.direccion),
           notasRepartidor: texto(fila.notas_repartidor),
           envasesARetirar: 0,
-          observaciones: `Pedido fijo (cada ${fijo.cadaDias} días): lo creó el sistema. Confirmar el precio y la entrega.${fijo.notas ? ` ${fijo.notas}` : ''}`,
+          observaciones: `Pedido fijo (cada ${fijo.cadaDias} días): lo creó el sistema. Confirmar el precio y la entrega.${movidoDe ? ` Se pasó del ${movidoDe} porque ese día no hay reparto.` : ''}${fijo.notas ? ` ${fijo.notas}` : ''}`,
         };
         if (await repositorio.guardarPedido(pedido, ahora)) creados += 1;
         fecha = sumarDias(fecha, fijo.cadaDias);
