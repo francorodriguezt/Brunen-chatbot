@@ -10,7 +10,10 @@ Para quien confirma los pedidos y arma el reparto. El panel es una página priva
 5. Cinco intentos con una clave equivocada bloquean el ingreso por 15 minutos (y cada vez por más tiempo). Un administrador lo destraba cambiando la clave en Equipo.
 6. Para tenerla como aplicación en el celular: en el menú del navegador, "Agregar a la pantalla de inicio" o "Instalar aplicación".
 7. Si aparece "Se cerró tu sesión", toca "Volver a entrar".
-8. La primera vez, toca "Activar avisos del navegador": así suena y avisa cuando llega un pedido aunque estés en otra pestaña. La página tiene que quedar abierta.
+8. La primera vez, toca "Activar avisos": así suena y avisa cuando llega un pedido aunque estés en otra pestaña. La página tiene que quedar abierta.
+
+## Hoy
+Es lo primero que se ve. Arriba, en una frase, cómo va el día (entregas, efectivo cobrado, pedidos por confirmar y avisos urgentes). Abajo, una fila por cada cosa que hay que mirar: tócala y te lleva ahí. Lo que está en rojo es urgente. **Equipo** está en el botón de arriba, junto a "Salir".
 
 ## Clientes
 - Cada cliente reúne sus teléfonos, sus direcciones y sus pedidos. Las fichas se crean solas con los pedidos que llegan (por teléfono).
@@ -29,8 +32,10 @@ En **Equipo > Respaldo** se ve cuándo se copiaron por última vez los pedidos y
 - De tu propia cuenta puedes cambiar tu clave y cerrar tus otros dispositivos.
 
 ## Pedidos
-- **Por confirmar** es lo primero que se ve: cada pedido nuevo, con lo que escribió el cliente, los bidones, el total y la fecha de entrega que propuso el bot.
-- **Confirmar**: si está todo bien. El bot ya le respondió al cliente y no se le escribe de nuevo; si algo cambia, escríbele tú por WhatsApp (su teléfono es un enlace).
+- **Por confirmar**: cada pedido nuevo en una tarjeta corta, con quién es, los bidones, el total, la fecha de entrega que propuso el bot y lo que escribió. El teléfono, el pago, el historial y "Cancelar pedido" están en **Más datos**.
+- **Confirmar**: si está todo bien. El bot ya le respondió al cliente y no se le escribe de nuevo; si algo cambia, escríbele tú por WhatsApp (su teléfono está en "Más datos").
+- **Confirmar varios**: marca la casilla de cada pedido (o "Elegir los N" en la barra de abajo) y toca "Confirmar N". Solo se pueden elegir los que tienen precio.
+- **Deshacer**: después de confirmar aparece "Deshacer" por 10 segundos. Devuelve los pedidos a como estaban.
 - **Cambiar**: la fecha, la comuna, la dirección, las notas para el repartidor, los envases por retirar, los bidones y los precios.
 - **Completar precio**: aparece cuando el bot no pudo asegurar el precio (un cliente nuevo, una cantidad inusual). Sin precio no se puede confirmar.
 - **Observaciones** (recuadro amarillo): por qué el bot pide que lo revises.
@@ -46,8 +51,9 @@ Para una llamada, un audio o una empresa con plan mensual. Toca "+ Nuevo pedido"
 0. **Lo más rápido:** copia el mensaje del cliente en WhatsApp y pégalo en el cuadro de arriba. El formulario se llena solo (teléfono, bidones, fecha, comuna y forma de pago) y te avisa qué revisar. Después sigue con los pasos de abajo para revisar y completar el precio.
 1. Escribe el teléfono. Si ya pidió antes, el panel completa su nombre y su dirección: revísalos.
 2. Revisa la fecha de entrega. Viene sugerida con el corte de las 9:00, pero el panel no conoce los feriados.
-3. Agrega los bidones con su precio.
-4. "Dejarlo confirmado" viene marcado: con todos los precios, el pedido queda confirmado de una vez. Sin algún precio, queda por confirmar.
+3. Agrega los bidones con su precio (están arriba, justo debajo del mensaje).
+4. Notas para el repartidor, envases, tipo de cliente y pago están plegados en "Notas, envases y pago": la línea dice qué quedó elegido. Ábrelo solo si hay que cambiar algo.
+5. "Dejarlo confirmado" viene marcado: con todos los precios, el pedido queda confirmado de una vez. Si falta algún precio, la casilla lo dice y el pedido queda por confirmar.
 
 ## Reparto
 - Muestra las entregas confirmadas de **Hoy**, de **Mañana** o del día que elijas, ordenadas por comuna y dirección, con lo que hay que cargar en el furgón, lo que se cobra en cada parada y los envases por retirar.

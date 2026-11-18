@@ -30,9 +30,16 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [ ] Sumar a las pruebas cada mensaje real mal entendido y medir el acierto.
 
 ## 3. Panel (más intuitivo; con el plugin impeccable)
-- [ ] Pantalla "Hoy": qué hay que hacer ahora (por confirmar, avisos, reparto, a quién le toca pedir).
-- [ ] Confirmar varios pedidos de una vez, y "Deshacer" unos segundos después de cada acción.
-- [ ] "Nuevo pedido" más corto: pegar el mensaje primero; pago y factura plegados en "Más datos".
+- [x] Pantalla "Hoy": qué hay que hacer ahora (por confirmar, avisos, reparto, a quién le toca pedir). (D70)
+- [x] Confirmar varios pedidos de una vez, y "Deshacer" unos segundos después. (D70)
+- [x] "Nuevo pedido" más corto: pegar el mensaje primero; pago y factura plegados. (D70)
+- [x] Tarjetas cortas en "Por confirmar", letra de 16 px en los campos (el iPhone no hace zoom), contraste y toques de 44 px. (D70, encontrado en la revisión)
+- [ ] **Precio sugerido**: al pegar "3 de 20" o completar el precio, proponer el de la lista ($3.300 c/u) para que Coni solo lo acepte; un cliente especial o mayorista sigue a mano. (encontrado en la revisión)
+- [ ] Llenar los envases por retirar y el tipo de cliente desde la ficha del cliente. (encontrado en la revisión)
+- [ ] Guardar un borrador del pedido nuevo: si Coni vuelve a WhatsApp a mitad, no se pierde. (encontrado en la revisión)
+- [ ] Reparto: la carga de la lista y la del mapa dicen números distintos el mismo día (una cuenta lo ya entregado); usar una sola cuenta. (encontrado en la revisión)
+- [ ] Reparto: en cada parada, el botón principal del administrador debería ser "Copiar mensaje", no "Entregado". (encontrado en la revisión)
+- [ ] Mismo nombre para el cliente sin ficha en Pedidos ("Cliente sin ficha") y en Clientes ("Sin nombre"). (encontrado en la revisión)
 - [ ] Avisos en el iPhone con la app cerrada (instalada en la pantalla de inicio).
 - [ ] Pantalla de días sin reparto y promociones (sin tocar la planilla).
 - [ ] Mapa de clientes por comuna.
