@@ -1174,6 +1174,16 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja 
       reparto.entregadas > 0 ? cifra(reparto.entregadas, reparto.entregadas === 1 ? 'entregada' : 'entregadas') : null,
       reparto.cargas.length > 1 ? cifra(reparto.cargas.length, 'viajes del furgón') : null,
     ),
+    // La lista y el mapa arman los viajes igual; solo cambia el orden: sin ruta publicada, la lista va por comuna.
+    reparto.paradas.length > 1
+      ? h(
+          'p',
+          { clase: 'suave nota-ruta' },
+          reparto.publicada
+            ? 'En el orden de la ruta publicada: el mismo que ve el repartidor.'
+            : 'Ordenada por comuna. En «Ruta eficiente y mapa» puedes calcular el orden más corto y publicarlo para el repartidor.',
+        )
+      : null,
     sinConfirmar ?? '',
     cierreDelDia(caja) ?? '',
     h(
