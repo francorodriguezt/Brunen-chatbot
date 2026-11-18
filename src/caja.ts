@@ -29,7 +29,10 @@ export interface CierreDelDia {
     sinPrecio: number;
   };
   vacios: {
+    /** De todo el día: lo que habría que traer al terminar. */
     esperados: number;
+    /** Solo de las paradas ya entregadas: contra esto se compara lo retirado a mitad del día (D72). */
+    esperadosEntregadas: number;
     retirados: number;
     /** Paradas entregadas donde retiró menos vacíos de los que había que retirar. */
     paradasConFaltante: number;
@@ -47,7 +50,7 @@ export function cierreDelDia(reparto: RepartoDelDia, pedidos: readonly PedidoGua
     pendientes: 0,
     bidonesEntregados: { ...VACIO },
     efectivo: { esperado: 0, cobrado: 0, entregadosSinCobrar: 0, sinPrecio: 0 },
-    vacios: { esperados: 0, retirados: 0, paradasConFaltante: 0 },
+    vacios: { esperados: 0, esperadosEntregadas: 0, retirados: 0, paradasConFaltante: 0 },
   };
   for (const parada of reparto.paradas) {
     const entrega = entregas.get(parada.idPedido);
@@ -58,6 +61,7 @@ export function cierreDelDia(reparto: RepartoDelDia, pedidos: readonly PedidoGua
 
     if (entregada) sumarBidones(cierre.bidonesEntregados, parada);
     cierre.vacios.esperados += vaciosEsperados(parada);
+    if (entregada) cierre.vacios.esperadosEntregadas += vaciosEsperados(parada);
     if (entrega?.vaciosRetirados !== null && entrega?.vaciosRetirados !== undefined) {
       cierre.vacios.retirados += entrega.vaciosRetirados;
       if (entregada && entrega.vaciosRetirados < vaciosEsperados(parada)) cierre.vacios.paradasConFaltante++;

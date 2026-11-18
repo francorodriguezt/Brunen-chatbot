@@ -51,7 +51,7 @@ describe('cierre del día (D64)', () => {
     const c = await (await dia()).cierre();
     expect(c).toMatchObject({ paradas: 4, entregadas: 0, noSePudo: 0, pendientes: 4 });
     expect(c.efectivo).toEqual({ esperado: 16500, cobrado: 0, entregadosSinCobrar: 0, sinPrecio: 1 });
-    expect(c.vacios).toEqual({ esperados: 13, retirados: 0, paradasConFaltante: 0 });
+    expect(c.vacios).toEqual({ esperados: 13, esperadosEntregadas: 0, retirados: 0, paradasConFaltante: 0 });
   });
 
   it('al final: lo cobrado, lo entregado sin cobrar, los vacíos que faltaron y lo que no se pudo', async () => {
@@ -64,7 +64,7 @@ describe('cierre del día (D64)', () => {
     expect(c).toMatchObject({ entregadas: 3, noSePudo: 1, pendientes: 0 });
     expect(c.bidonesEntregados).toEqual({ '10L': 0, '12L': 0, '20L': 12 });
     expect(c.efectivo).toEqual({ esperado: 16500, cobrado: 11000, entregadosSinCobrar: 1, sinPrecio: 1 });
-    expect(c.vacios).toEqual({ esperados: 13, retirados: 11, paradasConFaltante: 1 });
+    expect(c.vacios).toEqual({ esperados: 13, esperadosEntregadas: 12, retirados: 11, paradasConFaltante: 1 });
   });
 
   it('un cliente que debía vacíos de antes: se esperan uno por bidón más los que debía (D72)', async () => {

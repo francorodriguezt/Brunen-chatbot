@@ -204,7 +204,7 @@ export function crearRutaDelDia({ contenedor, api, h, boton, avisar, alPublicar 
           cifra(String(porRecorrer), porRecorrer === 1 ? 'parada por recorrer' : 'paradas por recorrer'),
           porRecorrer > 0 ? cifra(`~${kilometros(plan.km)}`, 'en total') : null,
           porRecorrer > 0 ? cifra(`~${duracion(plan.minutos)}`, 'de reparto') : null,
-          plan.cargas.length > 1 ? cifra(String(plan.cargas.length), 'cargas del furgón') : null,
+          plan.cargas.length > 1 ? cifra(String(plan.cargas.length), 'viajes del furgón') : null,
         ),
         porRecorrer > 0 ? h('p', { clase: 'suave nota-ruta' }, 'Kilómetros y tiempo aproximados (en línea recta, con un margen por las calles): sirven para comparar órdenes, no para prometer horas.') : null,
         situacion,
@@ -226,7 +226,8 @@ export function crearRutaDelDia({ contenedor, api, h, boton, avisar, alPublicar 
       const titulo = h(
         'h3',
         { clase: `titulo-carga${carga.excedeFurgon ? ' excede' : ''}` },
-        `Carga ${carga.numero}: ${carga.bidones} bidones, ${desde}${carga.excedeFurgon ? ' (un pedido no cabe en un viaje: divídelo)' : ''}`,
+        // Aquí cuenta solo lo que falta entregar: con entregas hechas, los viajes se rearman y no calzan con los de la lista.
+        `${datos.entregadas.length > 0 ? 'Lo que queda, viaje' : 'Viaje'} ${carga.numero}: ${carga.bidones} bidones, ${desde}${carga.excedeFurgon ? ' (un pedido no cabe en un viaje: divídelo)' : ''}`,
       );
       return [titulo, ...carga.paradas.map((id) => filaDeParada(paradas.get(id), ++numero))];
     });
