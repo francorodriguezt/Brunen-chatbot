@@ -51,7 +51,7 @@ Para una llamada, un audio o una empresa con plan mensual. Toca "+ Nuevo pedido"
 0. **Lo más rápido:** copia el mensaje del cliente en WhatsApp y pégalo en el cuadro de arriba. El formulario se llena solo (teléfono, bidones, fecha, comuna y forma de pago) y te avisa qué revisar. Después sigue con los pasos de abajo para revisar y completar el precio.
 1. Escribe el teléfono. Si ya pidió antes, el panel completa su nombre y su dirección: revísalos.
 2. Revisa la fecha de entrega. Viene sugerida con el corte de las 9:00, pero el panel no conoce los feriados.
-3. Agrega los bidones con su precio (están arriba, justo debajo del mensaje).
+3. Agrega los bidones con su precio (están arriba, justo debajo del mensaje). Para un cliente de hogar, el botón **Lista: $3.300** pone el precio de la lista con un toque; un minimarket, una empresa o un cliente con precio especial se escribe a mano.
 4. Notas para el repartidor, envases, tipo de cliente y pago están plegados en "Notas, envases y pago": la línea dice qué quedó elegido. Ábrelo solo si hay que cambiar algo.
 5. "Dejarlo confirmado" viene marcado: con todos los precios, el pedido queda confirmado de una vez. Si falta algún precio, la casilla lo dice y el pedido queda por confirmar.
 
