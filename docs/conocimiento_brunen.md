@@ -167,7 +167,8 @@ Contradicciones y huecos (por resolver antes de construir):
 - El Word (aclarado por Franco el 2026-11-11): no se le envía un Word al repartidor. Del Excel que exporta la plataforma se saca lo importante de cada parada y se ordena en un Word; desde ahí la operadora le escribe al repartidor por WhatsApp, un mensaje por parada, numerados en el orden de la ruta (la más eficiente en tiempo). El repartidor se guía por esos mensajes; la aplicación de la plataforma sirve sobre todo para verlo en vivo. Lo que Franco quiere: que el sistema deje esos mensajes listos para enviar o, si se puede, que los envíe.
 - La plataforma de rutas no tiene API (lo confirmó Franco el 2026-11-11): los pedidos entran por archivo y la ruta sale por archivo.
 - Cómo se arma el reparto de mañana (Franco, 2026-11-11): con los pedidos que van llegando hoy más los que ya estaban agendados para ese día (alguien pide el lunes para el miércoles). Falta aclarar si eso deja sin efecto el corte de las 9:00 con entrega el mismo día de la sección 6.
-- El celular del repartidor: no se sabe si es de la empresa o personal, ni si es Android o iPhone. Cambia cómo se pide su consentimiento para el rastreo.
+- Teléfonos (Franco, 2026-11-17): el repartidor usa **Android**; el dueño y la operadora usan **iPhone**. Falta saber si el del repartidor es de la empresa o personal (cambia cómo se pide su consentimiento para el rastreo). En iPhone, los avisos del panel con la app cerrada exigen instalarla en la pantalla de inicio.
+- El dueño desconfía de poner su tarjeta en Cloudflare (2026-11-17). Zero Trust gratis pide un medio de pago aunque no cobre (documentación oficial, revisada el 2026-11-17).
 
 ## 17. Lo que muestran los archivos reales (2026-11-11; solo totales, calculados con el anonimizador, D47)
 **Excel de control de pedidos** (hoja PEDIDOS, 6.865 filas, de diciembre de 2024 a diciembre de 2026; algunas fechas son erróneas o futuras):

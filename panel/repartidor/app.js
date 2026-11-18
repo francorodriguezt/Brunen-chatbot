@@ -155,13 +155,40 @@ function pintar() {
       cifra(hechas, hechas === 1 ? 'lista' : 'listas'),
     ].filter(Boolean),
   );
-  const conCargas = ruta.cargas.length > 1;
   lista.replaceChildren(
     ...ruta.paradas.flatMap((parada) => {
-      const carga = conCargas ? ruta.cargas.find((c) => c.desde === parada.orden) : null;
-      const titulo = carga ? h('h3', { clase: 'titulo-carga' }, `Carga ${carga.numero}: ${carga.totalBidones} bidones`, carga.numero > 1 ? ' (recarga en Actum si hace falta)' : '') : null;
+      // Cada viaje lleva su encabezado (aunque sea uno solo): qué cargar, dónde recargar y su ruta en Maps.
+      const carga = ruta.cargas.find((c) => c.desde === parada.orden);
+      const titulo = carga ? encabezadoDeCarga(carga) : null;
       return titulo ? [titulo, tarjeta(parada)] : [tarjeta(parada)];
     }),
+  );
+}
+
+const NOMBRE_DE_DEPOSITO = { planta: 'la planta', actum: 'Actum' };
+const TAMANOS = [['20L', '20 L'], ['12L', '12 L'], ['10L', '10 L']];
+
+/** El encabezado de un viaje (D67): cuántos bidones de cada tamaño subir, dónde recargar y la ruta del viaje en Maps. */
+function encabezadoDeCarga(carga) {
+  const total = ruta.cargas.length;
+  const detalle = TAMANOS.filter(([tipo]) => (carga.bidones?.[tipo] ?? 0) > 0).map(([tipo, nombre]) => `${carga.bidones[tipo]} de ${nombre}`).join(' y ');
+  const recarga = carga.numero > 1 ? (carga.recargaEn ? `Antes, recarga en ${NOMBRE_DE_DEPOSITO[carga.recargaEn]}.` : 'Antes, recarga en la planta o en Actum.') : null;
+  const mapas = carga.mapas ?? [];
+  return h(
+    'div',
+    { clase: 'encabezado-carga' },
+    h('h3', { clase: 'titulo-carga' }, total > 1 ? `Viaje ${carga.numero} de ${total}` : 'Tu viaje'),
+    h('p', {}, h('b', {}, 'Cargar: '), detalle || `${carga.totalBidones} bidones`, carga.excedeFurgon ? ' (no cabe en un viaje: avisa)' : ''),
+    recarga ? h('p', { clase: 'suave' }, recarga) : null,
+    mapas.length > 0
+      ? h(
+          'div',
+          { clase: 'acciones' },
+          ...mapas.map((enlace, i) =>
+            h('a', { clase: 'boton boton-principal', href: enlace, target: '_blank', rel: 'noopener noreferrer' }, mapas.length > 1 ? `Ruta en Maps (parte ${i + 1})` : 'Ruta del viaje en Maps'),
+          ),
+        )
+      : null,
   );
 }
 

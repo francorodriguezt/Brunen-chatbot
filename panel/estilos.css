@@ -302,3 +302,9 @@ body.portada { min-height: 100vh; min-height: 100dvh; display: grid; place-items
 .respaldo { margin-top: 1rem; }
 .respaldo h2 { margin: 0 0 0.3rem; }
 .lista-respaldo { margin: 0.3rem 0; padding-left: 1.1rem; display: grid; gap: 0.2rem; }
+
+/* Encabezado de cada viaje del repartidor (D67) */
+.encabezado-carga { margin: 1rem 0 0.4rem; padding: 0.6rem 0.8rem; border-radius: 12px; background: var(--acento-suave); }
+.encabezado-carga .titulo-carga { margin: 0 0 0.2rem; }
+.encabezado-carga p { margin: 0.15rem 0; }
+.encabezado-carga .acciones { margin-top: 0.4rem; }

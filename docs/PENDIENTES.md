@@ -3,6 +3,7 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Próxima sesión
+ACTUALIZACIÓN 2026-11-17: lista de trabajo ordenada (ruta, bot, panel) en [MEJORAS.md](MEJORAS.md).
 ACTUALIZACIÓN 2026-11-14 (noche, publicado con permiso de Franco): migraciones `0011` a `0013` aplicadas en la base real (punto de restauración `000003ff-00000000-00005123-4d895ce639e77a77d07eb70abd7c7767`) y bot publicado (versión `f20a9da0`) con las mejoras del intérprete y el respaldo en Google Sheets. El panel sigue sin publicar: espera Zero Trust (tarjeta del dueño) y `PANEL_SECRETO`. En GitHub, la búsqueda de claves y el bloqueo al subir ya estaban activos; se activaron los avisos de dependencias vulnerables (0 abiertos). Guía de incidentes: [INCIDENTES.md](INCIDENTES.md).
 ACTUALIZACIÓN 2026-11-14 (D66): respaldo en Google Sheets (pedidos cada 30 minutos, fichas cada noche), Excel desde el panel y `npm run restaurar-respaldo`. Ver [RESPALDO.md](RESPALDO.md).
 ACTUALIZACIÓN 2026-11-14 (D65): en Reparto, los bidones entregados por día, semana y mes y los vacíos por retirar por cliente. Preguntar al dueño si "envases pendientes" es eso o el saldo de bidones que cada cliente tiene en su casa.
@@ -149,7 +150,7 @@ Franco pidió guardarlas y que se le recuerden cuando una fase las necesite. Ord
 - [ ] (Ambos) Cuántos bidones de cada tamaño caben en el furgón (hoy se cuentan 65 sin importar el tamaño) y el peso máximo permitido.
 - [ ] (Ambos) A qué hora sale el repartidor y cuántos minutos se demora en promedio en cada parada.
 - [ ] (la operadora) Dónde se anotan hoy los vacíos que quedan por retirar y qué pasa con un vacío que falta después de justificarlo.
-- [ ] (Dueño) El celular del repartidor: si es Android o iPhone, si es de la empresa o propio, si tiene datos móviles y un correo. Y su consentimiento para compartir la ubicación durante el turno (fase E).
+- [ ] (Dueño) El celular del repartidor (es Android, Franco 2026-11-17): si es de la empresa o propio, si tiene datos móviles y un correo. Y su consentimiento para compartir la ubicación durante el turno (fase E).
 
 **Para los pedidos fijos y "les toca pedir" (D58, D59)**
 - [ ] (la operadora) Qué empresas tienen plan mensual, qué reciben y cada cuánto, para cargar sus pedidos fijos.

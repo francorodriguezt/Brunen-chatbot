@@ -142,6 +142,32 @@ export async function enviarAlerta(config: ConfigTelegram | null, alerta: Alerta
   });
 }
 
+/**
+ * Manda una foto o un archivo al grupo (D68): el comprobante de transferencia que envió un cliente, para que la operadora
+ * o el dueño revisen que sea real. Nunca lanza errores. El pie va en HTML: quien lo arma escapa lo que venga del cliente.
+ */
+export async function enviarArchivo(config: ConfigTelegram | null, archivo: { datos: ArrayBuffer; mime: string; nombre: string }, pie: string): Promise<boolean> {
+  if (!config) return false;
+  const esFoto = /^image\/(jpeg|png|webp)$/.test(archivo.mime);
+  const formulario = new FormData();
+  formulario.set('chat_id', config.chatId);
+  formulario.set('caption', pie.slice(0, 1000));
+  formulario.set('parse_mode', 'HTML');
+  formulario.set(esFoto ? 'photo' : 'document', new Blob([archivo.datos], { type: archivo.mime }), archivo.nombre);
+  try {
+    const respuesta = await fetch(`https://api.telegram.org/bot${config.token}/${esFoto ? 'sendPhoto' : 'sendDocument'}`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(TIEMPO_MAXIMO_MS * 2),
+      body: formulario,
+    });
+    if (!respuesta.ok) console.error(`Telegram ${esFoto ? 'sendPhoto' : 'sendDocument'} respondió ${respuesta.status}`);
+    return respuesta.ok;
+  } catch (error) {
+    console.error('Telegram no recibió el archivo:', error instanceof Error ? error.name : 'error');
+    return false;
+  }
+}
+
 export interface AccionBoton {
   accion: AccionBotonTipo;
   idPedido: string;
