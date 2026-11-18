@@ -116,6 +116,10 @@
   <dialog id="dialogo-editar" aria-labelledby="titulo-editar">
     <form method="dialog" id="formulario-editar">
       <h2 id="titulo-editar">Cambiar pedido</h2>
+      <p class="aviso-borrador" id="aviso-borrador" role="status" hidden>
+        <span>Seguiste con el pedido que dejaste a medias.</span>
+        <button type="button" class="boton boton-chico" id="empezar-de-nuevo">Empezar de nuevo</button>
+      </p>
       <div class="pegar-mensaje solo-nuevo">
         <label for="texto-pegado">Pega aquí el mensaje del cliente <span class="suave">(opcional: llena el formulario solo)</span></label>
         <textarea id="texto-pegado" rows="3" maxlength="2000" placeholder="Cópialo desde WhatsApp, con o sin la hora y el número"></textarea>
