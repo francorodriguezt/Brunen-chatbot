@@ -11,6 +11,7 @@ import { COMUNAS_ATENDIDAS, esComunaAtendida } from './comunas';
 import { diaSemana } from './despacho';
 import { fechaEnPalabras } from './fechas';
 import type { PropuestaEntrega } from './entrega';
+import type { EstadoDeMiPedido } from './llegada';
 import type { ItemInterpretado } from './interprete';
 import { formatearCLP, type TipoBidon, type TramoPrecio } from './precios';
 
@@ -40,6 +41,22 @@ export const repetirSinHistorial = (): string =>
   'No tengo anotado tu último pedido. ¿Cuántos bidones necesitas y de cuántos litros (20, 12 o 10)?';
 
 export const imagenRecibida = (): string => 'Recibimos tu imagen. Una persona del equipo la revisará.';
+
+/** "¿Cuándo llega?" de un cliente con pedido (D78). Nunca promete una hora: dice en qué está. */
+export function estadoDeMiPedido(estado: EstadoDeMiPedido): string {
+  switch (estado.tipo) {
+    case 'agendado':
+      return `Tu pedido está agendado para el ${fechaEnPalabras(estado.fecha)}. Si algo cambia, te avisamos por aquí.`;
+    case 'por_confirmar':
+      return `Tu pedido para el ${fechaEnPalabras(estado.fecha)} está anotado y una persona del equipo lo está confirmando.`;
+    case 'entregado':
+      return 'Según nuestro registro, tu pedido de hoy ya se entregó. Si no lo recibiste, escríbenos y lo revisamos de inmediato.';
+    case 'en_reparto':
+      if (estado.antes === null) return 'Tu pedido va en el reparto de hoy. Si algo cambia, te avisamos por aquí.';
+      if (estado.antes === 0) return 'Tu pedido va en el reparto de hoy y eres la próxima entrega.';
+      return `Tu pedido va en el reparto de hoy: antes del tuyo quedan ${estado.antes} ${estado.antes === 1 ? 'entrega' : 'entregas'}.`;
+  }
+}
 
 /** La ubicación que compartió el cliente (D77): queda para que el repartidor llegue directo. */
 export const ubicacionRecibida = (): string => '¡Gracias! Guardamos tu ubicación para que el repartidor llegue directo.';

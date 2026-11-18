@@ -639,3 +639,13 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - Orden de confianza de un punto: el pin que pone una persona en el panel > el GPS preciso del repartidor al entregar > la ubicación del cliente. La del cliente no pisa a las otras dos, y el GPS del repartidor sí la reemplaza (el cliente pudo mandarla desde el trabajo). En la app del repartidor, un punto del cliente se vuelve a leer al entregar.
 - Si el cliente no tiene dirección anotada, o su dirección ya tenía un punto mejor, queda un aviso para una persona con el enlace al mapa.
 - No sale de Brunen: se guarda en D1 como cualquier otro punto (D62). Sin migración: la columna `origen` acepta el valor nuevo.
+
+### D78 · 2026-11-18 · "¿Cuándo llega?"
+**El dueño necesita poder responderle a un cliente cuándo llega su pedido (conocimiento §16).** Si el cliente pregunta ("¿cuándo llega?", "¿a qué hora llegan?", "¿ya viene?", "¿falta mucho?", "¿por dónde va el repartidor?") y tiene un pedido vivo, el bot le dice en qué está, sin pasar por el intérprete ni la IA:
+- agendado: "Tu pedido está agendado para el viernes 20 de noviembre.";
+- por confirmar: "…está anotado y una persona del equipo lo está confirmando.";
+- en el reparto de hoy: con la ruta publicada, "antes del tuyo quedan 3 entregas" (o "eres la próxima entrega"); sin ruta publicada no da números, porque el orden por comuna no dice cuándo pasa el repartidor;
+- ya entregado hoy: lo dice e invita a escribir si no lo recibió.
+- Nunca promete una hora. Sin pedido vivo, o si la consulta falla, responde lo de siempre (los horarios de despacho).
+- "No me ha llegado", "nunca vinieron" no cuentan como pregunta: son un reclamo y siguen el camino de siempre hacia una persona.
+- Falta (fase E): con la posición del repartidor en vivo, se podría dar una hora aproximada.

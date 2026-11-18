@@ -19,6 +19,7 @@ import { fusionarConEstado, responderEnContexto } from './contexto';
 import type { EstadoConversacion } from './conversacion';
 import type { PropuestaEntrega } from './entrega';
 import type { Intencion, Interpretacion, ItemInterpretado } from './interprete';
+import { preguntaPorLlegada, type EstadoDeMiPedido } from './llegada';
 import type { ResultadoInterpretacion } from './llm';
 import { decidir, decidirDatos, decidirEdificio, decidirSinEdificio, type Decision, type EntradaMotor } from './motor';
 import type { DatosPrevios } from './pedidos';
@@ -53,6 +54,8 @@ export interface Puertos {
   servicio(): Promise<EntradaMotor['servicio']>;
   /** Reglas y, si no alcanzan, el respaldo con IA (llm.ts). */
   interpretar(texto: string): Promise<ResultadoInterpretacion>;
+  /** En qué está el pedido más próximo de este teléfono, para "¿cuándo llega?" (D78). null si no tiene uno vivo. */
+  estadoDeMiPedido?(telefono: string): Promise<EstadoDeMiPedido | null>;
 }
 
 export interface EntradaFlujo {
@@ -131,6 +134,17 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
   }
   // El edificio se pregunta una sola vez: si lo que llega no es un edificio, se deja de esperarlo.
   if (estado?.espera === 'edificio' && p.memoria) await p.memoria.borrar(entrada.telefono);
+
+  // "¿Cuándo llega?" de un cliente con pedido (D78): se le dice en qué está, sin pasar por el intérprete ni la IA.
+  if (!contextual && p.estadoDeMiPedido && preguntaPorLlegada(entrada.texto)) {
+    let suPedido: EstadoDeMiPedido | null = null;
+    try {
+      suPedido = await p.estadoDeMiPedido(entrada.telefono);
+    } catch (error) {
+      console.error('No se pudo ver el estado del pedido:', error instanceof Error ? error.message : error);
+    }
+    if (suPedido) return { decision: { intencion: 'pregunta', respuesta: textos.estadoDeMiPedido(suPedido), memoria: { accion: 'mantener' } }, conIa: false };
+  }
 
   if (contextual?.tipo === 'cancelar') {
     cancelo = true;
