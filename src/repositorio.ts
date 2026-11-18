@@ -402,8 +402,8 @@ export class RepositorioD1 {
     // se agregó a la ficha hace menos de un año: un número viejo de la ficha pudo pasar a otra persona.
     const desde = ahoraSegundos - VIGENCIA_DEL_PEDIDO_ANTERIOR_SEGUNDOS;
     const [fila] = await this.filas(
-      `SELECT p.id, p.nombre, p.direccion, p.comuna, p.notas_repartidor, p.creado_en,
-              c.nombre AS ficha_nombre, d.direccion AS ficha_direccion, d.comuna AS ficha_comuna,
+      `SELECT p.id, p.nombre, p.direccion, p.comuna, p.notas_repartidor, p.creado_en, p.tipo_cliente,
+              c.nombre AS ficha_nombre, c.tipo_cliente AS ficha_tipo, d.direccion AS ficha_direccion, d.comuna AS ficha_comuna,
               d.notas_repartidor AS ficha_notas, d.ultimo_uso AS ficha_uso
        FROM pedidos p
        LEFT JOIN telefonos_cliente t ON t.telefono = ?1
@@ -425,6 +425,7 @@ export class RepositorioD1 {
       direccion: fichaMasNueva ? texto(fila.ficha_direccion) : texto(fila.direccion),
       comuna: fichaMasNueva ? texto(fila.ficha_comuna) : texto(fila.comuna),
       notasRepartidor: fichaMasNueva ? texto(fila.ficha_notas) : texto(fila.notas_repartidor),
+      tipoCliente: texto(fila.ficha_tipo) || texto(fila.tipo_cliente),
     };
   }
 

@@ -532,7 +532,15 @@ describe('datos de un cliente por sus pedidos anteriores (D40)', () => {
       direccion: 'Calle Falsa 123',
       comuna: 'Ñuñoa',
       notasRepartidor: 'Edificio: Mirador',
+      tipoCliente: '',
     });
+  });
+
+  it('trae el tipo de cliente del pedido, para que el panel sepa si sugerir el precio de lista (D71)', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido({ idPedido: 'P261028-AAAAA', direccion: 'Calle Falsa 123' }), AHORA);
+    await r.editarPedido('P261028-AAAAA', { tipoCliente: 'minimarket' }, OPERADORA, AHORA + 1);
+    expect((await r.datosDelUltimoPedido('56911111111', AHORA + 2))?.tipoCliente).toBe('minimarket');
   });
 
   it('salta los pedidos cancelados y los que nunca tuvieron dirección', async () => {
@@ -600,6 +608,7 @@ describe('datos de un cliente por su ficha (fase B: el bot lee las fichas)', () 
       direccion: 'Calle Nueva 9',
       comuna: 'Ñuñoa',
       notasRepartidor: 'Casa azul',
+      tipoCliente: '',
     });
   });
 });

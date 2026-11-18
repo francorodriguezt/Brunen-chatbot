@@ -702,7 +702,7 @@ describe('la API: reconocer al cliente por su teléfono', () => {
     const { env } = await entornoPanel();
     const r = await anterior(env, '+56 9 1111 1111');
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ datos: { idPedido: 'P261028-BBBBB', nombre: '', direccion: 'Calle Falsa 123', comuna: 'Ñuñoa', notasRepartidor: '' } });
+    expect(await r.json()).toEqual({ datos: { idPedido: 'P261028-BBBBB', nombre: '', direccion: 'Calle Falsa 123', comuna: 'Ñuñoa', notasRepartidor: '', tipoCliente: '' } });
   });
 
   it('si ese teléfono no tiene pedidos, o no se entiende, no hay datos', async () => {
