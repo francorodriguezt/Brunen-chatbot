@@ -633,3 +633,9 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 **Un cliente que vuelve a escribir "mándame 3" pudo pedir lo mismo dos veces o querer sumar.** El sistema no lo decide: al guardar un pedido (del bot, de un pedido fijo o anotado a mano), si ese teléfono ya tiene otro pedido sin entregar ni cancelar para el mismo día, se agrega a las observaciones "Ya tiene otro pedido para ese día (P…): revisar si es el mismo o si se suma." y sale en "Revisar" de la tarjeta.
 - Uno anotado a mano con "Dejarlo confirmado" queda por confirmar si se repite, y el aviso dice por qué.
 - Al cliente se le responde lo mismo de siempre: no se suma ningún mensaje.
+
+### D77 · 2026-11-18 · La ubicación que manda el cliente por WhatsApp
+**Muchos clientes mandan su ubicación cuando el repartidor no encuentra la casa.** Ahora el bot la guarda como el punto exacto de su dirección vigente (la de su ficha o su último pedido): el mapa de la ruta y el "Navegar" del repartidor la usan desde la siguiente entrega. Le responde "¡Gracias! Guardamos tu ubicación para que el repartidor llegue directo." (un mensaje, porque el cliente escribió).
+- Orden de confianza de un punto: el pin que pone una persona en el panel > el GPS preciso del repartidor al entregar > la ubicación del cliente. La del cliente no pisa a las otras dos, y el GPS del repartidor sí la reemplaza (el cliente pudo mandarla desde el trabajo). En la app del repartidor, un punto del cliente se vuelve a leer al entregar.
+- Si el cliente no tiene dirección anotada, o su dirección ya tenía un punto mejor, queda un aviso para una persona con el enlace al mapa.
+- No sale de Brunen: se guarda en D1 como cualquier otro punto (D62). Sin migración: la columna `origen` acepta el valor nuevo.

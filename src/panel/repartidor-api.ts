@@ -80,7 +80,7 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
       motivo: estado === 'no_se_pudo' ? (entrega?.noEntregado?.motivo ?? null) : null,
       // Solo el punto exacto: Navegar con uno aproximado llevaría al centro de la comuna. `afinar`: el punto vino de un GPS
       // poco preciso, así que al entregar conviene leerlo de nuevo (un pin puesto a mano nunca se afina).
-      punto: exacto ? { lat: exacto.lat, lng: exacto.lng, afinar: exacto.origen === 'repartidor' && (exacto.precisionM ?? Infinity) > PRECISION_BUENA_M } : null,
+      punto: exacto ? { lat: exacto.lat, lng: exacto.lng, afinar: exacto.origen === 'cliente' || (exacto.origen === 'repartidor' && (exacto.precisionM ?? Infinity) > PRECISION_BUENA_M) } : null,
     };
   });
   // Por viaje (D67): cuántos bidones de cada tamaño cargar, dónde recargar antes y la ruta del viaje en Google Maps.

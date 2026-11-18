@@ -22,7 +22,11 @@ const LAT_MAX = -32.8;
 const LNG_MIN = -71.8;
 const LNG_MAX = -69.7;
 
-export type OrigenDePunto = 'manual' | 'repartidor';
+/**
+ * `cliente` (D77): la ubicación que mandó el cliente por WhatsApp. Sirve mientras no haya otra mejor: no pisa un pin
+ * manual ni el GPS del repartidor, y el GPS preciso del repartidor sí la reemplaza (el cliente pudo mandarla desde otro lado).
+ */
+export type OrigenDePunto = 'manual' | 'repartidor' | 'cliente';
 
 export interface PuntoGuardado extends Punto {
   origen: OrigenDePunto;
@@ -60,6 +64,20 @@ export class RepositorioPuntos {
         .run();
       return 'guardado';
     }
+    if (dato.origen === 'cliente') {
+      const cambios =
+        (
+          await this.db
+            .prepare(
+              `INSERT INTO puntos (clave, lat, lng, origen, precision_m, actualizado_en) VALUES (?1, ?2, ?3, 'cliente', NULL, ?4)
+               ON CONFLICT (clave) DO UPDATE SET lat = excluded.lat, lng = excluded.lng, actualizado_en = excluded.actualizado_en
+               WHERE puntos.origen = 'cliente'`,
+            )
+            .bind(clave, lat, lng, ahoraSegundos)
+            .run()
+        ).meta?.changes ?? 0;
+      return cambios > 0 ? 'guardado' : 'ignorado';
+    }
     const precision = dato.precisionM;
     if (typeof precision !== 'number' || !Number.isFinite(precision) || precision < 0 || precision > PRECISION_MAXIMA_M) return 'ignorado';
     const cambios =
@@ -67,8 +85,8 @@ export class RepositorioPuntos {
         await this.db
           .prepare(
             `INSERT INTO puntos (clave, lat, lng, origen, precision_m, actualizado_en) VALUES (?1, ?2, ?3, 'repartidor', ?4, ?5)
-             ON CONFLICT (clave) DO UPDATE SET lat = excluded.lat, lng = excluded.lng, precision_m = excluded.precision_m, actualizado_en = excluded.actualizado_en
-             WHERE puntos.origen = 'repartidor' AND excluded.precision_m <= COALESCE(puntos.precision_m, 1000000)`,
+             ON CONFLICT (clave) DO UPDATE SET lat = excluded.lat, lng = excluded.lng, origen = 'repartidor', precision_m = excluded.precision_m, actualizado_en = excluded.actualizado_en
+             WHERE puntos.origen = 'cliente' OR (puntos.origen = 'repartidor' AND excluded.precision_m <= COALESCE(puntos.precision_m, 1000000))`,
           )
           .bind(clave, lat, lng, Math.round(precision), ahoraSegundos)
           .run()
@@ -92,7 +110,7 @@ export class RepositorioPuntos {
         encontrados.set(String(f.clave), {
           lat: Number(f.lat),
           lng: Number(f.lng),
-          origen: f.origen === 'manual' ? 'manual' : 'repartidor',
+          origen: f.origen === 'manual' || f.origen === 'cliente' ? f.origen : 'repartidor',
           precisionM: typeof f.precision_m === 'number' ? f.precision_m : null,
         });
       }

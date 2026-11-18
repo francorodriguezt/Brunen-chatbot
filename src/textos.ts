@@ -41,6 +41,9 @@ export const repetirSinHistorial = (): string =>
 
 export const imagenRecibida = (): string => 'Recibimos tu imagen. Una persona del equipo la revisará.';
 
+/** La ubicación que compartió el cliente (D77): queda para que el repartidor llegue directo. */
+export const ubicacionRecibida = (): string => '¡Gracias! Guardamos tu ubicación para que el repartidor llegue directo.';
+
 /** Un documento: los bancos chilenos suelen compartir el comprobante de transferencia en PDF. */
 export const archivoRecibido = (): string => 'Recibimos tu archivo. Una persona del equipo lo revisará.';
 
