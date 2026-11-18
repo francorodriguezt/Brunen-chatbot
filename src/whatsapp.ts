@@ -11,7 +11,13 @@ export interface MensajeEntrante {
   timestamp: number; // segundos Unix
   tipo: string; // text | image | audio | interactive | ...
   texto?: string;
+  /** Foto, audio o archivo (D68): su identificador en Meta, para descargarlo. */
+  medio?: { id: string; mime: string; nombre?: string };
+  /** El texto que el cliente escribió junto a la foto o el archivo. */
+  pie?: string;
 }
+
+type MedioDelPayload = { id?: string; mime_type?: string; caption?: string; filename?: string };
 
 interface PayloadWebhook {
   object?: string;
@@ -25,6 +31,9 @@ interface PayloadWebhook {
           timestamp?: string;
           type?: string;
           text?: { body?: string };
+          image?: MedioDelPayload;
+          audio?: MedioDelPayload;
+          document?: MedioDelPayload;
         }>;
       };
     }>;
@@ -45,12 +54,17 @@ export function extraerMensajes(payload: unknown): MensajeEntrante[] {
       const lista = cambio?.value?.messages;
       for (const m of Array.isArray(lista) ? lista : []) {
         if (!m?.id || !m.from || !m.type) continue;
+        const medio = m.type === 'image' ? m.image : m.type === 'audio' ? m.audio : m.type === 'document' ? m.document : undefined;
         mensajes.push({
           id: m.id,
           de: m.from,
           timestamp: Number(m.timestamp ?? 0),
           tipo: m.type,
           texto: m.type === 'text' ? m.text?.body : undefined,
+          ...(medio?.id && {
+            medio: { id: medio.id, mime: medio.mime_type ?? '', ...(medio.filename && { nombre: medio.filename.slice(0, 100) }) },
+          }),
+          ...(medio?.caption && { pie: medio.caption.slice(0, 500) }),
         });
       }
     }
@@ -141,6 +155,33 @@ const ESPERA_REINTENTO_MS = 1000;
  * una falla momentánea no debe dejar al cliente sin respuesta. Un error del pedido (4xx, como el token vencido) o una
  * espera agotada no se reintentan: no servirían de nada o podrían duplicar un mensaje que Meta sí recibió.
  */
+/** Lo que se baja de una foto, un audio o un archivo como máximo: un comprobante pesa menos de 1 MB. */
+export const MAXIMO_MEDIO_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Descarga una foto, un audio o un archivo que mandó un cliente (D68). Meta da primero un enlace temporal (vale unos
+ * minutos) y después el archivo, ambos con el token. Devuelve null si no se pudo o si pesa más del tope: quien lo
+ * necesite lo ve igual en el chat.
+ */
+export async function descargarMedio(config: ConfigWhatsApp, id: string, maximo: number = MAXIMO_MEDIO_BYTES): Promise<{ datos: ArrayBuffer; mime: string } | null> {
+  try {
+    const autorizacion = { Authorization: `Bearer ${config.token}` };
+    const info = await fetch(`https://graph.facebook.com/${config.graphApiVersion}/${encodeURIComponent(id)}`, {
+      signal: AbortSignal.timeout(TIEMPO_MAXIMO_ENVIO_MS),
+      headers: autorizacion,
+    });
+    if (!info.ok) return null;
+    const { url, mime_type: mime, file_size: tamano } = (await info.json()) as { url?: string; mime_type?: string; file_size?: number };
+    if (!url || (typeof tamano === 'number' && tamano > maximo)) return null;
+    const archivo = await fetch(url, { signal: AbortSignal.timeout(TIEMPO_MAXIMO_ENVIO_MS), headers: autorizacion });
+    if (!archivo.ok) return null;
+    const datos = await archivo.arrayBuffer();
+    return datos.byteLength > maximo ? null : { datos, mime: mime ?? archivo.headers.get('content-type') ?? 'application/octet-stream' };
+  } catch {
+    return null;
+  }
+}
+
 export async function enviarTexto(config: ConfigWhatsApp, para: string, cuerpo: string, opciones: { esperarMs?: number } = {}): Promise<void> {
   try {
     await enviarUnaVez(config, para, cuerpo);

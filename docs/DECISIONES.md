@@ -568,3 +568,17 @@ Formato: fecha · estado (Tomada / Propuesta / Descartada) · contexto · decisi
 - No se respaldan las cuentas del panel ni sus claves, los avisos ni el historial.
 - CPU: convertir 1.500 fechas a la hora de Santiago con Intl costaba unos 10 ms por tanda (todo el plan gratis). Se calcula el desfase una vez por día y se usa la conversión exacta solo el día del cambio de horario: unos 2,5 ms, con las mismas horas (probado en dos años de fechas).
 - La planilla ya guarda los clientes, así que estos datos no salen a un tercero nuevo (D32).
+
+### D67 · 2026-11-17 · La ruta del repartidor, viaje por viaje
+**Franco pidió que la ruta del repartidor sea lo más efectiva posible. Cada viaje del furgón trae ahora su encabezado en la app del repartidor.**
+- Cuántos bidones de cada tamaño cargar en ese viaje.
+- Dónde recargar antes (planta o Actum), el depósito que agrega menos camino entre la última parada del viaje anterior y la primera del siguiente. Antes la app decía siempre "Actum si hace falta".
+- "Ruta del viaje en Maps": un enlace de Google Maps con las paradas pendientes en orden (y la recarga primero). Google no publica cuántas paradas acepta un enlace; en la práctica unas 10, así que un viaje largo se parte en tramos. Sin punto de partida, Maps sale desde donde está el teléfono. Las paradas con punto exacto van por coordenadas (6 decimales); las otras, por la dirección escrita, como el botón Navegar (D61).
+- Pendiente de la lista (MEJORAS.md): elegir en conjunto dónde cortar los viajes, aprender los tiempos reales, recalcular desde donde está el repartidor y los horarios de los clientes.
+
+### D68 · 2026-11-17 · Comprobantes a Telegram y audios transcritos
+**Franco pidió que la foto de una transferencia les llegue a Constanza y al dueño para revisar que sea real, y una herramienta que transcriba los audios.**
+- Foto o PDF de un cliente: el bot lo descarga de Meta (enlace temporal con el token, hasta 5 MB) y lo manda al grupo de Telegram con el nombre y el teléfono del cliente y lo que escribió. El aviso del panel dice si se reenvió. El comprobante trae datos bancarios del cliente: va al mismo grupo privado que ya recibe los avisos urgentes, no a un tercero nuevo.
+- Audios: Whisper (`@cf/openai/whisper-large-v3-turbo`) en Workers AI, el mismo proveedor de la base, que no guarda los datos. Cuesta unos USD 0,0005 por minuto; el plan gratis da 10.000 unidades al día (unos 200 minutos) y, si se pasa, la transcripción falla sin cobrar. Se descartó Groq Whisper (sería mandar la voz a otro proveedor) aunque también es gratis. Notas de voz de hasta 2 MB (unos 2 minutos).
+- El bot sigue sin responder audios (D36): el texto va en el aviso para Constanza y, si parece un pedido, el aviso lo dice ("Parece un pedido: 3 bidones de 20 L, para mañana").
+- Necesita el bot de Telegram configurado (pendiente de Franco) para los comprobantes, y publicar el bot para los audios.

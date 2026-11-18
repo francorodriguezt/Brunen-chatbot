@@ -28,7 +28,8 @@ import { cargarTablaPrecios } from './preciosHoja';
 import { RepositorioD1 } from './repositorio';
 import { configTelegram, enviarAlerta, esUrgente, type EntornoTelegram } from './telegram';
 import * as textos from './textos';
-import { enviarTexto, type ConfigWhatsApp, type MensajeEntrante } from './whatsapp';
+import { MAXIMO_AUDIO_BYTES, pistaDePedido, reenviarComprobante, transcribir, type IA } from './medios';
+import { descargarMedio, enviarTexto, type ConfigWhatsApp, type MensajeEntrante } from './whatsapp';
 
 export interface EntornoAtencion extends EntornoHojas, EntornoLlm, EntornoTelegram {
   WHATSAPP_TOKEN: string;
@@ -39,6 +40,8 @@ export interface EntornoAtencion extends EntornoHojas, EntornoLlm, EntornoTelegr
   FLUJO_PEDIDO?: string;
   /** Milisegundos que se espera a que llegue otro mensaje seguido del mismo cliente. */
   ESPERA_AGRUPADOR_MS?: string;
+  /** Workers AI (D68): transcribe los audios. Sin él, el aviso dice solo que llegó un audio. */
+  AI?: IA;
 }
 
 export interface ResultadoMensaje {
@@ -138,6 +141,21 @@ export async function atenderTextoConFlujo(
   return { resultado: respuesta === null ? 'sin_respuesta' : 'respondido', intencion: decision.intencion };
 }
 
+/** Baja la foto o el PDF y lo manda al grupo de Telegram con el nombre del cliente, si se conoce. Nunca lanza errores. */
+async function reenviarAlGrupo(env: EntornoAtencion, mensaje: MensajeEntrante): Promise<boolean> {
+  const telegram = configTelegram(env);
+  if (!telegram || !mensaje.medio) return false;
+  try {
+    const archivo = await descargarMedio(configWhatsApp(env), mensaje.medio.id);
+    if (!archivo) return false;
+    const nombre = env.DB ? ((await new RepositorioD1(env.DB).datosDelUltimoPedido(mensaje.de))?.nombre ?? '') : '';
+    return await reenviarComprobante(telegram, { ...archivo, nombre: mensaje.medio.nombre }, { telefono: mensaje.de, nombre, pie: mensaje.pie });
+  } catch (error) {
+    console.error('No se pudo reenviar el comprobante:', error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
 /** Las reacciones y los stickers se tratan como un "ok": ni respuesta ni aviso. */
 const SIN_RESPUESTA_NI_AVISO: ReadonlySet<string> = new Set(['reaction', 'sticker']);
 
@@ -148,19 +166,26 @@ export async function atenderNoTexto(mensaje: MensajeEntrante, env: EntornoAtenc
   let efectos: Efectos;
   if (mensaje.tipo === 'audio') {
     // El dueño pidió que los audios los responda siempre Constanza (D36): el bot no contesta, solo deja el aviso.
-    efectos = { respuesta: null, alerta: aviso('escalamiento', 'Envió un audio: lo responde Constanza (el bot no responde audios).'), textoDelCliente: '' };
+    // Con Workers AI el aviso trae lo que dijo (D68), para que Constanza no tenga que escucharlo para saber de qué se trata.
+    const audio = mensaje.medio && env.AI ? await descargarMedio(configWhatsApp(env), mensaje.medio.id, MAXIMO_AUDIO_BYTES) : null;
+    const transcripcion = audio ? await transcribir(env.AI, audio.datos) : null;
+    const pista = transcripcion ? pistaDePedido(transcripcion) : null;
+    const alerta = aviso('escalamiento', transcripcion ? 'Envió un audio (transcrito abajo): lo responde Constanza.' : 'Envió un audio: lo responde Constanza (el bot no responde audios).');
+    efectos = { respuesta: null, alerta: { ...alerta, ...(pista && { motivos: [pista] }), ...(transcripcion && { texto: transcripcion }) }, textoDelCliente: transcripcion ?? '' };
   } else if (mensaje.tipo === 'system') {
     // Aviso de WhatsApp, no del cliente (por ejemplo, que cambió de número): no se le responde; una persona revisa la ficha.
     efectos = { respuesta: null, alerta: aviso('escalamiento', 'WhatsApp avisa un cambio en este contacto (por ejemplo, que cambió de número): revisa su chat y agrega el número nuevo a su ficha.'), textoDelCliente: '' };
-  } else if (mensaje.tipo === 'document') {
-    // Los bancos chilenos suelen mandar el comprobante de transferencia como PDF.
-    efectos = { respuesta: textos.archivoRecibido(), alerta: aviso('pago', 'Envió un archivo (posible comprobante de pago en PDF). Todavía no se guarda en el panel.'), textoDelCliente: '' };
-  } else if (mensaje.tipo === 'image') {
-    // PENDIENTE (D30): guardar la imagen en D1 para verla en el panel; hoy solo se avisa que llegó.
+  } else if (mensaje.tipo === 'document' || mensaje.tipo === 'image') {
+    // Posible comprobante (los bancos chilenos lo mandan como foto o PDF): se reenvía a Telegram para revisarlo (D68).
+    const reenviado = await reenviarAlGrupo(env, mensaje);
+    const queEs = mensaje.tipo === 'image' ? 'una imagen' : 'un archivo';
     efectos = {
-      respuesta: textos.imagenRecibida(),
-      alerta: aviso('pago', 'Envió una imagen (posible comprobante de pago). Todavía no se guarda en el panel.'),
-      textoDelCliente: '',
+      respuesta: mensaje.tipo === 'image' ? textos.imagenRecibida() : textos.archivoRecibido(),
+      alerta: {
+        ...aviso('pago', `Envió ${queEs} (posible comprobante de pago).${reenviado ? ' Se reenvió a Telegram: revisa que sea real.' : ' Míralo en su chat.'}`),
+        ...(mensaje.pie && { texto: mensaje.pie }),
+      },
+      textoDelCliente: mensaje.pie ?? '',
     };
   } else {
     efectos = { respuesta: textos.recibidoEscalar(), alerta: aviso('escalamiento', `Envió un mensaje de tipo "${mensaje.tipo}"`), textoDelCliente: '' };

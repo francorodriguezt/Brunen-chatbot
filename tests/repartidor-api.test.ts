@@ -121,6 +121,24 @@ describe('lo que marca el repartidor', () => {
   });
 });
 
+describe('cada viaje del repartidor (D67)', () => {
+  it('dice cuántos bidones de cada tamaño cargar y trae la ruta del viaje en Google Maps, sin las ya entregadas', async () => {
+    const { env, repartidor } = await entorno();
+    const datos = (await (await pedir(env, '/api/repartidor/ruta', repartidor)).json()) as {
+      cargas: Array<{ numero: number; bidones: Record<string, number>; recargaEn: string | null; mapas: string[] }>;
+      paradas: Array<{ idPedido: string; estado: string }>;
+    };
+    const [viaje] = datos.cargas;
+    expect(viaje?.recargaEn).toBeNull(); // el primer viaje sale cargado de la planta
+    expect(Object.values(viaje?.bidones ?? {}).reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
+    expect(viaje?.mapas).toHaveLength(1);
+    expect(viaje?.mapas[0]).toMatch(/^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&/);
+    const pendientes = datos.paradas.filter((p) => p.estado === 'pendiente').length;
+    const lugares = new URL(viaje?.mapas[0] as string).searchParams;
+    expect((lugares.get('waypoints')?.split('|').length ?? 0) + 1).toBe(pendientes);
+  });
+});
+
 describe('el repartidor y el mapa (fase C, D63)', () => {
   it('cada parada trae su punto exacto si se conoce (para que Navegar lo use), y nunca uno aproximado', async () => {
     const { env, db, repartidor } = await entorno();

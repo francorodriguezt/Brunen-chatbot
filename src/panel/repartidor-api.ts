@@ -12,7 +12,10 @@
 
 import { fechaHoraLocal } from '../despacho';
 import { MOTIVOS_NO_ENTREGA, type EstadoDeEntrega, type RepositorioEntregas } from '../entregas';
+import { COORDENADAS_DE_DEPOSITO, depositoQueDesviaMenos, enlacesDeMaps } from '../navegacion';
+import type { TipoBidon } from '../precios';
 import { PRECISION_BUENA_M, RepositorioPuntos, claveDePunto } from '../puntos';
+import { puntoDeParada } from '../ruta';
 import { armarReparto } from '../reparto';
 import type { RepositorioD1 } from '../repositorio';
 import { error, esperadoComoEscritura, json, leerCuerpo } from './api';
@@ -78,10 +81,30 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
       punto: exacto ? { lat: exacto.lat, lng: exacto.lng, afinar: exacto.origen === 'repartidor' && (exacto.precisionM ?? Infinity) > PRECISION_BUENA_M } : null,
     };
   });
+  // Por viaje (D67): cuántos bidones de cada tamaño cargar, dónde recargar antes y la ruta del viaje en Google Maps.
+  const exactoDe = (p: { direccion: string; comuna: string }) =>
+    p.direccion.trim() ? (conocidos.get(claveDePunto(p.direccion, p.comuna)) ?? null) : null;
+  const puntoDe = (p: { direccion: string; comuna: string }) => puntoDeParada(exactoDe(p), p.comuna)?.punto ?? null;
+  const cargas = reparto.cargas.map((carga) => {
+    const delViaje = reparto.paradas.filter((p) => p.carga === carga.numero);
+    const bidones: Record<TipoBidon, number> = { '20L': 0, '12L': 0, '10L': 0 };
+    for (const p of delViaje) for (const tipo of Object.keys(bidones) as TipoBidon[]) bidones[tipo] += p.bidones[tipo] ?? 0;
+    const anterior = reparto.paradas.filter((p) => p.carga === carga.numero - 1).at(-1);
+    const desde = anterior ? puntoDe(anterior) : null;
+    const hasta = delViaje[0] ? puntoDe(delViaje[0]) : null;
+    const recargaEn = carga.numero > 1 && desde && hasta ? depositoQueDesviaMenos(desde, hasta) : null;
+    const pendientes = delViaje.filter((p) => estadoDeParada(entregas.get(p.idPedido), p.estado) === 'pendiente');
+    const empezo = pendientes.length < delViaje.length;
+    const mapas = enlacesDeMaps(
+      pendientes.map((p) => ({ punto: exactoDe(p), direccion: p.direccion, comuna: p.comuna })),
+      recargaEn && !empezo ? COORDENADAS_DE_DEPOSITO[recargaEn] : null,
+    );
+    return { ...carga, bidones, recargaEn, mapas };
+  });
   return json({
     fecha: hoy,
     paradas,
-    cargas: reparto.cargas,
+    cargas,
     carga: reparto.carga,
     totalBidones: reparto.totalBidones,
     motivos: Object.entries(MOTIVOS_NO_ENTREGA).map(([valor, texto]) => ({ valor, texto })),
