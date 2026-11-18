@@ -24,7 +24,8 @@ export const ESTADOS_DE_PEDIDO: readonly EstadoDePedido[] = ['Pendiente_Confirma
 const TRANSICIONES: Readonly<Record<EstadoDePedido, readonly EstadoDePedido[]>> = {
   Pendiente_Confirmacion: ['Confirmado', 'Cancelado'],
   Fuera_de_zona: ['Pendiente_Confirmacion', 'Confirmado', 'Cancelado'],
-  Confirmado: ['En_Ruta', 'Entregado', 'Cancelado'],
+  // Volver a como estaba (por confirmar o fuera de zona) es el "Deshacer" del panel (D70): se confirmó el que no era.
+  Confirmado: ['En_Ruta', 'Entregado', 'Cancelado', 'Pendiente_Confirmacion', 'Fuera_de_zona'],
   En_Ruta: ['Entregado', 'Cancelado'],
   Entregado: [],
   Cancelado: ['Pendiente_Confirmacion'],
@@ -625,9 +626,14 @@ export class RepositorioD1 {
       if (actual.total === null) return { ok: false, error: 'falta_precio' };
       fechaConfirmada = opciones.fechaConfirmada ?? actual.fechaConfirmada ?? actual.fechaEntrega;
       if (!fechaValida(fechaConfirmada)) return { ok: false, error: 'fecha_invalida' };
+    } else if ((nuevo === 'Pendiente_Confirmacion' || nuevo === 'Fuera_de_zona') && actual.estado === 'Confirmado') {
+      // Deshacer (D70): vuelve la fecha que tenía antes de confirmar (la manda el panel) o ninguna.
+      fechaConfirmada = opciones.fechaConfirmada ?? null;
+      if (fechaConfirmada !== null && !fechaValida(fechaConfirmada)) return { ok: false, error: 'fecha_invalida' };
     }
     const cambiado = await this.cambios(
-      `UPDATE pedidos SET estado = ?1, actualizado_en = MAX(actualizado_en + 1, ?2), fecha_confirmada = ?3, confirmado_por = CASE WHEN ?1 = 'Confirmado' THEN ?4 ELSE confirmado_por END
+      `UPDATE pedidos SET estado = ?1, actualizado_en = MAX(actualizado_en + 1, ?2), fecha_confirmada = ?3,
+         confirmado_por = CASE WHEN ?1 = 'Confirmado' THEN ?4 WHEN ?1 IN ('Pendiente_Confirmacion', 'Fuera_de_zona') THEN NULL ELSE confirmado_por END
        WHERE id = ?5 AND estado = ?6 AND actualizado_en = ?7`,
       nuevo, ahoraSegundos, fechaConfirmada, quien, id, actual.estado, actual.actualizadoEn,
     );

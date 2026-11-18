@@ -22,13 +22,15 @@
     <div class="barra-contenido">
       <h1 class="marca">Brunen <span>Panel</span></h1>
       <div class="barra-derecha">
-        <button type="button" id="activar-avisos" class="boton boton-chico" hidden>Activar avisos del navegador</button>
+        <button type="button" id="activar-avisos" class="boton boton-chico" hidden>Activar avisos</button>
         <span id="usuario" class="usuario"></span>
+        <button type="button" id="ir-equipo" class="boton boton-chico" aria-pressed="false">Equipo</button>
         <button type="button" id="salir" class="boton boton-chico">Salir</button>
       </div>
     </div>
     <nav class="pestanas" role="tablist" aria-label="Secciones">
-      <button type="button" role="tab" id="pestana-pedidos" aria-selected="true" aria-controls="vista-pedidos">
+      <button type="button" role="tab" id="pestana-hoy" aria-selected="true" aria-controls="vista-hoy">Hoy</button>
+      <button type="button" role="tab" id="pestana-pedidos" aria-selected="false" aria-controls="vista-pedidos" tabindex="-1">
         Pedidos <span class="contador" id="cuenta-pedidos" hidden></span>
       </button>
       <button type="button" role="tab" id="pestana-clientes" aria-selected="false" aria-controls="vista-clientes" tabindex="-1">Clientes</button>
@@ -36,20 +38,29 @@
       <button type="button" role="tab" id="pestana-avisos" aria-selected="false" aria-controls="vista-avisos" tabindex="-1">
         Avisos <span class="contador" id="cuenta-avisos" hidden></span>
       </button>
-      <button type="button" role="tab" id="pestana-equipo" aria-selected="false" aria-controls="vista-equipo" tabindex="-1">Equipo</button>
     </nav>
   </header>
 
   <div id="conexion" class="conexion" role="status" hidden></div>
 
   <main id="aplicacion" hidden>
-    <section id="vista-pedidos" role="tabpanel" aria-labelledby="pestana-pedidos">
+    <section id="vista-hoy" role="tabpanel" aria-labelledby="pestana-hoy">
+      <h2 id="titulo-hoy" class="titulo-hoy">Hoy</h2>
+      <p id="frase-hoy" class="frase-hoy">Cargando…</p>
+      <ul id="lista-hoy" class="lista-hoy"></ul>
+      <button type="button" id="nuevo-pedido-hoy" class="boton boton-principal boton-ancho">+ Nuevo pedido</button>
+    </section>
+    <section id="vista-pedidos" role="tabpanel" aria-labelledby="pestana-pedidos" hidden>
       <div class="barra-acciones">
         <button type="button" id="nuevo-pedido" class="boton boton-principal">+ Nuevo pedido</button>
         <input type="search" id="buscar-pedidos" class="buscador" placeholder="Buscar por nombre, teléfono o dirección" aria-label="Buscar pedidos" autocomplete="off" maxlength="60">
       </div>
       <div class="filtros" role="group" aria-label="Qué pedidos mostrar" id="filtros-pedidos"></div>
       <div id="lista-pedidos" class="lista"></div>
+      <div id="barra-seleccion" class="barra-seleccion" hidden>
+        <label class="casilla elegir-todos"><input type="checkbox" id="elegir-todos"> <span id="texto-elegir-todos">Elegir todos</span></label>
+        <button type="button" id="confirmar-elegidos" class="boton boton-principal" disabled>Confirmar</button>
+      </div>
     </section>
     <section id="vista-clientes" role="tabpanel" aria-labelledby="pestana-clientes" hidden>
       <div class="barra-acciones">
@@ -85,7 +96,8 @@
       <div class="filtros" role="group" aria-label="Qué avisos mostrar" id="filtros-avisos"></div>
       <div id="lista-avisos" class="lista"></div>
     </section>
-    <section id="vista-equipo" role="tabpanel" aria-labelledby="pestana-equipo" hidden>
+    <section id="vista-equipo" aria-labelledby="titulo-equipo" hidden>
+      <h2 id="titulo-equipo" class="titulo-hoy">Equipo</h2>
       <div class="barra-acciones">
         <button type="button" id="nuevo-repartidor" class="boton boton-principal">+ Nuevo repartidor</button>
       </div>
@@ -110,6 +122,11 @@
         <button type="button" class="boton boton-chico" id="llenar-con-mensaje">Llenar con el mensaje</button>
         <ul class="avisos-pegado" id="avisos-pegado" role="status" hidden></ul>
       </div>
+      <fieldset class="bidones">
+        <legend>Bidones</legend>
+        <div id="editar-lineas"></div>
+        <div class="fila-total"><button type="button" id="agregar-linea" class="boton boton-chico">Agregar línea</button><strong id="editar-total"></strong></div>
+      </fieldset>
       <div class="campos">
         <label class="solo-nuevo">Teléfono <input type="tel" name="telefono" maxlength="20" autocomplete="off" inputmode="tel" placeholder="9 1234 5678"></label>
         <label class="solo-nuevo">Nombre <input type="text" name="nombre" maxlength="80" autocomplete="off"></label>
@@ -117,26 +134,21 @@
         <label>Fecha de entrega <input type="date" name="fecha" required></label>
         <label>Comuna <input type="text" name="comuna" maxlength="80" autocomplete="off" list="lista-comunas"></label>
         <label class="ancho">Dirección <input type="text" name="direccion" maxlength="200" autocomplete="off"></label>
-        <label class="ancho">Notas para el repartidor <textarea name="notas" rows="2" maxlength="500"></textarea></label>
-        <label>Envases por retirar <input type="number" name="envases" min="0" max="999" step="1" inputmode="numeric" value="0"></label>
-        <label>Tipo de cliente <select name="tipoCliente"></select></label>
       </div>
-      <fieldset>
-        <legend>Pago</legend>
+      <details id="mas-datos" class="mas-datos">
+        <summary>Notas, envases y pago <span class="suave" id="resumen-mas-datos"></span></summary>
         <div class="campos">
+          <label class="ancho">Notas para el repartidor <textarea name="notas" rows="2" maxlength="500"></textarea></label>
+          <label>Envases por retirar <input type="number" name="envases" min="0" max="999" step="1" inputmode="numeric" value="0"></label>
+          <label>Tipo de cliente <select name="tipoCliente"></select></label>
           <label>Forma de pago <select name="formaPago"></select></label>
           <label>Estado del pago <select name="estadoPago"></select></label>
           <label>Boleta o factura <select name="documento"></select></label>
-          <label>Número <input type="text" name="numeroDocumento" maxlength="20" autocomplete="off" inputmode="numeric"></label>
+          <label id="campo-numero">Número <input type="text" name="numeroDocumento" maxlength="20" autocomplete="off" inputmode="numeric"></label>
         </div>
-      </fieldset>
+      </details>
       <datalist id="lista-comunas"></datalist>
-      <fieldset>
-        <legend>Bidones</legend>
-        <div id="editar-lineas"></div>
-        <div class="fila-total"><button type="button" id="agregar-linea" class="boton boton-chico">Agregar línea</button><strong id="editar-total"></strong></div>
-      </fieldset>
-      <label class="casilla solo-nuevo"><input type="checkbox" name="confirmar" checked> Dejarlo confirmado (necesita el precio de todos los bidones)</label>
+      <label class="casilla solo-nuevo"><input type="checkbox" name="confirmar" checked> <span>Dejarlo confirmado <span class="suave" id="nota-confirmar">(necesita el precio de todos los bidones)</span></span></label>
       <p class="error-formulario" id="error-editar" role="alert" hidden></p>
       <div class="acciones-dialogo">
         <button type="button" class="boton" id="cancelar-editar">Cerrar</button>

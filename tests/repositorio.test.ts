@@ -251,6 +251,26 @@ describe('confirmar y cambiar el estado', () => {
     expect(await r.cambiarEstado('P261028-AAAAA', 'Cancelado', OPERADORA, AHORA + 3)).toEqual({ ok: false, error: 'transicion_invalida' });
   });
 
+  it('deshacer una confirmación lo deja como antes: sin quién confirmó y con la fecha que tenía (D70)', async () => {
+    const { r } = repo();
+    await r.guardarPedido(pedido(), AHORA);
+    await r.cambiarEstado('P261028-AAAAA', 'Confirmado', OPERADORA, AHORA + 1);
+    const deshecho = await r.cambiarEstado('P261028-AAAAA', 'Pendiente_Confirmacion', OPERADORA, AHORA + 2);
+    expect(deshecho).toMatchObject({ ok: true, valor: { estado: 'Pendiente_Confirmacion', confirmadoPor: null, fechaConfirmada: null } });
+
+    await r.cambiarEstado('P261028-AAAAA', 'Confirmado', OPERADORA, AHORA + 3, { fechaConfirmada: '2026-11-02' });
+    const conFecha = await r.cambiarEstado('P261028-AAAAA', 'Pendiente_Confirmacion', OPERADORA, AHORA + 4, { fechaConfirmada: '2026-11-02' });
+    expect(conFecha).toMatchObject({ ok: true, valor: { fechaConfirmada: '2026-11-02' } });
+    // Uno que estaba fuera de zona vuelve a fuera de zona.
+    expect(await r.cambiarEstado('P261028-AAAAA', 'Confirmado', OPERADORA, AHORA + 5)).toMatchObject({ ok: true });
+    expect(await r.cambiarEstado('P261028-AAAAA', 'Fuera_de_zona', OPERADORA, AHORA + 6)).toMatchObject({ ok: true, valor: { estado: 'Fuera_de_zona', confirmadoPor: null } });
+    expect(await r.cambiarEstado('P261028-AAAAA', 'Pendiente_Confirmacion', OPERADORA, AHORA + 7)).toMatchObject({ ok: true });
+    // En ruta ya no se deshace: el repartidor lo lleva.
+    await r.cambiarEstado('P261028-AAAAA', 'Confirmado', OPERADORA, AHORA + 5);
+    await r.cambiarEstado('P261028-AAAAA', 'En_Ruta', OPERADORA, AHORA + 6);
+    expect(await r.cambiarEstado('P261028-AAAAA', 'Pendiente_Confirmacion', OPERADORA, AHORA + 7)).toEqual({ ok: false, error: 'transicion_invalida' });
+  });
+
   it('un pedido cancelado por error se puede reabrir', async () => {
     const { r } = repo();
     await r.guardarPedido(pedido(), AHORA);

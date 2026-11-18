@@ -32,3 +32,6 @@ Thumbs.db
 
 # Capturas y registros del navegador de pruebas
 .playwright-mcp/
+
+# Caché y revisiones del plugin impeccable (locales)
+.impeccable/
