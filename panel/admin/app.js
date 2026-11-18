@@ -518,6 +518,8 @@ async function confirmarPedidos(pedidos) {
     avisar(texto + problema, fallos > 0, { texto: 'Deshacer', alHacerClic: () => void deshacerConfirmacion(hechos) });
   }
   await refrescar();
+  // Si nada cambió (todo falló), la lista no se vuelve a dibujar: la barra se repinta aquí para no quedar apagada.
+  pintarSeleccion();
 }
 
 /** Vuelve cada pedido a "por confirmar", con la fecha que tenía antes. Si alguien ya lo tocó, ese no se deshace. */
@@ -1545,6 +1547,19 @@ function proximoDiaDeReparto(hoy) {
   return new Date(`${manana}T12:00:00Z`).getUTCDay() === 0 ? sumarDias(hoy, 2) : manana;
 }
 
+/**
+ * "Les toca pedir" recorre todos los pedidos (D58): en Hoy se pide como mucho cada 30 minutos, no en cada sondeo. Un
+ * cliente que se atrasa no cambia de un minuto a otro, y así no se gastan las lecturas gratis de la base.
+ */
+const PORPEDIR_VIGENCIA_MS = 30 * 60 * 1000;
+let porPedirGuardado = { en: 0, valor: null };
+async function porPedirDeHoy() {
+  if (porPedirGuardado.valor && Date.now() - porPedirGuardado.en < PORPEDIR_VIGENCIA_MS) return porPedirGuardado.valor;
+  const valor = await api('/api/clientes/por-pedir');
+  porPedirGuardado = { en: Date.now(), valor };
+  return valor;
+}
+
 async function cargarHoy() {
   const hoy = hoyEnSantiago();
   const siguiente = proximoDiaDeReparto(hoy);
@@ -1553,7 +1568,7 @@ async function cargarHoy() {
     api(`/api/reparto?fecha=${hoy}`),
     api(`/api/reparto?fecha=${siguiente}`),
     api('/api/avisos?estado=abierto'),
-    api('/api/clientes/por-pedir'),
+    porPedirDeHoy(),
   ]);
   if (turno !== estado.turnoDeCarga) return;
   if (resultados.every((r) => r.status === 'rejected')) throw resultados[0].reason; // sin conexión: lo avisa quien llamó

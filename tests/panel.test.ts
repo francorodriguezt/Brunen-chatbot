@@ -809,6 +809,16 @@ describe('la API: días sin reparto (D74)', () => {
     expect(reparto.sinReparto).toBe('Mantención del furgón');
   });
 
+  it('sin la tabla (antes de aplicar la migración 0014) el reparto, las opciones y el pegar mensaje cargan igual', async () => {
+    const { env, db } = await entornoPanel();
+    db.sql('DROP TABLE dias_sin_reparto');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const reparto = await pedir(env, '/api/reparto?fecha=2026-10-29');
+    expect([reparto.status, ((await reparto.json()) as { sinReparto: unknown }).sinReparto]).toEqual([200, null]);
+    expect((await pedir(env, '/api/opciones')).status).toBe(200);
+    expect((await pedir(env, '/api/pedidos/interpretar', { metodo: 'POST', cuerpo: { texto: '2 de 20 para mañana' } })).status).toBe(200);
+  });
+
   it('la fecha sugerida de un pedido nuevo salta un día cerrado', async () => {
     const { env } = await entornoPanel();
     // AHORA es lunes 26 a las 04:33: lo normal es el mismo día.
