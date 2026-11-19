@@ -16,7 +16,7 @@ git push origin main
 
 Antes de subir, revisar que el diff no tenga claves, teléfonos reales ni nombres de clientes. GitHub corre las pruebas solo (`.github/workflows/check.yml`).
 
-## Paso 2. Punto de restauración y migraciones `0007` a `0012`
+## Paso 2. Punto de restauración y migraciones
 
 ```bash
 npx.cmd wrangler d1 time-travel info brunen-chatbot
@@ -28,7 +28,7 @@ Anotar el *bookmark* que muestra: sirve para volver atrás hasta 7 días.
 npx.cmd wrangler d1 migrations list brunen-chatbot --remote
 ```
 
-Debe listar las que falten. Las `0007` a `0010` se aplicaron el 2026-11-12 y las `0011` a `0013` (repartidor, mapa y respaldo) el 2026-11-14: hoy no debería faltar ninguna. Si falta alguna:
+Debe listar las que falten. Las `0007` a `0010` se aplicaron el 2026-11-12 y las `0011` a `0013` (repartidor, mapa y respaldo) el 2026-11-14. Revisado el 2026-11-18: faltan la `0014` (días sin reparto) y la `0015` (seguimiento del repartidor). Para aplicarlas:
 
 ```bash
 npx.cmd wrangler d1 migrations apply brunen-chatbot --remote

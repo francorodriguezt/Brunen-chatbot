@@ -23,11 +23,11 @@ Se activa **después del paso 1 y con la sesión del correo de Brunen**. Así la
 
 1. En el panel de Cloudflare, entrar a **Zero Trust**. Elegir el nombre del equipo, por ejemplo `brunen`. Ese nombre será `brunen.cloudflareaccess.com`.
 2. Elegir el plan **Zero Trust Free**. Cloudflare pide igual una tarjeta, pero no cobra. La tarjeta es de Brunen y la ingresa el dueño.
-3. Método de ingreso: agregar **One-time PIN**, que manda un código al correo.
-4. Proteger el Worker de administración entero (opción 1 de D56): **Workers & Pages → brunen-admin → Access → Protect this Worker behind Access**. La política permite solo los correos del dueño, de Constanza y de quien mantiene el sistema. El repartidor no va en la lista, porque entra por la dirección pública.
-5. En **Zero Trust → Access → Applications**, abrir la aplicación creada y copiar dos datos: el **AUD tag** y el dominio del equipo. No son secretos: van en `wrangler.panel.toml` (`[env.admin.vars]`).
+3. Método de ingreso: **Zero Trust → Integrations → Identity providers → Add new identity provider → One-time PIN**, que manda un código al correo. Desde 2026 las organizaciones nuevas traen solo el ingreso con cuenta de Cloudflare, que Constanza no tiene: el código por correo hay que agregarlo a mano.
+4. Proteger el Worker de administración entero (opción 1 de D56), después de publicarlo: **Workers & Pages → brunen-admin → pestaña Access → Protect this Worker behind Access → All traffic**. La política permite solo los correos del dueño, de Constanza y de quien mantiene el sistema. El repartidor no va en la lista, porque entra por la dirección pública.
+5. Copiar dos datos, que no son secretos y van en `wrangler.panel.toml` (`[env.admin.vars]`): el **AUD tag** (**Zero Trust → Access controls → Applications →** la de brunen-admin **→ Edit → Additional settings**) y el nombre del equipo (**Zero Trust → Settings**).
 
-Fuentes: [crear la organización](https://developers.cloudflare.com/cloudflare-one/setup/), [proteger un Worker con Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/).
+Fuentes (revisadas el 2026-11-18): [crear la organización](https://developers.cloudflare.com/cloudflare-one/setup/), [proteger un Worker con Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/), [One-time PIN](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/), [el AUD tag](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/#get-your-aud-tag).
 
 ## 3. Las demás cuentas
 
