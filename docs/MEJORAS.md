@@ -50,7 +50,8 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [ ] Probarlo con la operadora en una tarea real.
 
 ## 4. App del repartidor (Android)
-- [ ] Posición en vivo para el mapa (fase E), con su consentimiento escrito. **(Dueño y repartidor)**
+- [ ] Posición en vivo para el mapa (fase E). El repartidor da su consentimiento (Franco, 2026-11-18; ya comparte su ubicación cuando trabaja): se registra en su app con fecha, solo durante el turno. Con ella, la hora de llegada al cliente: solo cuando el repartidor va en camino a esa dirección, y solo si el cliente la pregunta.
+- [ ] Promociones y recordatorios a clientes frecuentes: Franco los define más adelante. **(Dueño)**
 - [ ] "Iniciar ruta" y "Terminar jornada".
 - [ ] Foto como prueba de entrega (cuando haya medio de pago en Cloudflare).
 
