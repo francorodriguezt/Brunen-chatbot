@@ -51,6 +51,7 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 
 ## 4. App del repartidor (Android)
 - [ ] Posición en vivo para el mapa (fase E). El repartidor da su consentimiento (Franco, 2026-11-18; ya comparte su ubicación cuando trabaja): se registra en su app con fecha, solo durante el turno. Con ella, la hora de llegada al cliente: solo cuando el repartidor va en camino a esa dirección, y solo si el cliente la pregunta.
+  - Sin otra app (Franco, 2026-11-18): el navegador no da la posición en segundo plano (D79). Diseño: posición con la app abierta, una posición en cada entrega, y la hora de llegada por eventos (última entrega + tiempo de viaje aprendido). Falta probar en el teléfono del repartidor.
 - [ ] Promociones y recordatorios a clientes frecuentes: Franco los define más adelante. **(Dueño)**
 - [ ] "Iniciar ruta" y "Terminar jornada".
 - [ ] Foto como prueba de entrega (cuando haya medio de pago en Cloudflare).
