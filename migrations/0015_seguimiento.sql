@@ -29,5 +29,6 @@ CREATE TABLE IF NOT EXISTS posiciones (
   lng REAL NOT NULL,
   precision_m INTEGER
 );
-CREATE INDEX IF NOT EXISTS idx_posiciones_usuario ON posiciones (usuario_id, en);
+-- Una por repartidor y segundo: una tanda que se reenvía (se perdió la respuesta) no se duplica.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posiciones_usuario ON posiciones (usuario_id, en);
 CREATE INDEX IF NOT EXISTS idx_posiciones_en ON posiciones (en);

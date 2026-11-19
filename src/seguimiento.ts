@@ -159,7 +159,8 @@ export class RepositorioSeguimiento {
       const grupo = deLaJornada.slice(i, i + FILAS_POR_INSERCION);
       const valores = grupo.map((_, n) => `(?${n * 6 + 1}, ?${n * 6 + 2}, ?${n * 6 + 3}, ?${n * 6 + 4}, ?${n * 6 + 5}, ?${n * 6 + 6})`).join(', ');
       await this.db
-        .prepare(`INSERT INTO posiciones (usuario_id, jornada_id, en, lat, lng, precision_m) VALUES ${valores}`)
+        // Una tanda reenviada (se perdió la respuesta) no se duplica: una posición por repartidor y segundo.
+        .prepare(`INSERT OR IGNORE INTO posiciones (usuario_id, jornada_id, en, lat, lng, precision_m) VALUES ${valores}`)
         .bind(...grupo.flatMap((p) => [usuarioId, jornada.id, p.en, p.lat, p.lng, p.precision]))
         .run();
     }
@@ -316,7 +317,8 @@ export interface EstimacionDelDia {
  */
 export async function estimarElDia(db: BaseDatos, hoy: string, ahoraSegundos: number): Promise<EstimacionDelDia> {
   const seguimiento = new RepositorioSeguimiento(db);
-  const repartidor = await seguimiento.ultimaDeHoy(hoy);
+  // Sin las tablas de seguimiento (antes de la migración 0015) se estima igual, solo con las entregas.
+  const repartidor = await seguimiento.ultimaDeHoy(hoy).catch(() => null);
   const vacia: EstimacionDelDia = { llegadas: new Map(), siguiente: null, repartidor, minutosPorParada: MINUTOS_POR_PARADA };
 
   const pedidos = await new RepositorioD1(db).pedidosDelDia(hoy);

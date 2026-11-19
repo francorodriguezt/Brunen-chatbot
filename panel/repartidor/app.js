@@ -385,7 +385,7 @@ function pintarUbicacion() {
         {},
         h('li', {}, 'Solo entre «Iniciar ruta» y «Terminar jornada», y solo de 6:00 a 22:00.'),
         h('li', {}, 'Solo con esta app abierta: no sigue tu teléfono cuando usas otra app.'),
-        h('li', {}, 'Lo ven el dueño y la oficina. Se borra a los 3 días.'),
+        h('li', {}, 'Lo ven el dueño y la oficina. A un cliente que pregunta se le dice solo una hora aproximada, nunca dónde estás. Se borra a los 3 días.'),
         h('li', {}, 'Puedes dejar de compartir cuando quieras, y se borra lo guardado.'),
       ),
       h('div', { clase: 'acciones' }, boton('Acepto', 'boton boton-principal', () => void decidirUbicacion(true)), boton('Ahora no', 'boton', () => dejarParaDespues())),
