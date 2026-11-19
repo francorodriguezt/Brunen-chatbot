@@ -349,6 +349,13 @@ export function crearRutaDelDia({ contenedor, api, h, boton, avisar, alPublicar 
     const paradas = porId();
     for (const m of estado.marcadores) m.remove();
     estado.marcadores = [marcador('P', 'deposito', 'Planta: salida y llegada', datos.planta), marcador('A', 'deposito', 'Actum: recarga', datos.actum)];
+    // Dónde se vio al repartidor por última vez hoy (D80). Con la señal vieja se ve apagado: no es "en vivo".
+    const r = datos.repartidor;
+    if (r) {
+      const minutos = Math.round(r.haceSegundos / 60);
+      const viejo = !r.jornadaAbierta || r.haceSegundos > 15 * 60;
+      estado.marcadores.push(marcador('R', `repartidor${viejo ? ' senal-vieja' : ''}`, `${r.nombre || 'Repartidor'}: ${minutos < 1 ? 'recién' : `hace ${minutos} min`}`, r));
+    }
     datos.plan.orden.forEach((id, i) => {
       const p = paradas.get(id);
       if (!p || p.lat === null) return;

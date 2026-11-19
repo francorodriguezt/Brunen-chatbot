@@ -1068,8 +1068,13 @@ function lineasDeEntrega(entrega, motivos, parada) {
   return lineas;
 }
 
-function tarjetaDeParada(parada, entrega, motivos, mensaje) {
-  const insignia = ESTADOS[parada.estado] ?? { texto: parada.estado, color: '' };
+/** "12:05–12:25": la ventana de llegada estimada (D80), en hora de Santiago. */
+const ventanaEnTexto = (v) => `${formatoHora.format(new Date(v.desde * 1000))}–${formatoHora.format(new Date(v.hasta * 1000))}`;
+
+function tarjetaDeParada(parada, entrega, motivos, mensaje, seguimiento = null) {
+  const siguiente = seguimiento?.siguiente === parada.idPedido;
+  const llegada = seguimiento?.horas?.[parada.idPedido] ?? null;
+  const insignia = siguiente ? { texto: 'Siguiente', color: 'azul' } : (ESTADOS[parada.estado] ?? { texto: parada.estado, color: '' });
   const pedido = { id: parada.idPedido, nombre: parada.nombre, telefono: parada.telefono, actualizadoEn: parada.actualizadoEn };
   // Lo que más hace aquí la administración es mandarle la parada al repartidor; "Entregado" lo marca él desde su app,
   // y queda aquí solo para cuando avisa por teléfono. "En ruta" sigue en la tarjeta del pedido.
@@ -1091,6 +1096,8 @@ function tarjetaDeParada(parada, entrega, motivos, mensaje) {
     h(
       'div',
       { clase: 'datos' },
+      // Para responderle al cliente que pregunta: una ventana aproximada, nunca una promesa (D80).
+      llegada ? dato('Llegaría', `${ventanaEnTexto(llegada)} aprox.`) : null,
       dato('Deja', bidones || 'sin bidones'),
       dato('Cobra', parada.total === null ? h('span', { clase: 'falta' }, 'sin precio') : pesos.format(parada.total)),
       parada.envasesARetirar > 0 ? dato('Vacíos extra', `${parada.envasesARetirar} además del cambio`) : null,
@@ -1139,7 +1146,28 @@ function cierreDelDia(caja) {
   return h('div', { clase: 'cierre-dia' }, h('h3', {}, empezo ? 'Cierre del día' : 'Para el cierre del día'), h('ul', {}, ...filas));
 }
 
-function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja = null, mensajes = {}, sinReparto = null }) {
+/** "Hace 3 min", "hace 1 h 10 min". */
+function haceCuanto(segundos) {
+  const minutos = Math.max(0, Math.round(segundos / 60));
+  if (minutos < 1) return 'recién';
+  if (minutos < 60) return `hace ${minutos} min`;
+  return `hace ${Math.floor(minutos / 60)} h${minutos % 60 ? ` ${minutos % 60} min` : ''}`;
+}
+
+/** La última señal del repartidor (D80): en vivo si es reciente y su jornada sigue abierta. */
+function lineaDelRepartidor(seguimiento) {
+  const r = seguimiento?.repartidor;
+  if (!r) return null;
+  const hace = haceCuanto(Date.now() / 1000 - r.en);
+  return h(
+    'p',
+    { clase: `senal-repartidor${r.enVivo ? ' en-vivo' : ''}` },
+    h('b', {}, r.nombre || 'Repartidor'),
+    r.enVivo ? ` · en vivo, ${hace}` : ` · última señal ${hace}`,
+  );
+}
+
+function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja = null, mensajes = {}, sinReparto = null, seguimiento = null }) {
   const resumen = $('resumen-reparto');
   const lista = $('lista-reparto');
   // Un día marcado sin reparto (D74): el bot ya no lo ofrece, pero lo que se anotó antes hay que moverlo.
@@ -1193,6 +1221,7 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja 
         )
       : null,
     sinConfirmar ?? '',
+    lineaDelRepartidor(seguimiento) ?? '',
     cierreDelDia(caja) ?? '',
     h(
       'div',
@@ -1210,7 +1239,7 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja 
       const titulo = carga
         ? h('h3', { clase: `titulo-carga${carga.excedeFurgon ? ' excede' : ''}` }, `Viaje ${carga.numero}: ${carga.totalBidones} bidones${carga.excedeFurgon ? ' (no cabe en un viaje: divídelo)' : ''}`)
         : null;
-      const tarjeta = tarjetaDeParada(parada, entregas[parada.idPedido], motivos, mensajes[parada.idPedido]);
+      const tarjeta = tarjetaDeParada(parada, entregas[parada.idPedido], motivos, mensajes[parada.idPedido], seguimiento);
       return titulo ? [titulo, tarjeta] : [tarjeta];
     }),
   );

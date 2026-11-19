@@ -282,6 +282,25 @@ async function muestrasDeEntregas(db: BaseDatos, ahoraSegundos: number): Promise
   return muestras;
 }
 
+/**
+ * El panel pide la estimación cada minuto: aprender de dos semanas de entregas en cada pedido gastaría lecturas de D1
+ * de más. Se recalcula cada 30 minutos por instancia. Es un solo número, igual para todos: no guarda datos de nadie.
+ */
+const VIGENCIA_APRENDIDO_S = 30 * 60;
+let aprendido: { valor: number; hasta: number } | null = null;
+
+async function minutosPorParadaGuardados(db: BaseDatos, ahoraSegundos: number): Promise<number> {
+  if (aprendido && ahoraSegundos < aprendido.hasta) return aprendido.valor;
+  const valor = aprenderMinutosPorParada(await muestrasDeEntregas(db, ahoraSegundos));
+  aprendido = { valor, hasta: ahoraSegundos + VIGENCIA_APRENDIDO_S };
+  return valor;
+}
+
+/** Para las pruebas: que cada una aprenda desde cero. */
+export function olvidarLoAprendido(): void {
+  aprendido = null;
+}
+
 export interface EstimacionDelDia {
   /** Por pedido que falta: cuándo llegaría y la ventana que se puede decir. */
   llegadas: Map<string, { llegaEn: number; desde: number; hasta: number }>;
@@ -321,7 +340,7 @@ export async function estimarElDia(db: BaseDatos, hoy: string, ahoraSegundos: nu
   if (!referencia || ahoraSegundos - referencia.en > REFERENCIA_VIGENTE_S) return vacia;
 
   const pendientes = reparto.paradas.filter((p) => p.estado !== 'Entregado' && !entregas.get(p.idPedido)?.noEntregado);
-  const minutosPorParada = aprenderMinutosPorParada(await muestrasDeEntregas(db, ahoraSegundos));
+  const minutosPorParada = await minutosPorParadaGuardados(db, ahoraSegundos);
   const horas = calcularLlegadas(
     pendientes.map((p) => ({ id: p.idPedido, punto: puntoDe(p) })),
     referencia,

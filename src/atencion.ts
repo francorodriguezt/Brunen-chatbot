@@ -85,7 +85,7 @@ function puertosReales(env: EntornoAtencion, ahora: Date): Puertos {
       proponerEntrega(env, ahora, { solicitada, diasSinReparto: await cargarDiasSinReparto(db, fechaHoraLocal(ahora).fecha) }),
     servicio: () => leerServicio(env),
     interpretar: (texto) => interpretarConRespaldo(texto, env),
-    ...(db && { estadoDeMiPedido: (telefono: string) => estadoDeMiPedido(db, telefono, fechaHoraLocal(ahora).fecha) }),
+    ...(db && { estadoDeMiPedido: (telefono: string) => estadoDeMiPedido(db, telefono, fechaHoraLocal(ahora).fecha, Math.floor(ahora.getTime() / 1000)) }),
   };
 }
 

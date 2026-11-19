@@ -24,6 +24,7 @@ import { ESTADOS_DE_PEDIDO, OPCIONES_DE_PEDIDO, type CambiosDePedido, type Datos
 import type { RepositorioClientes } from '../fichas';
 import { cargarDiasSinReparto, fechaValida as fechaValidaSinReparto, limpiarMotivo, motivoSinReparto, type RepositorioDiasSinReparto } from '../diasSinReparto';
 import { leerPedidoPegado } from '../pegado';
+import { POSICION_EN_VIVO_S, estimarElDia, type RepositorioSeguimiento } from '../seguimiento';
 import { TABLA_PRECIOS } from '../precios';
 import { normalizarTelefono } from '../whatsapp';
 
@@ -40,6 +41,8 @@ export interface ContextoApi {
   respaldo?: RepositorioRespaldo;
   /** Días sin reparto (D74): los marca una persona y el bot los salta. */
   dias?: RepositorioDiasSinReparto;
+  /** Seguimiento del repartidor (fase E, D80): su última señal y la hora de llegada a cada parada de hoy. */
+  seguimiento?: RepositorioSeguimiento;
 }
 
 const MAX_CUERPO_BYTES = 20_000;
@@ -171,6 +174,28 @@ function respuestaDeRepositorio<T>(resultado: { ok: true; valor: T } | { ok: fal
   return error(estado, mensaje);
 }
 
+/**
+ * Solo para hoy (D80): dónde se vio al repartidor por última vez y a qué hora llegaría a cada parada que falta (con la
+ * ruta publicada). Es una ayuda: si falla, el reparto se muestra igual, sin esto.
+ */
+async function seguimientoDelDia(ctx: ContextoApi, fecha: string) {
+  if (!ctx.seguimiento || fecha !== fechaHoraLocal(new Date(ctx.ahoraSegundos * 1000)).fecha) return null;
+  try {
+    const e = await estimarElDia(ctx.seguimiento.db, fecha, ctx.ahoraSegundos);
+    const r = e.repartidor;
+    return {
+      repartidor: r
+        ? { nombre: r.nombre, lat: r.lat, lng: r.lng, precisionM: r.precisionM, en: r.en, enVivo: r.jornadaAbierta && ctx.ahoraSegundos - r.en <= POSICION_EN_VIVO_S }
+        : null,
+      siguiente: e.siguiente,
+      horas: Object.fromEntries([...e.llegadas].map(([id, v]) => [id, { desde: v.desde, hasta: v.hasta }])),
+    };
+  } catch (falla) {
+    console.error('No se pudo estimar el reparto de hoy:', falla instanceof Error ? falla.message : falla);
+    return null;
+  }
+}
+
 export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): Promise<Response> {
   const { repositorio, correo, ahoraSegundos } = ctx;
   const ruta = url.pathname;
@@ -231,7 +256,8 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
         const mensajes = Object.fromEntries(reparto.paradas.map((p) => [p.idPedido, mensajeDeParada(p)]));
         // Si ese día se marcó sin reparto (D74), el panel lo dice arriba de la lista: los pedidos que tenga hay que moverlos.
         const sinReparto = await motivoSinReparto(ctx.dias?.db, fecha);
-        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas: Object.fromEntries(delDia), motivos: MOTIVOS_NO_ENTREGA, caja, mensajes, sinReparto });
+        const seguimiento = await seguimientoDelDia(ctx, fecha);
+        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas: Object.fromEntries(delDia), motivos: MOTIVOS_NO_ENTREGA, caja, mensajes, sinReparto, seguimiento });
       }
       return new Response(csvDeReparto(reparto), {
         status: 200,

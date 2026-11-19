@@ -8,13 +8,18 @@
 import type { BaseDatos } from './almacen';
 import { armarReparto } from './reparto';
 import { RepositorioD1, type EstadoDePedido } from './repositorio';
+import { estimarElDia } from './seguimiento';
 import { preparar } from './texto';
 
 export type EstadoDeMiPedido =
   | { tipo: 'agendado'; fecha: string }
   | { tipo: 'por_confirmar'; fecha: string }
   /** `antes`: entregas que faltan antes de la suya en la ruta publicada; null si la ruta no está publicada. */
-  | { tipo: 'en_reparto'; antes: number | null }
+  /**
+   * `ventana` (D80): solo cuando su parada es la que sigue (el repartidor va en camino a su dirección) y hay una
+   * referencia reciente. Segundos Unix.
+   */
+  | { tipo: 'en_reparto'; antes: number | null; ventana?: { desde: number; hasta: number } }
   | { tipo: 'entregado' };
 
 // "¿cuándo llega?", "¿a qué hora llegan?", "¿ya viene?", "¿falta mucho?", "¿por dónde va el repartidor?". A propósito
@@ -40,7 +45,12 @@ export function preguntaPorLlegada(texto: string): boolean {
 const VIVOS: ReadonlySet<EstadoDePedido> = new Set(['Pendiente_Confirmacion', 'Fuera_de_zona', 'Confirmado', 'En_Ruta']);
 
 /** El pedido más próximo de ese teléfono (de hoy en adelante, o entregado hoy) y en qué está. null si no tiene. */
-export async function estadoDeMiPedido(db: BaseDatos, telefono: string, hoy: string): Promise<EstadoDeMiPedido | null> {
+export async function estadoDeMiPedido(
+  db: BaseDatos,
+  telefono: string,
+  hoy: string,
+  ahoraSegundos: number = Math.floor(Date.now() / 1000),
+): Promise<EstadoDeMiPedido | null> {
   const r = await db
     .prepare(
       `SELECT id, estado, COALESCE(fecha_confirmada, fecha_entrega) AS fecha FROM pedidos
@@ -62,5 +72,9 @@ export async function estadoDeMiPedido(db: BaseDatos, telefono: string, hoy: str
   const mia = reparto.paradas.find((p) => p.idPedido === vivo.id);
   if (!reparto.publicada || !mia) return { tipo: 'en_reparto', antes: null };
   const antes = reparto.paradas.filter((p) => p.orden < mia.orden && p.estado !== 'Entregado').length;
-  return { tipo: 'en_reparto', antes };
+  if (antes > 0) return { tipo: 'en_reparto', antes };
+  // Es la siguiente: va en camino a su dirección. Solo entonces se da una hora (Franco, 2026-11-18), si se puede estimar.
+  const estimacion = await estimarElDia(db, hoy, ahoraSegundos);
+  const suya = estimacion.siguiente === vivo.id ? estimacion.llegadas.get(vivo.id) : undefined;
+  return suya ? { tipo: 'en_reparto', antes, ventana: { desde: suya.desde, hasta: suya.hasta } } : { tipo: 'en_reparto', antes };
 }

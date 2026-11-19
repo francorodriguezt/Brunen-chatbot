@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { estadoDeMiPedido, preguntaPorLlegada } from '../src/llegada';
 import type { PedidoARegistrar } from '../src/pedidos';
+import { RepositorioEntregas } from '../src/entregas';
+import { RepositorioPuntos } from '../src/puntos';
 import { RepositorioD1 } from '../src/repositorio';
 import { crearBaseSqlite } from './ayudas';
 
@@ -71,5 +73,26 @@ describe('en qué está el pedido del cliente (D78)', () => {
     expect(await estadoDeMiPedido(db, ANA, HOY)).toEqual({ tipo: 'en_reparto', antes: 1 });
     await r.cambiarEstado('P261118-CCCCC', 'Entregado', 'prueba', AHORA + 3);
     expect(await estadoDeMiPedido(db, ANA, HOY)).toEqual({ tipo: 'entregado' });
+  });
+});
+
+describe('la hora de llegada, solo para la siguiente parada (D80)', () => {
+  it('si su parada es la que sigue y hay una entrega reciente, da una ventana de hora', async () => {
+    const db = crearBaseSqlite();
+    const r = new RepositorioD1(db);
+    const puntos = new RepositorioPuntos(db);
+    const paradas = [['P261118-AAAAA', '56922222222', 'Calle Uno 1', -33.4569, -70.5976], ['P261118-BBBBB', ANA, 'Calle Dos 2', -33.487, -70.599]] as const;
+    for (const [id, tel, direccion, lat, lng] of paradas) {
+      await r.guardarPedido(pedido(id, tel, { direccion }), AHORA);
+      await r.cambiarEstado(id, 'Confirmado', 'prueba', AHORA + 1);
+      await puntos.guardar(direccion, 'Ñuñoa', { lat, lng, origen: 'manual' }, AHORA);
+    }
+    await r.publicarOrdenDeRuta(HOY, ['P261118-AAAAA', 'P261118-BBBBB']);
+    const once = AHORA + 3 * 3600; // 11:00
+    // Antes de que entregue la primera, no es la siguiente: sin hora.
+    expect(await estadoDeMiPedido(db, ANA, HOY, once)).toEqual({ tipo: 'en_reparto', antes: 1 });
+    await new RepositorioEntregas(db).entregar('P261118-AAAAA', { vacios: 2, cobrado: false }, { fecha: HOY, quien: 'prueba', ahora: once - 300 });
+    const estado = await estadoDeMiPedido(db, ANA, HOY, once);
+    expect(estado).toMatchObject({ tipo: 'en_reparto', antes: 0, ventana: { desde: expect.any(Number), hasta: expect.any(Number) } });
   });
 });

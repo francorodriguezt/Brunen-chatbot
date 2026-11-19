@@ -907,3 +907,11 @@ describe('"¿cuándo llega?" (D78)', () => {
     expect(d.respuesta).toBe(textos.horarios());
   });
 });
+
+describe('la hora en camino (D80)', () => {
+  it('con una ventana dice la hora aproximada en hora de Santiago', async () => {
+    const desde = Math.floor(new Date('2026-11-18T12:05:00-03:00').getTime() / 1000);
+    const d = await conversacion({ puertos: { estadoDeMiPedido: async () => ({ tipo: 'en_reparto', antes: 0, ventana: { desde, hasta: desde + 20 * 60 } }) } }).decir('¿a qué hora llega?');
+    expect(d.respuesta).toBe('Tu pedido va en camino: eres la próxima entrega y llegaría entre las 12:05 y las 12:25, aprox.');
+  });
+});

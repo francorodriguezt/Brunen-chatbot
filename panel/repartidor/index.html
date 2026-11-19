@@ -44,12 +44,20 @@
         <p class="suave" id="fecha-de-hoy"></p>
         <ul class="cifras" id="cifras-ruta"></ul>
         <p class="revision" id="aviso-conexion" hidden></p>
+        <div id="ubicacion" class="ubicacion-tarjeta" hidden></div>
         <div class="acciones">
           <button type="button" id="actualizar-ruta" class="boton">Actualizar</button>
         </div>
         <label class="casilla pantalla-encendida" id="opcion-pantalla" hidden><input type="checkbox" id="pantalla-encendida"> Mantener la pantalla encendida mientras reparto</label>
       </div>
       <div id="paradas" class="lista"></div>
+      <details id="prueba-ubicacion" class="ruta-del-dia prueba-ubicacion">
+        <summary>Probar la ubicación en este teléfono</summary>
+        <p class="suave">Sirve para saber si el teléfono sigue midiendo cuando sales de la app. Toca «Empezar», usa Google Maps un par de minutos (o la pantalla dividida, o bloquea el teléfono) y vuelve: los huecos de más de un minuto salen en rojo. Esta prueba no se envía a nadie.</p>
+        <div class="acciones"><button type="button" id="probar-ubicacion" class="boton">Empezar</button></div>
+        <p id="resumen-prueba" class="suave" hidden></p>
+        <ol id="registro-prueba"></ol>
+      </details>
     </section>
   </main>
 

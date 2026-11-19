@@ -12,7 +12,9 @@
  * persona las revise. Nada de esto sale de Brunen (D32, D62).
  */
 
+import { fechaHoraLocal } from '../despacho';
 import { armarReparto } from '../reparto';
+import type { RepositorioSeguimiento } from '../seguimiento';
 import { RepositorioPuntos, claveDePunto } from '../puntos';
 import { MAXIMO_DE_PARADAS_PUBLICADAS, type RepositorioD1 } from '../repositorio';
 import { ACTUM, CAPACIDAD_POR_VIAJE, PLANTA, evaluarOrden, optimizar, puntoDeParada, type ParadaParaRuta, type PlanDeRuta } from '../ruta';
@@ -21,6 +23,8 @@ import { error, esperadoComoEscritura, json, leerCuerpo } from './api';
 export interface ContextoRuta {
   repositorio: RepositorioD1;
   puntos: RepositorioPuntos;
+  /** La última señal del repartidor (D80), para dibujarlo en el mapa de hoy. */
+  seguimiento?: RepositorioSeguimiento;
   ahoraSegundos: number;
 }
 
@@ -118,8 +122,18 @@ export async function manejarRuta(request: Request, url: URL, ctx: ContextoRuta)
         plan = null; // el orden publicado ya no calza con las paradas: se calcula de nuevo
       }
     }
-    if (plan) return json(respuesta(fecha, datos, plan, true));
-    return json(respuesta(fecha, datos, optimizar(datos.paraRuta)));
+    // Solo hoy y sin romper el mapa si falla: dónde se vio al repartidor por última vez (D80).
+    let repartidor = null;
+    if (ctx.seguimiento && fecha === fechaHoraLocal(new Date(ctx.ahoraSegundos * 1000)).fecha) {
+      try {
+        const r = await ctx.seguimiento.ultimaDeHoy(fecha);
+        if (r) repartidor = { nombre: r.nombre, lat: r.lat, lng: r.lng, en: r.en, haceSegundos: Math.max(0, ctx.ahoraSegundos - r.en), jornadaAbierta: r.jornadaAbierta };
+      } catch (falla) {
+        console.error('No se pudo leer la última posición del repartidor:', falla instanceof Error ? falla.message : falla);
+      }
+    }
+    if (plan) return json({ ...respuesta(fecha, datos, plan, true), repartidor });
+    return json({ ...respuesta(fecha, datos, optimizar(datos.paraRuta)), repartidor });
   }
 
   if (request.method !== 'POST') return error(404, 'No encontrado.');
