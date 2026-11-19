@@ -27,6 +27,7 @@ import { manejarRuta } from './ruta-api';
 import { RepositorioPuntos } from '../puntos';
 import { RepositorioRespaldo } from '../respaldo';
 import { RepositorioDiasSinReparto } from '../diasSinReparto';
+import { RepositorioSeguimiento } from '../seguimiento';
 import { Cuentas } from './cuentas';
 import { cookieDeSesion, esDelAdministrador, manejarSesionAdmin, manejarSesionPublica, manejarUsuarios, tokenDeCookie, type ContextoDeIngreso } from './ingreso';
 
@@ -131,6 +132,8 @@ async function apiPublica(request: Request, url: URL, env: EntornoPanel, ahoraSe
         puntos: new RepositorioPuntos(env.DB as BaseDatos),
         ahoraSegundos,
         nombre: sesion.usuario.nombre,
+        usuarioId: sesion.usuario.id,
+        seguimiento: new RepositorioSeguimiento(env.DB as BaseDatos),
       });
       if (respuesta && sesion.renovada && token) respuesta.headers.append('set-cookie', cookieDeSesion(token, true, ctx.cookieSegura));
       return respuesta ?? error(404, 'No encontrado.');

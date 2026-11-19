@@ -175,3 +175,44 @@ describe('el repartidor y el mapa (fase C, D63)', () => {
     expect(db.sql('SELECT COUNT(*) AS n FROM puntos')).toEqual([{ n: 0 }]);
   });
 });
+
+describe('consentimiento, jornada y posiciones (fase E, D80)', () => {
+  const posicion = (en: number) => ({ lat: -33.4569, lng: -70.5976, precision: 12, en });
+
+  it('sin consentimiento no se guarda nada; con él y la jornada abierta, sí; al terminarla, ya no', async () => {
+    const { env, db, repartidor } = await entorno();
+    expect((await ruta(env, repartidor) as unknown as { ubicacion: unknown }).ubicacion).toEqual({ consentimiento: false, jornada: null });
+    expect((await pedir(env, '/api/repartidor/posiciones', repartidor, { posiciones: [posicion(AHORA)] })).status).toBe(409);
+
+    const acepto = await pedir(env, '/api/repartidor/ubicacion', repartidor, { acepta: true });
+    expect(((await acepto.json()) as { ubicacion: unknown }).ubicacion).toEqual({ consentimiento: true, jornada: null });
+    expect((await pedir(env, '/api/repartidor/posiciones', repartidor, { posiciones: [posicion(AHORA)] })).status).toBe(409); // sin jornada
+
+    const inicio = await pedir(env, '/api/repartidor/jornada', repartidor, { accion: 'iniciar' });
+    expect(((await inicio.json()) as { ubicacion: { jornada: unknown } }).ubicacion.jornada).toEqual({ iniciadaEn: AHORA, terminadaEn: null });
+    const guardo = await pedir(env, '/api/repartidor/posiciones', repartidor, { posiciones: [posicion(AHORA)] });
+    expect([guardo.status, await guardo.json()]).toEqual([200, { ok: true, guardadas: 1 }]);
+
+    await pedir(env, '/api/repartidor/jornada', repartidor, { accion: 'terminar' });
+    expect((await pedir(env, '/api/repartidor/posiciones', repartidor, { posiciones: [posicion(AHORA)] })).status).toBe(409);
+    expect(db.sql('SELECT COUNT(*) AS n FROM posiciones')).toEqual([{ n: 1 }]);
+  });
+
+  it('retirar el consentimiento borra lo guardado', async () => {
+    const { env, db, repartidor } = await entorno();
+    await pedir(env, '/api/repartidor/ubicacion', repartidor, { acepta: true });
+    await pedir(env, '/api/repartidor/jornada', repartidor, { accion: 'iniciar' });
+    await pedir(env, '/api/repartidor/posiciones', repartidor, { posiciones: [posicion(AHORA)] });
+    await pedir(env, '/api/repartidor/ubicacion', repartidor, { acepta: false });
+    expect(db.sql('SELECT COUNT(*) AS n FROM posiciones')).toEqual([{ n: 0 }]);
+  });
+
+  it('pide la sesión del repartidor, la cabecera del panel y datos con forma', async () => {
+    const { env, repartidor, administrador } = await entorno();
+    expect((await pedir(env, '/api/repartidor/jornada', administrador, { accion: 'iniciar' })).status).toBe(401);
+    expect((await pedir(env, '/api/repartidor/jornada', repartidor, { accion: 'iniciar' }, { 'content-type': 'application/json' })).status).toBe(400);
+    expect((await pedir(env, '/api/repartidor/jornada', repartidor, { accion: 'volar' })).status).toBe(400);
+    expect((await pedir(env, '/api/repartidor/ubicacion', repartidor, { acepta: 'si' })).status).toBe(400);
+    expect((await pedir(env, '/api/repartidor/posiciones', repartidor, { posiciones: 'aqui' })).status).toBe(400);
+  });
+});
