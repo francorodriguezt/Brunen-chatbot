@@ -8,7 +8,7 @@
  */
 
 import { COMUNAS_ATENDIDAS, esComunaAtendida } from './comunas';
-import { diaSemana } from './despacho';
+import { diaSemana, fechaHoraLocal } from './despacho';
 import { fechaEnPalabras } from './fechas';
 import type { PropuestaEntrega } from './entrega';
 import type { EstadoDeMiPedido } from './llegada';
@@ -42,7 +42,16 @@ export const repetirSinHistorial = (): string =>
 
 export const imagenRecibida = (): string => 'Recibimos tu imagen. Una persona del equipo la revisará.';
 
-/** "¿Cuándo llega?" de un cliente con pedido (D78). Nunca promete una hora: dice en qué está. */
+/** "12:05", en la hora de Santiago. */
+function horaDeSantiago(segundos: number): string {
+  const { hora, minuto } = fechaHoraLocal(new Date(segundos * 1000));
+  return `${hora}:${String(minuto).padStart(2, '0')}`;
+}
+
+/**
+ * "¿Cuándo llega?" de un cliente con pedido (D78). Dice en qué está; una hora solo como ventana aproximada y solo cuando
+ * va en camino a su dirección (D80).
+ */
 export function estadoDeMiPedido(estado: EstadoDeMiPedido): string {
   switch (estado.tipo) {
     case 'agendado':
@@ -53,6 +62,9 @@ export function estadoDeMiPedido(estado: EstadoDeMiPedido): string {
       return 'Según nuestro registro, tu pedido de hoy ya se entregó. Si no lo recibiste, escríbenos y lo revisamos de inmediato.';
     case 'en_reparto':
       if (estado.antes === null) return 'Tu pedido va en el reparto de hoy. Si algo cambia, te avisamos por aquí.';
+      if (estado.antes === 0 && estado.ventana) {
+        return `Tu pedido va en camino: eres la próxima entrega y llegaría entre las ${horaDeSantiago(estado.ventana.desde)} y las ${horaDeSantiago(estado.ventana.hasta)}, aprox.`;
+      }
       if (estado.antes === 0) return 'Tu pedido va en el reparto de hoy y eres la próxima entrega.';
       return `Tu pedido va en el reparto de hoy: antes del tuyo quedan ${estado.antes} ${estado.antes === 1 ? 'entrega' : 'entregas'}.`;
   }

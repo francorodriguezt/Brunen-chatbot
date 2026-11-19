@@ -137,6 +137,8 @@ async function cargarRuta() {
 function pintar() {
   // Cada cambio de la ruta (cargarla, marcar una parada) revisa si la pantalla sigue encendida.
   if ('wakeLock' in navigator) void ajustarPantalla();
+  pintarUbicacion();
+  ajustarSeguimiento();
   const lista = $('paradas');
   const cifras = $('cifras-ruta');
   if (!ruta || ruta.paradas.length === 0) {
@@ -329,6 +331,214 @@ function prepararPantalla() {
   document.addEventListener('visibilitychange', () => void ajustarPantalla());
 }
 
+// ---- Ubicación durante la jornada (fase E, D80) ----
+//
+// El navegador solo deja medir la posición con la app abierta y a la vista (D79): al cambiar a Google Maps o bloquear
+// el teléfono se detiene, y vuelve sola al regresar. Por eso la hora de llegada sale sobre todo de las entregas marcadas;
+// la posición la afina cuando está fresca. Solo con su consentimiento y entre "Iniciar ruta" y "Terminar jornada".
+
+const CLAVE_POSICIONES = 'brunen-posiciones';
+const CLAVE_AHORA_NO = 'brunen-ubicacion-ahora-no';
+const CADA_SEGUNDOS = 30; // una posición cada 30 segundos, o antes si se movió más de 100 metros
+const METROS_PARA_ENVIAR = 100;
+const MAXIMO_EN_COLA = 120;
+let vigilancia = null;
+let ultimaGuardada = null;
+let ultimaMedida = null;
+let enviandoPosiciones = false;
+
+const formatoHora = new Intl.DateTimeFormat('es-CL', { timeZone: ZONA, hour: '2-digit', minute: '2-digit', hour12: false });
+const hora = (segundos) => formatoHora.format(new Date(segundos * 1000));
+const jornadaAbierta = () => Boolean(ruta?.ubicacion?.jornada && ruta.ubicacion.jornada.terminadaEn === null);
+const colaDePosiciones = () => leer(CLAVE_POSICIONES) ?? [];
+
+function metrosEntre(a, b) {
+  const r = Math.PI / 180;
+  const x = (b.lng - a.lng) * r * Math.cos(((a.lat + b.lat) / 2) * r);
+  const y = (b.lat - a.lat) * r;
+  return Math.sqrt(x * x + y * y) * 6371000;
+}
+
+function ahoraNo() {
+  try {
+    return sessionStorage.getItem(CLAVE_AHORA_NO) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** La tarjeta de arriba: pedir el consentimiento (una vez), "Iniciar ruta" o "Terminar jornada". */
+function pintarUbicacion() {
+  const caja = $('ubicacion');
+  const u = ruta?.ubicacion;
+  if (!u || !('geolocation' in navigator)) {
+    caja.hidden = true;
+    return;
+  }
+  const partes = [];
+  if (!u.consentimiento && !ahoraNo()) {
+    partes.push(
+      h('h3', {}, 'Compartir tu ubicación durante la ruta'),
+      h('p', {}, 'Así la oficina ve por dónde va el reparto y puede decirle al cliente que pregunta más o menos cuándo llegas.'),
+      h(
+        'ul',
+        {},
+        h('li', {}, 'Solo entre «Iniciar ruta» y «Terminar jornada», y solo de 6:00 a 22:00.'),
+        h('li', {}, 'Solo con esta app abierta: no sigue tu teléfono cuando usas otra app.'),
+        h('li', {}, 'Lo ven el dueño y la oficina. Se borra a los 3 días.'),
+        h('li', {}, 'Puedes dejar de compartir cuando quieras, y se borra lo guardado.'),
+      ),
+      h('div', { clase: 'acciones' }, boton('Acepto', 'boton boton-principal', () => void decidirUbicacion(true)), boton('Ahora no', 'boton', () => dejarParaDespues())),
+    );
+  }
+  if (jornadaAbierta()) {
+    const desde = hora(u.jornada.iniciadaEn);
+    const estado = !u.consentimiento
+      ? 'sin compartir tu ubicación'
+      : ultimaMedida
+        ? `compartiendo tu ubicación (última ${Math.max(0, Math.round(Date.now() / 1000 - ultimaMedida.en))} s)`
+        : 'compartiendo tu ubicación';
+    partes.push(
+      h('p', {}, h('b', {}, `Ruta iniciada a las ${desde}`), ` · ${estado}`),
+      h(
+        'div',
+        { clase: 'acciones' },
+        boton('Terminar jornada', 'boton', () => void cambiarJornada('terminar')),
+        u.consentimiento ? boton('Dejar de compartir', 'boton boton-chico', () => void decidirUbicacion(false)) : null,
+      ),
+    );
+  } else {
+    partes.push(h('div', { clase: 'acciones' }, boton(u.jornada ? 'Iniciar de nuevo' : 'Iniciar ruta', 'boton boton-principal', () => void cambiarJornada('iniciar'))));
+  }
+  caja.replaceChildren(...partes);
+  caja.hidden = false;
+}
+
+function dejarParaDespues() {
+  try {
+    sessionStorage.setItem(CLAVE_AHORA_NO, '1');
+  } catch {
+    /* sin almacenamiento: se vuelve a preguntar al recargar */
+  }
+  pintarUbicacion();
+}
+
+async function decidirUbicacion(acepta) {
+  try {
+    const { estado, datos } = await pedir('/api/repartidor/ubicacion', { acepta });
+    if (estado === 401) return pedirClave();
+    if (estado !== 200) return avisar(datos?.error ?? 'No se pudo guardar. Intenta de nuevo.', true);
+    ruta.ubicacion = datos.ubicacion;
+    if (!acepta) guardar(CLAVE_POSICIONES, null);
+    avisar(acepta ? 'Gracias. Se comparte solo durante la jornada.' : 'Listo: ya no se comparte y se borró lo guardado.');
+    pintar();
+  } catch {
+    avisar('Sin señal: inténtalo cuando vuelva.', true);
+  }
+}
+
+async function cambiarJornada(accion) {
+  try {
+    const { estado, datos } = await pedir('/api/repartidor/jornada', { accion });
+    if (estado === 401) return pedirClave();
+    if (estado !== 200) return avisar(datos?.error ?? 'No se pudo. Intenta de nuevo.', true);
+    ruta.ubicacion = datos.ubicacion;
+    if (accion === 'terminar') await enviarPosiciones(); // lo que quedó medido antes de terminar
+    avisar(accion === 'iniciar' ? 'Ruta iniciada. ¡Buen reparto!' : 'Jornada terminada. Ya no se comparte tu ubicación.');
+    pintar();
+  } catch {
+    avisar('Sin señal: inténtalo cuando vuelva.', true);
+  }
+}
+
+/** Mide solo con consentimiento, la jornada abierta y la app a la vista; si no, deja de medir. */
+function ajustarSeguimiento() {
+  const debe = Boolean(ruta?.ubicacion?.consentimiento) && jornadaAbierta() && document.visibilityState === 'visible' && 'geolocation' in navigator;
+  if (debe && vigilancia === null) {
+    vigilancia = navigator.geolocation.watchPosition(alMedir, () => {}, { enableHighAccuracy: true, maximumAge: 10_000, timeout: 30_000 });
+  } else if (!debe && vigilancia !== null) {
+    navigator.geolocation.clearWatch(vigilancia);
+    vigilancia = null;
+  }
+}
+
+function alMedir(posicion) {
+  const medida = { lat: posicion.coords.latitude, lng: posicion.coords.longitude, precision: Math.round(posicion.coords.accuracy), en: Math.floor(Date.now() / 1000) };
+  ultimaMedida = medida;
+  const toca = !ultimaGuardada || medida.en - ultimaGuardada.en >= CADA_SEGUNDOS || metrosEntre(ultimaGuardada, medida) >= METROS_PARA_ENVIAR;
+  if (!toca || medida.precision > 500) return;
+  ultimaGuardada = medida;
+  guardar(CLAVE_POSICIONES, [...colaDePosiciones(), medida].slice(-MAXIMO_EN_COLA));
+  void enviarPosiciones();
+  pintarUbicacion();
+}
+
+/** Envía lo medido en tandas. Sin señal quedan en el teléfono y salen después; si el servidor dice que no, se descartan. */
+async function enviarPosiciones() {
+  if (enviandoPosiciones) return;
+  enviandoPosiciones = true;
+  try {
+    while (colaDePosiciones().length > 0) {
+      const tanda = colaDePosiciones().slice(0, 30);
+      const { estado } = await pedir('/api/repartidor/posiciones', { posiciones: tanda });
+      if (estado === 401) return pedirClave();
+      // 200 (guardadas), 409 (sin jornada o sin consentimiento) o 400: en todos, esa tanda ya no se reintenta.
+      guardar(CLAVE_POSICIONES, colaDePosiciones().slice(tanda.length));
+      if (estado === 409) {
+        guardar(CLAVE_POSICIONES, null);
+        void cargarRuta(); // algo cambió (terminó la jornada desde otro lado): se vuelve a leer
+        return;
+      }
+    }
+  } catch {
+    /* sin señal: queda en la cola */
+  } finally {
+    enviandoPosiciones = false;
+  }
+}
+
+// ---- Probar la ubicación en este teléfono (D79): solo local, no se envía a nadie ----
+
+let prueba = null;
+
+function pintarPrueba() {
+  const registro = prueba?.registro ?? [];
+  $('probar-ubicacion').textContent = prueba?.vigilancia !== null && prueba ? 'Terminar' : 'Empezar';
+  const huecos = registro.filter((r) => r.hueco).length;
+  $('resumen-prueba').hidden = registro.length === 0;
+  $('resumen-prueba').textContent = `${registro.filter((r) => r.tipo === 'medida').length} lecturas · ${huecos} ${huecos === 1 ? 'hueco' : 'huecos'} de más de un minuto`;
+  $('registro-prueba').replaceChildren(...registro.slice(-60).map((r) => h('li', { clase: r.hueco ? 'hueco' : null }, r.texto)));
+}
+
+function anotarPrueba(tipo, texto, hueco = false) {
+  if (!prueba) return;
+  prueba.registro.push({ tipo, texto: `${new Date().toLocaleTimeString('es-CL', { hour12: false })} · ${texto}`, hueco });
+  pintarPrueba();
+}
+
+function alternarPrueba() {
+  if (prueba && prueba.vigilancia !== null) {
+    navigator.geolocation.clearWatch(prueba.vigilancia);
+    prueba.vigilancia = null;
+    anotarPrueba('fin', 'Prueba terminada.');
+    return;
+  }
+  if (!('geolocation' in navigator)) return avisar('Este teléfono no da la ubicación al navegador.', true);
+  prueba = { registro: [], ultima: null, vigilancia: null };
+  prueba.vigilancia = navigator.geolocation.watchPosition(
+    (p) => {
+      const ahora = Date.now();
+      const hueco = prueba.ultima !== null && ahora - prueba.ultima > 60_000;
+      const segundos = prueba.ultima === null ? null : Math.round((ahora - prueba.ultima) / 1000);
+      prueba.ultima = ahora;
+      anotarPrueba('medida', `lectura (±${Math.round(p.coords.accuracy)} m${segundos === null ? '' : `, ${segundos} s después`})`, hueco);
+    },
+    (falla) => anotarPrueba('error', falla.code === 1 ? 'Sin permiso de ubicación para esta app.' : 'No se pudo leer la ubicación.', true),
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 30_000 },
+  );
+  anotarPrueba('inicio', 'Prueba empezada.');
+}
+
 // ---- Marcar y enviar ----
 
 /**
@@ -399,6 +609,9 @@ async function salir() {
   }
   guardar(CLAVE_RUTA, null);
   guardar(CLAVE_COLA, null);
+  guardar(CLAVE_POSICIONES, null);
+  if (vigilancia !== null) navigator.geolocation.clearWatch(vigilancia);
+  vigilancia = null;
   ruta = null;
   void bloqueoDePantalla?.release();
   pedirClave();
@@ -410,6 +623,15 @@ async function iniciar() {
   $('cambiar-sesion').addEventListener('click', () => void salir());
   $('actualizar-ruta').addEventListener('click', () => void vaciarCola());
   prepararPantalla();
+  $('probar-ubicacion').addEventListener('click', alternarPrueba);
+  document.addEventListener('visibilitychange', () => {
+    anotarPrueba('vista', document.visibilityState === 'visible' ? 'Volviste a la app.' : 'Saliste de la app.');
+    ajustarSeguimiento();
+    if (document.visibilityState === 'visible') void enviarPosiciones();
+  });
+  setInterval(() => {
+    if (colaDePosiciones().length > 0) void enviarPosiciones();
+  }, REINTENTO_MS);
   window.addEventListener('online', () => void vaciarCola());
   setInterval(() => {
     if (cola().length > 0) void vaciarCola();
