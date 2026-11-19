@@ -152,7 +152,7 @@ Franco pidió guardarlas y que se le recuerden cuando una fase las necesite. Ord
 - [ ] (Ambos) Cuántos bidones de cada tamaño caben en el furgón (hoy se cuentan 65 sin importar el tamaño) y el peso máximo permitido.
 - [ ] (Ambos) A qué hora sale el repartidor y cuántos minutos se demora en promedio en cada parada.
 - [ ] (Constanza) Dónde se anotan hoy los vacíos que quedan por retirar y qué pasa con un vacío que falta después de justificarlo.
-- [ ] (Dueño) El celular del repartidor (es Android, Franco 2026-11-17): si es de la empresa o propio, si tiene datos móviles y un correo. Y su consentimiento para compartir la ubicación durante el turno (fase E).
+- [ ] (Dueño) El celular del repartidor (es Android, Franco 2026-11-17): si es de la empresa o propio, si tiene datos móviles y un correo. Su consentimiento para compartir la ubicación durante el turno (fase E): lo da (Franco, 2026-11-18); queda registrado en su app con fecha cuando se construya.
 
 **Para los pedidos fijos y "les toca pedir" (D58, D59)**
 - [ ] (Constanza) Qué empresas tienen plan mensual, qué reciben y cada cuánto, para cargar sus pedidos fijos.
