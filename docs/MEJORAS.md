@@ -64,8 +64,8 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [ ] Portal o carga por Excel para las empresas con plan mensual.
 
 ## 6. Cuentas, calidad, legal
-- [ ] Zero Trust con la tarjeta de Franco (virtual o prepago con tope) o, sin tarjeta, un segundo factor propio.
-- [ ] Bot de Telegram, `PANEL_SECRETO`, publicar el panel, cargar el historial.
+- [x] Zero Trust activado (2026-11-18) y la administración detrás de Access (D81).
+- [x] `PANEL_SECRETO` y panel publicado (D81). Falta: bot de Telegram y cargar el historial.
 - [ ] Actualizar `CLAUDE.md` (todavía dice que los pedidos van a Google Sheets y los comprobantes a Drive).
 - [ ] Pruebas del panel en el navegador; medir la CPU después de publicar.
 - [ ] Ley 21.719: aviso de privacidad y plazo de guardado. **(Dueño)**
