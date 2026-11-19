@@ -18,6 +18,7 @@ import { PRECISION_BUENA_M, RepositorioPuntos, claveDePunto } from '../puntos';
 import { puntoDeParada } from '../ruta';
 import { armarReparto, vaciosEsperados } from '../reparto';
 import type { RepositorioD1 } from '../repositorio';
+import { validarPosiciones, type RepositorioSeguimiento } from '../seguimiento';
 import { error, esperadoComoEscritura, json, leerCuerpo } from './api';
 
 export interface ContextoRepartidor {
@@ -28,6 +29,9 @@ export interface ContextoRepartidor {
   ahoraSegundos: number;
   /** Nombre del repartidor, para el historial del pedido. */
   nombre: string;
+  /** Su id: el consentimiento, la jornada y las posiciones son de él (fase E, D80). */
+  usuarioId: number;
+  seguimiento: RepositorioSeguimiento;
 }
 
 const MENSAJES_DE_ERROR = {
@@ -110,7 +114,48 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
     carga: reparto.carga,
     totalBidones: reparto.totalBidones,
     motivos: Object.entries(MOTIVOS_NO_ENTREGA).map(([valor, texto]) => ({ valor, texto })),
+    ubicacion: await estadoDeUbicacion(ctx, hoy),
   });
+}
+
+/** Lo que su app necesita para mostrar "Iniciar ruta" o "Terminar jornada" y si debe pedir el consentimiento (D80). */
+async function estadoDeUbicacion(ctx: ContextoRepartidor, hoy: string) {
+  const jornada = await ctx.seguimiento.jornadaDeHoy(ctx.usuarioId, hoy);
+  return {
+    consentimiento: await ctx.seguimiento.tieneConsentimiento(ctx.usuarioId),
+    jornada: jornada ? { iniciadaEn: jornada.iniciadaEn, terminadaEn: jornada.terminadaEn } : null,
+  };
+}
+
+/**
+ * Fase E (D80): consentimiento, jornada y posiciones. Devuelve null si la ruta no es de esto.
+ * - POST /api/repartidor/ubicacion   { acepta }            dar o retirar el consentimiento (retirar borra sus posiciones)
+ * - POST /api/repartidor/jornada     { accion }            "iniciar" o "terminar"
+ * - POST /api/repartidor/posiciones  { posiciones: [...] } lo que midió el teléfono con la app abierta
+ */
+async function manejarSeguimiento(ruta: string, cuerpo: Record<string, unknown>, ctx: ContextoRepartidor): Promise<Response | null> {
+  const hoy = fechaHoraLocal(new Date(ctx.ahoraSegundos * 1000)).fecha;
+  if (ruta === '/api/repartidor/ubicacion') {
+    if (typeof cuerpo.acepta !== 'boolean') return error(400, 'Solicitud no válida.');
+    await ctx.seguimiento.decidir(ctx.usuarioId, cuerpo.acepta, ctx.ahoraSegundos);
+    return json({ ok: true, ubicacion: await estadoDeUbicacion(ctx, hoy) });
+  }
+  if (ruta === '/api/repartidor/jornada') {
+    if (cuerpo.accion === 'iniciar') await ctx.seguimiento.iniciar(ctx.usuarioId, hoy, ctx.ahoraSegundos);
+    else if (cuerpo.accion === 'terminar') await ctx.seguimiento.terminar(ctx.usuarioId, hoy, ctx.ahoraSegundos);
+    else return error(400, 'Solicitud no válida.');
+    return json({ ok: true, ubicacion: await estadoDeUbicacion(ctx, hoy) });
+  }
+  if (ruta === '/api/repartidor/posiciones') {
+    const posiciones = validarPosiciones(cuerpo.posiciones, ctx.ahoraSegundos);
+    if (!posiciones) return error(400, 'Solicitud no válida.');
+    const resultado = await ctx.seguimiento.guardarPosiciones(ctx.usuarioId, posiciones, ctx.ahoraSegundos);
+    // 409: la app deja de mandar (no aceptó, o no hay jornada abierta). No es un error del teléfono.
+    if (resultado === 'sin_consentimiento') return error(409, 'No compartes tu ubicación.');
+    if (resultado === 'sin_jornada') return error(409, 'No hay una jornada abierta.');
+    return json({ ok: true, guardadas: resultado });
+  }
+  return null;
 }
 
 /**
@@ -136,11 +181,13 @@ export async function manejarRepartidor(request: Request, url: URL, ctx: Context
   if (ruta === '/api/repartidor/ruta' && request.method === 'GET') return rutaDeHoy(ctx);
 
   const accion = /^\/api\/repartidor\/pedidos\/([PHF]\d{6}-[0-9A-Z]{5})\/(entregado|no-se-pudo)$/.exec(ruta);
-  if (!accion || request.method !== 'POST') return error(404, 'No encontrado.');
+  const deSeguimiento = ruta === '/api/repartidor/ubicacion' || ruta === '/api/repartidor/jornada' || ruta === '/api/repartidor/posiciones';
+  if ((!accion && !deSeguimiento) || request.method !== 'POST') return error(404, 'No encontrado.');
   const rechazo = esperadoComoEscritura(request, url);
   if (rechazo) return rechazo;
   const cuerpo = await leerCuerpo(request);
   if (!cuerpo) return error(400, 'Solicitud no válida.');
+  if (!accion) return (await manejarSeguimiento(ruta, cuerpo, ctx)) ?? error(404, 'No encontrado.');
 
   const id = accion[1] as string;
   const opciones = { fecha: fechaHoraLocal(new Date(ctx.ahoraSegundos * 1000)).fecha, quien: `Repartidor: ${ctx.nombre}`, ahora: ctx.ahoraSegundos };

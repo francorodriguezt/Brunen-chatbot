@@ -38,7 +38,7 @@ export type ResultadoDeGuardar = 'guardado' | 'ignorado' | 'invalido';
 /** La dirección y la comuna escritas de cualquier forma dan la misma clave. */
 export const claveDePunto = claveDeDireccion;
 
-const enLaRegion = ({ lat, lng }: Punto): boolean =>
+export const enLaRegion = ({ lat, lng }: Punto): boolean =>
   Number.isFinite(lat) && Number.isFinite(lng) && lat >= LAT_MIN && lat <= LAT_MAX && lng >= LNG_MIN && lng <= LNG_MAX;
 
 export class RepositorioPuntos {
