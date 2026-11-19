@@ -11,8 +11,8 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] Cuántos bidones de cada tamaño cargar en cada viaje.
 - [x] Que las cargas del mapa y de la lista coincidan: arman los viajes igual; el mapa dice "lo que queda" y la lista dice si va en el orden publicado o por comuna. (D73)
 - [ ] Elegir en conjunto dónde cortar cada viaje y dónde recargar (no viaje por viaje). Antes hay que guardar los cortes al publicar la ruta: si no, la lista y la app del repartidor (que no tienen coordenadas) cortarían distinto que el mapa.
-- [ ] Aprender los tiempos reales (entre paradas y en cada parada) con la hora de cada entrega.
-- [ ] Recalcular desde donde está el repartidor.
+- [x] Aprender el tiempo en cada parada con la hora de cada entrega (D80). Falta: el tiempo entre paradas por zona y hora.
+- [x] Recalcular desde donde está el repartidor (su última posición o su última entrega, D80).
 - [ ] Horarios de clientes ("solo en la tarde") como condición de la ruta.
 - [ ] Distancia real de calle (Mapbox, solo coordenadas). Decide Franco (zona gris, D62).
 - [ ] Datos del dueño: hora de salida, minutos por parada, bidones de cada tamaño por viaje. **(Dueño)**
@@ -50,10 +50,10 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [ ] Probarlo con la operadora en una tarea real.
 
 ## 4. App del repartidor (Android)
-- [ ] Posición en vivo para el mapa (fase E). El repartidor da su consentimiento (Franco, 2026-11-18; ya comparte su ubicación cuando trabaja): se registra en su app con fecha, solo durante el turno. Con ella, la hora de llegada al cliente: solo cuando el repartidor va en camino a esa dirección, y solo si el cliente la pregunta.
+- [x] Posición en vivo para el mapa (fase E) y hora de llegada por eventos, sin otra app (D80). El repartidor da su consentimiento (Franco, 2026-11-18; ya comparte su ubicación cuando trabaja): se registra en su app con fecha, solo durante el turno. Con ella, la hora de llegada al cliente: solo cuando el repartidor va en camino a esa dirección, y solo si el cliente la pregunta.
   - Sin otra app (Franco, 2026-11-18): el navegador no da la posición en segundo plano (D79). Diseño: posición con la app abierta, una posición en cada entrega, y la hora de llegada por eventos (última entrega + tiempo de viaje aprendido). Falta probar en el teléfono del repartidor.
 - [ ] Promociones y recordatorios a clientes frecuentes: Franco los define más adelante. **(Dueño)**
-- [ ] "Iniciar ruta" y "Terminar jornada".
+- [x] "Iniciar ruta" y "Terminar jornada". (D80)
 - [ ] Foto como prueba de entrega (cuando haya medio de pago en Cloudflare).
 
 ## 5. Reparto, caja, clientes

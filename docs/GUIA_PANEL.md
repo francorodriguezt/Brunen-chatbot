@@ -60,6 +60,7 @@ Para una llamada, un audio o una empresa con plan mensual. Toca "+ Nuevo pedido"
 5. "Dejarlo confirmado" viene marcado: con todos los precios, el pedido queda confirmado de una vez. Si falta algún precio, la casilla lo dice y el pedido queda por confirmar.
 
 ## Reparto
+- **Repartidor en vivo (D80):** con su jornada iniciada, arriba dice "en vivo, hace 2 min" o "última señal hace 40 min", y el mapa de la ruta lo muestra. Con la ruta publicada, cada parada que falta dice "Llegaría 12:05–12:25 aprox." y la que va dice "Siguiente": sirve para responderle al cliente que pregunta. Es una estimación, nunca una promesa.
 - Muestra las entregas confirmadas de **Hoy**, de **Mañana** o del día que elijas, ordenadas por comuna y dirección, con lo que hay que cargar en el furgón (por viaje), lo que se cobra en cada parada y los vacíos extra.
 - Si dice "Hay pedidos de este día sin confirmar", todavía no están en la lista: toca "Verlos".
 - **Ruta eficiente y mapa**: el orden que recorre menos kilómetros, desde la planta y de vuelta. Puedes subir o bajar paradas, ubicar en el mapa una dirección que sale "aproximada" y tocar **Publicar ruta**: el repartidor ve ese orden en su teléfono.
