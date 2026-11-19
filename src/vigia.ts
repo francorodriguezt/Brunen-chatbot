@@ -26,6 +26,7 @@ import { cerrarPausasVencidas } from './relevo';
 import { TABLA_PRECIOS, type TramoPrecio } from './precios';
 import { cargarTablaPrecios } from './preciosHoja';
 import { RepositorioD1 } from './repositorio';
+import { RepositorioSeguimiento } from './seguimiento';
 import { hojasDeRespaldo, respaldarClientes, respaldarPedidos, respaldoAtrasado } from './respaldo';
 import { configTelegram, enviarAlerta } from './telegram';
 import { revisarToken } from './whatsapp';
@@ -151,6 +152,14 @@ export async function revisionDiaria(env: EntornoAtencion, ahora: Date = new Dat
   if (token === 'token') await avisarFalla(env, 'token-whatsapp', FALLA_DEL_TOKEN, ahora);
 
   const hayPlanilla = Boolean(env.GOOGLE_SERVICE_ACCOUNT_JSON && env.GOOGLE_SHEET_ID);
+  // Lo prometido al repartidor (D80): sus posiciones se borran a los 3 días, aunque deje de usar la app.
+  if (env.DB) {
+    try {
+      await new RepositorioSeguimiento(env.DB).limpiar(Math.floor(ahora.getTime() / 1000));
+    } catch (falla) {
+      console.error('No se pudieron borrar las posiciones viejas:', falla instanceof Error ? falla.message : falla);
+    }
+  }
   // Respaldo en Google Sheets (D66): si lleva más de un día sin copiar y hay pedidos esperando, que lo sepa una persona.
   if (hayPlanilla && env.DB) {
     try {

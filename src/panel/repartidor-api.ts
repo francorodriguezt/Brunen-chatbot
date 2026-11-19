@@ -120,11 +120,17 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
 
 /** Lo que su app necesita para mostrar "Iniciar ruta" o "Terminar jornada" y si debe pedir el consentimiento (D80). */
 async function estadoDeUbicacion(ctx: ContextoRepartidor, hoy: string) {
-  const jornada = await ctx.seguimiento.jornadaDeHoy(ctx.usuarioId, hoy);
-  return {
-    consentimiento: await ctx.seguimiento.tieneConsentimiento(ctx.usuarioId),
-    jornada: jornada ? { iniciadaEn: jornada.iniciadaEn, terminadaEn: jornada.terminadaEn } : null,
-  };
+  // Si falla (por ejemplo, antes de aplicar la migración 0015), la ruta se ve igual, sin la tarjeta de ubicación.
+  try {
+    const jornada = await ctx.seguimiento.jornadaDeHoy(ctx.usuarioId, hoy);
+    return {
+      consentimiento: await ctx.seguimiento.tieneConsentimiento(ctx.usuarioId),
+      jornada: jornada ? { iniciadaEn: jornada.iniciadaEn, terminadaEn: jornada.terminadaEn } : null,
+    };
+  } catch (falla) {
+    console.error('No se pudo leer el estado de la ubicación:', falla instanceof Error ? falla.message : falla);
+    return null;
+  }
 }
 
 /**
