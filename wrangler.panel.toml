@@ -18,7 +18,7 @@ ACCESS_TEAM_DOMAIN = ""
 ACCESS_AUD = ""
 # D56, opción 1: esta es la dirección pública (portada y repartidor). Con la dirección de la administración aquí
 # (https://brunen-admin.<subdominio>.workers.dev), /admin manda allá y esta dirección nunca sirve datos de administración.
-PANEL_ADMIN_URL = ""
+PANEL_ADMIN_URL = "https://brunen-admin.brunen-chatbot.workers.dev"
 # Opcional, segunda barrera con los correos autorizados (PANEL_CORREOS, separados por coma): se carga con
 # `wrangler secret put PANEL_CORREOS -c wrangler.panel.toml`, no aquí. Son correos de personas y este repositorio es público.
 
@@ -44,8 +44,9 @@ name = "brunen-admin"
 preview_urls = false
 
 [env.admin.vars]
-ACCESS_TEAM_DOMAIN = ""
-ACCESS_AUD = ""
+# Zero Trust activado el 2026-11-18; el Worker entero está detrás de Access (pestaña Access de brunen-admin).
+ACCESS_TEAM_DOMAIN = "raspy-mode-40d3.cloudflareaccess.com"
+ACCESS_AUD = "1278cea26a8dfd094c03e4445a3138554f7ced1f25e7bd97836f19072bd91ce6"
 PANEL_ADMIN_URL = ""
 
 [[env.admin.d1_databases]]
