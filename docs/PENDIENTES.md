@@ -91,6 +91,7 @@ Respondió el cuestionario el 2026-10-29 (D36). Marcadas las que quedaron resuel
 
 ## Técnicos
 - [ ] **La tabla de pasos para publicar y probar todo está en [PASOS_FRANCO.md](PASOS_FRANCO.md).**
+- [ ] **Resumen completo del proyecto (pasado, presente y futuro), listo para pegar en otra conversación: [PROMPT_PROYECTO.md](PROMPT_PROYECTO.md).**
 - [ ] **Antes de publicar lo del 2026-11-18 (D70–D80):** aplicar las migraciones `0014_dias_sin_reparto.sql` y `0015_seguimiento.sql` en la D1 real (`wrangler d1 migrations apply brunen-chatbot --remote`, con permiso de Franco y anotando el punto de restauración), y después publicar el bot y el panel. Si el panel se publica antes, carga igual (las lecturas de días sin reparto no lanzan), pero "Días sin reparto" no se puede usar hasta aplicarla.
 - [ ] Cuando la hoja PRECIOS cambie, igualar `TABLA_PRECIOS` (`src/precios.ts`): el precio sugerido del panel sale de ahí (D71) y el vigía avisa una vez si son distintos.
 - [x] Respaldo con IA activo: migración `0002` aplicada, `GROQ_API_KEY` cargada y probado con una llamada real (D24).
