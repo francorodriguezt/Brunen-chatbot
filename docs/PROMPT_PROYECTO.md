@@ -220,3 +220,170 @@ Reglas que Franco estableció y que debes respetar siempre:
 - WhatsApp: 1.000 mensajes de servicio gratis por número al mes; luego USD 0,02 c/u en Chile; marketing USD 0,0889. Con ~520 pedidos/mes y un mensaje por pedido: USD 0; peor caso ~USD 6/mes.
 - Cloudflare: Workers gratis (100.000 solicitudes/día, 10 ms CPU); D1 gratis (5 M lecturas y 100.000 escrituras al día, 5 GB); Zero Trust Free hasta 50 usuarios (pide tarjeta, no cobra); Workers AI 10.000 unidades/día (~200 min de audio).
 - Groq gratis, sin retención. OpenFreeMap gratis.
+
+---
+
+## 12. Expediente para un auditor (técnico, seguridad, privacidad y operación)
+
+> Esta sección está pensada para que un auditor experto pueda evaluar el proyecto sin preguntar nada: qué hay, dónde está, qué controles tiene, qué evidencia existe y qué riesgos siguen abiertos. Los datos se tomaron del repositorio el 2026-11-24. Donde algo no está verificado, se dice.
+
+### 12.1 Cómo auditar (orden sugerido)
+1. Leer `README.md`, `CLAUDE.md` (reglas del proyecto; **desactualizado** en dos puntos: dice que los pedidos van a Sheets y los comprobantes a Drive, y hoy van a D1 y Telegram) y `docs/conocimiento_brunen.md` (reglas del negocio).
+2. Leer `docs/DECISIONES.md` (D1–D81, ~23.000 palabras): cada decisión trae su porqué y su fuente oficial. Las revisiones anteriores están en D39, D56, D57, D80 y en `docs/ANALISIS_Y_MEJORAS.md`.
+3. Puntos de entrada del código: `src/index.ts` (bot: `fetch` + `scheduled`) y `src/panel/index.ts` (panel: enrutador, cabeceras y frontera de acceso).
+4. Reproducir: `npm ci` → `npm run check` (typecheck + pruebas, sin secretos ni red). `npm run dev` / `npm run dev:panel` en local. `npm run datos-locales` crea una base local con datos ficticios (`scripts/datos-de-prueba.sql`).
+5. Configuración: `wrangler.toml` (bot), `wrangler.panel.toml` (panel público y `[env.admin]`), `migrations/0001–0015`, `.github/workflows/check.yml`, `.gitignore`.
+6. Lo que el auditor **no** debe pedir ni abrir: `.dev.vars` (secretos locales), `datos/` y `datos-anonimos/` (Excel reales y sus copias), la base D1 real ni la local por defecto (`.wrangler/`, tiene el historial real cargado en pruebas locales).
+
+### 12.2 Inventario y tamaño
+| Parte | Dónde | Tamaño |
+|---|---|---|
+| Bot y lógica de negocio | `src/*.ts` (50 archivos) | ~9.000 líneas |
+| Servidor del panel | `src/panel/*.ts` (9 archivos: `index`, `acceso`, `ingreso`, `cuentas`, `rut`, `api`, `clientes-api`, `ruta-api`, `repartidor-api`) | ~1.950 líneas (total `src/`: 10.769) |
+| Interfaz web (sin framework, JS y CSS propios) | `panel/` | 4.670 líneas; `panel/admin/app.js` solo tiene 2.458 (candidato a separar en módulos) |
+| Pruebas | `tests/` (61 archivos, Vitest) | 11.867 líneas (más código de prueba que de producción) |
+| Scripts locales (Node, `.mjs`) | `scripts/` | 2.415 líneas |
+| Documentación | `docs/` (17 archivos) | ~58.000 palabras |
+| Historia | git | 171 commits desde el 2026-10-27, en `main`, CI en cada push |
+
+- **Dependencias**: **cero dependencias de ejecución**. Solo tres de desarrollo: `typescript ^7.0.2`, `vitest ^5.0.5`, `wrangler ^4.153.0`. `allowScripts` aprueba solo los scripts de instalación de `esbuild@0.28.2` y `workerd@1.20261023.1` (D10). Google (JWT RS256), WhatsApp, Telegram, Groq y Access se hablan con `fetch` + WebCrypto, sin SDK.
+- **Runtime**: Cloudflare Workers, `compatibility_date = "2026-09-01"` en los dos Workers (subirla es una mejora pendiente, J3). Node ≥ 22.18 para los scripts. CI con Node 24.
+
+### 12.3 Superficie expuesta (rutas HTTP)
+**Bot `brunen-chatbot`** (`src/index.ts`):
+| Ruta | Método | Protección |
+|---|---|---|
+| `/salud` | GET/HEAD | Pública; responde `ok` (no revisa la base: mejora I5) |
+| `/webhook` | GET | Verificación de Meta: `hub.verify_token` contra `WHATSAPP_VERIFY_TOKEN` (token falso → 403) |
+| `/webhook` | POST | Firma `X-Hub-Signature-256` (HMAC-SHA256 del cuerpo crudo con `WHATSAPP_APP_SECRET`, comparación en tiempo constante, `src/firma.ts`); firma falsa → 401. Responde 200 de inmediato y procesa con `ctx.waitUntil`; deduplica por `wamid` en D1 |
+| Cualquier otra | — | 404 |
+| Tarea programada | cron `*/5 * * * *` | Interna (vigía, fijos, fichas, respaldos, limpieza de posiciones) |
+
+**Panel público `brunen-panel`** (`src/panel/index.ts`, `run_worker_first = true`, `preview_urls = false`):
+| Ruta | Protección |
+|---|---|
+| `/`, `/portada.js`, `/ingreso.js`, `/estilos.css`, `/manifest.webmanifest`, `/sw.js`, `/repartidor/…`, `/iconos/*.png` | Lista cerrada de archivos públicos (todo lo demás → 404); solo GET/HEAD |
+| `/api/sesion`, `/api/sesion/entrar`, `/api/sesion/salir` | Ingreso con RUT + clave de 4 dígitos (`src/panel/ingreso.ts`, `cuentas.ts`) |
+| `/api/repartidor/*` (`ruta`, entregas, `ubicacion`, `jornada`, `posiciones`) | Cookie de sesión con **rol `repartidor`**; si no, 401 |
+| `/admin` | Redirección 302 a la administración aparte; `/admin/*` → 404: la pública **nunca** sirve administración |
+
+**Administración `brunen-admin`** (mismo código, `--env admin`):
+| Ruta | Protección |
+|---|---|
+| Todo el Worker | **Cloudflare Access a nivel de Worker** ("Todo el tráfico"), política reutilizable "Administradores del panel Brunen" (hoy un solo correo), ingreso por One-time PIN o cuenta Cloudflare |
+| `/admin/*` (archivos) | Además, el Worker verifica el JWT `Cf-Access-Jwt-Assertion` (`src/panel/acceso.ts`): firma RS256 con las claves del equipo (caché 1 h), emisor, AUD y vencimiento. Sin `ACCESS_TEAM_DOMAIN`/`ACCESS_AUD` falla **cerrado** (503). `PANEL_CORREOS` (opcional) es una segunda lista de correos |
+| `/admin/api/*` | Access + **sesión de administrador cuyo correo coincide con el de Access** (`esDelAdministrador`) + `PANEL_SECRETO` configurado. Rutas: `estado`, `opciones`, `respaldo`, `respaldo/estado`, `estadisticas`, `reparto`, `pedidos` (+ `buscar`, `interpretar`), `avisos`, `dias-sin-reparto` (+ `quitar`), `clientes` (+ `/:id`, `anterior`, `mapa`, `por-pedir`, `buscar`), `ruta` (+ `evaluar`, `publicar`), `puntos`, `usuarios` (+ `/:id`), `sesion/primer-ingreso` |
+| `PANEL_DEV_CORREO` | Atajo solo para desarrollo: se acepta **únicamente** si el host es `localhost`, `127.0.0.1` o `[::1]`; no está en la configuración de producción |
+
+### 12.4 Autenticación, sesiones y autorización
+- **Dos roles**: `administrador` (Access + RUT + clave) y `repartidor` (RUT + clave, sin Access, en la dirección pública).
+- **Claves de 4 dígitos**: se guarda solo una huella **HMAC-SHA-256 con `PANEL_SECRETO`** (secreto del servidor, 48 caracteres al azar). Se eligió HMAC y no PBKDF2/scrypt a propósito (`cuentas.ts`): con 10.000 combinaciones un hash lento no protege y sí gasta CPU (10 ms); lo que protege es que la huella sin el secreto no sirve y el **bloqueo**: 5 intentos fallidos → bloqueo de 15 min que crece hasta 24 h, tope por origen de la conexión (`intentos_de_ingreso`, se limpia a las 24 h), rechazo de claves débiles (cuatro dígitos iguales, escaleras como `1234` o `9876`, y los primeros o últimos 4 dígitos del RUT). Cambiar `PANEL_SECRETO` invalida todas las claves (falta documentarlo, H5).
+- **Riesgo aceptado**: alguien que conozca el RUT del repartidor puede bloquearle la cuenta a propósito con 5 intentos (H4; alternativa: bloqueo por dispositivo).
+- **Sesiones**: token aleatorio (`crypto.getRandomValues`); en la base solo se guarda su SHA-256. Cookie `HttpOnly; SameSite=Strict; Secure; Path=/`. Sin "Recordar": 12 h; con "Recordar este dispositivo": 30 días, renovada sola mientras se use. Equipo permite cerrar todas las sesiones de un usuario y desactivarlo.
+- **Primer ingreso**: el primer administrador elige su RUT y clave después de pasar por Access con su correo (`/api/sesion/primer-ingreso`). Al 2026-11-24 **no existe ninguna cuenta** en la base real.
+- **Cuenta de Cloudflare "Brunen SpA"**: dos miembros Super Administrador (el correo de la empresa y el de Franco), ambos con verificación en dos pasos. Pendiente: bajar a Franco a Administrator cuando todo funcione.
+- **Meta / WhatsApp**: el token de acceso es un secreto; el vigía lo prueba cada mañana a las 7:30 y avisa si vence.
+
+### 12.5 Secretos y variables (solo nombres; los valores nunca están en el repo)
+| Nombre | Worker | Tipo |
+|---|---|---|
+| `WHATSAPP_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | bot | secretos |
+| `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_SHEET_ID` | bot | secretos |
+| `GROQ_API_KEY` | bot | secreto |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | bot | secretos (**aún no cargados**) |
+| `NUMEROS_PERMITIDOS` | bot | secreto (teléfonos de prueba; vacío = no responde a nadie) |
+| `PANEL_SECRETO` | panel y admin | secreto (cargado el 2026-11-19; copia temporal fuera del repo que Franco debe pasar a su gestor y borrar) |
+| `PANEL_CORREOS` | panel/admin | secreto opcional (no cargado) |
+| `GRAPH_API_VERSION=v25.0`, `BOT_ACTIVO`, `FLUJO_PEDIDO`, `REGISTRO_PLANILLA`, `ESPERA_AGRUPADOR_MS`, `PAUSA_POR_PERSONA_MINUTOS` | bot | variables públicas en `wrangler.toml` |
+| `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`, `PANEL_ADMIN_URL` | panel/admin | variables públicas (no son secretos) |
+| Bindings: `DB` (D1), `AI` (Workers AI), `ASSETS` (archivos del panel) | — | — |
+- Los tipos de `Env` están escritos a mano (`src/index.ts`, `src/panel/index.ts`, `src/panel/acceso.ts`): la guía de Workers recomienda `wrangler types` (J2).
+- `.gitignore` excluye `.dev.vars*`, `.env*`, `*credentials*.json`, `*service-account*.json`, `*.pem`, `datos/`, `datos-anonimos/`, `*.xlsx`, `*.csv`, `restaurar-pedidos.sql`, `.wrangler/`. El historial se revisó sin secretos (D14, D15).
+
+### 12.6 Datos guardados (D1, 22 tablas, migraciones 0001–0015)
+| Tabla | Qué guarda | Datos personales |
+|---|---|---|
+| `pedidos` (+ forma/estado de pago, documento, tipo de cliente, `cliente_id`, entrega, vacíos, cobro, no entregado, `orden_ruta`) | Pedidos | Teléfono, nombre, dirección, comuna |
+| `historial_pedidos` | Cambios de cada pedido | Indirectos |
+| `avisos` | Bandeja del panel (reclamos, comprobantes, audios transcritos) | Texto del cliente |
+| `clientes`, `telefonos_cliente`, `direcciones_cliente` | Fichas con varios teléfonos e historial de direcciones | Sí |
+| `ultimos_pedidos`, `conversaciones`, `mensajes_pendientes`, `conversaciones_tomadas` | Memoria del bot y coexistencia | Teléfono, texto |
+| `mensajes_procesados` | Deduplicación por `wamid` y vigía | Teléfono |
+| `pedidos_fijos`, `dias_sin_reparto` | Planificación | Teléfono en fijos |
+| `puntos` | Coordenadas por dirección (pin manual > GPS del repartidor > ubicación del cliente) | Ubicación de domicilios |
+| `usuarios`, `sesiones`, `intentos_de_ingreso` | Cuentas del panel | RUT, correo del administrador, huellas |
+| `jornadas`, `consentimientos_ubicacion`, `posiciones` | Seguimiento del repartidor (D80) | Ubicación del trabajador; se borra a los 3 días |
+| `respaldos`, `uso_llm` | Control | No |
+- **Fuera de D1**: la planilla de Google tiene CLIENTES (datos de clientes) y las hojas RESPALDO_PEDIDOS (cada 30 min) y RESPALDO_CLIENTES (cada noche), es decir, **una copia de los datos personales en la cuenta de Google de la empresa**. Time Travel de D1 guarda 7 días.
+- **Retención**: hoy no hay plazos definidos salvo posiciones (3 días) y Time Travel (7 días). Lo decide el dueño y lo exige el aviso de privacidad.
+
+### 12.7 A dónde viajan los datos (terceros)
+| Tercero | Qué recibe | Control |
+|---|---|---|
+| Meta (WhatsApp Cloud API) | Mensajes y respuestas | Canal del negocio |
+| Cloudflare (Workers, D1, Access, Workers AI) | Todo lo guardado; audios para transcribir con Whisper (no se guardan) | Cuenta de la empresa |
+| Google Sheets | Clientes, precios, configuración, feriados, respaldos | Cuenta de servicio con acceso solo a esa planilla |
+| Groq (`openai/gpt-oss-20b`) | **Solo el texto del mensaje** cuando las reglas no entienden; nunca nombre ni dirección; retención cero | D6, D23, D24 |
+| Telegram | Avisos urgentes y **fotos/PDF de comprobantes** (hasta 5 MB) | Grupo privado (por crear) |
+| OpenFreeMap | Solo pedidos de mosaicos del mapa de la zona mirada; ninguna dirección | CSP la limita a la administración |
+| Nadie más | La ruta se optimiza en el propio código (`src/ruta.ts`); las direcciones no se geocodifican afuera | D62, D63 |
+
+### 12.8 Controles de seguridad existentes (con dónde verlos)
+- Firma del webhook en tiempo constante y 200 inmediato con proceso en segundo plano (`src/firma.ts`, `src/index.ts`, `tests/webhook.test.ts`).
+- El bot nunca lanza un error al webhook ni deja al cliente sin respuesta (`src/flujo.ts`, `src/atencion.ts`); el vigía avisa si un mensaje quedó sin atender (`src/vigia.ts`).
+- SQL siempre con parámetros (`?1…`). Hay cinco consultas armadas con plantilla y todas meten solo marcadores o constantes, nunca datos: `almacen.ts:53`, `puntos.ts:105`, `relevo.ts:97`, `respaldo.ts:219`, `seguimiento.ts:163`.
+- Cabeceras en toda respuesta del panel: CSP `default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'` (la administración suma solo `tiles.openfreemap.org` y `blob:`), `nosniff`, `referrer-policy: same-origin`, `permissions-policy` (geolocalización solo en `/repartidor`), `cache-control: no-store`.
+- La interfaz arma el HTML con nodos del DOM (`textContent`/`append`), sin `innerHTML` con datos.
+- El CSV del reparto se protege contra inyección de fórmulas (D42).
+- Validación en el servidor con listas cerradas (estados, formas de pago, documento, tipo de cliente: D52) y RUT con dígito verificador (`src/panel/rut.ts`).
+- Falla cerrada: sin base, sin `PANEL_SECRETO` o sin la configuración de Access, el panel responde 503.
+- Registros: teléfonos enmascarados (`enmascararTelefono`), sin nombres ni direcciones; Workers Logs activo (3 días de retención); traces apagados a propósito (se cobran desde el 2026-12-01).
+- El bot solo atiende `NUMEROS_PERMITIDOS` mientras no se abra a clientes.
+- Privacidad: el cliente se reconoce solo por pedidos del último año (números de teléfono reciclados, D56); el mapa de clientes no manda teléfonos ni direcciones (D75); el anonimizador (`scripts/anonimizar-excel.mjs`) revisa fugas antes de escribir (D47).
+- Seguimiento del repartidor: consentimiento versionado, solo en jornada y de 6:00 a 22:00, precisión ≤ 500 m, borrado a los 3 días (D80).
+- CI con `permissions: contents: read` y sin secretos.
+- Pruebas específicas de seguridad: `tests/endurecimiento.test.ts`, `tests/panel.test.ts` (rutas, cabeceras, frontera pública/admin), `tests/ingreso.test.ts`, `tests/cuentas.test.ts`, `tests/acceso-falso.ts` (JWT de Access de prueba), `tests/repartidor-api.test.ts`.
+
+### 12.9 Revisiones hechas y lo que encontraron
+- **D39 (2026-11-01)**: revisión completa del código, 15 hallazgos corregidos (entre ellos, qué comuna gana si el cliente menciona dos).
+- **D56 (2026-11-12)**: revisión de código (14 hallazgos, 13 corregidos con pruebas), revisión de seguridad (sin vulnerabilidades con confianza suficiente; se cerró el riesgo del teléfono reciclado) y plugin de Cloudflare. Hallazgo clave: Access no protege una ruta dentro de `workers.dev` → dos direcciones.
+- **D57 (2026-11-12)**: datos reales de uso: 447 invocaciones, 0 errores, CPU mediana 3,4 ms, p90 6,2 ms, p99 26,7 ms, sin cortes por límite.
+- **`docs/ANALISIS_Y_MEJORAS.md` (2026-11-13)**: evaluación en 13 ramas (A–M) y registro de riesgos R1–R10.
+- **D80 (2026-11-18)**: revisión de código y de seguridad del seguimiento, corregida.
+- **D81 (2026-11-19)**: comprobaciones en producción: `/salud` ok, firma falsa 401, token falso 403, portada 200, `/admin` de la pública 302, `/admin/api/pedidos` de la pública 404, administración sin sesión → ingreso de Access.
+- **Evidencia del 2026-11-24**: `npm run check` en local → typecheck sin errores y **1.523 pruebas pasadas en 57 archivos** (27 s). En la interfaz no hay `innerHTML`, `outerHTML` ni `insertAdjacentHTML` (búsqueda en `panel/`).
+- No hay auditoría externa, pentest ni pruebas de punta a punta del panel en CI (J1).
+
+### 12.10 Riesgos y brechas abiertos (lo que un auditor debería marcar)
+| # | Brecha | Gravedad | Estado o respuesta |
+|---|---|---|---|
+| A1 | **Ley 21.719** (vigente 2026-12-01 salvo postergación): no hay aviso de privacidad, registro de tratamientos, plazos de conservación ni función para "olvidar" a un cliente | Alta | Borrador pendiente (mejora 1); decide el dueño |
+| A2 | **Coexistencia del número** sin resolver: el bot no puede atender clientes reales | Alta (negocio) | Felipe decide proveedor o Tech Provider (D45) |
+| A3 | **Telegram sin configurar**: reclamos y fallas urgentes solo quedan en el panel | Alta (operación) | Paso 2 de `PASOS_FRANCO.md` |
+| A4 | Sin Dependabot, CodeQL ni detección de secretos/push protection confirmadas en GitHub; no hay `SECURITY.md` | Media | H1, H3, K2 (gratis en repo público) |
+| A5 | Copia de `PANEL_SECRETO` en un archivo de texto fuera del repo | Media | Franco debe moverla a su gestor y borrarla |
+| A6 | Datos personales replicados en Google Sheets (respaldos) y en la base local `.wrangler/` del computador de Franco | Media | Aceptado por diseño (D66); declararlo en el aviso de privacidad |
+| A7 | Repartidor en la dirección pública con clave de 4 dígitos (sin Access); bloqueo intencional posible (H4) | Media-baja | Mitigado por bloqueo creciente, tope por conexión y cierre de sesiones |
+| A8 | Comprobantes (fotos con datos bancarios del cliente) se reenvían a Telegram | Media | Grupo privado; falta definir quiénes están y cuánto se guarda |
+| A9 | Historial de git con correo personal y líneas de coautoría antiguas | Baja | Decisión pendiente de Franco (reescribir o no) |
+| A10 | `/salud` no revisa la base; no hay monitoreo externo | Media | UptimeRobot pendiente (I5) |
+| A11 | Tipos de `Env` a mano, `compatibility_date` de 2026-09-01, `panel/admin/app.js` de 2.458 líneas | Baja | J2, J3, J4 |
+| A12 | Pendientes de D80: no se borra el seguimiento al desactivar a un repartidor; los 3 días no se cuentan desde que se guardó cada posición; dos repartidores el mismo día; cortes de viaje no se guardan al publicar | Media-baja | Mejora 2 |
+| A13 | Dos fuentes de clientes (hoja CLIENTES y fichas en D1) | Media | Mejora 3 |
+| A14 | Una sola persona conoce el sistema (R4) | Media | Documentación extensa + `docs/INCIDENTES.md`; falta entrenar a Constanza |
+| A15 | Pedidos de prueba en la base real | Baja | Borrarlos antes de abrir |
+| A16 | Franco es Super Administrador de la cuenta; la política de Access tiene un solo correo | Baja | Bajarlo a Administrator al final; sumar correos de Coni y Franco |
+| A17 | `CLAUDE.md` desactualizado | Baja | Actualizarlo |
+
+### 12.11 Continuidad y recuperación
+- Volver a la versión anterior del bot: `wrangler rollback` (`docs/INCIDENTES.md`). Base: Time Travel de D1 con puntos de restauración anotados (`docs/PASOS_FRANCO.md`, `docs/INCIDENTES.md`) y restauración desde la planilla con `npm run restaurar-respaldo` (`docs/RESPALDO.md`).
+- Interruptores: `BOT_ACTIVO = NO` apaga el bot; `ESTADO_SERVICIO = reducido` + `MENSAJE_EXCEPCION` en la hoja CONFIGURACION; `FLUJO_PEDIDO = NO` vuelve al modo prueba.
+- Límites del plan gratis que pueden cortar el servicio: 10 ms de CPU por invocación, 100.000 solicitudes/día, 100.000 escrituras D1/día (la carga del historial gasta ~la mitad: se hace una sola vez), 50 consultas por invocación, 1.000 mensajes de servicio de WhatsApp al mes.
+
+### 12.12 Preguntas que conviene que el auditor responda
+1. ¿Basta una clave de 4 dígitos con bloqueo para el repartidor en una dirección pública, o conviene bloqueo por dispositivo o un segundo factor?
+2. ¿Qué plazo de conservación es razonable para pedidos, fichas, avisos, comprobantes en Telegram y respaldos en Sheets, y cómo se implementa "olvidar a un cliente" en D1, Sheets y Telegram a la vez?
+3. ¿El consentimiento del repartidor para la ubicación cumple la ley laboral y de datos si el teléfono es personal?
+4. ¿Es suficiente HMAC con secreto del servidor para claves de 4 dígitos dado el límite de 10 ms de CPU?
+5. ¿Hay que sacar la copia de datos personales de Google Sheets, o basta con declararla?
+6. ¿Qué falta para abrir el bot a todos los clientes sin riesgo (coexistencia, monitoreo, Telegram, aviso)?
