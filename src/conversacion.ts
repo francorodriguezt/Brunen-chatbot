@@ -30,6 +30,8 @@ export interface EstadoConversacion {
 }
 
 export const VIGENCIA_CONVERSACION_SEGUNDOS = 12 * 3600;
+/** Una cotización ofrecida (D95) vale una hora: un "sí" al día siguiente no debe anotar lo que preguntó ayer (D97). */
+export const VIGENCIA_COTIZACION_SEGUNDOS = 3600;
 const VIGENCIA_ULTIMO_PEDIDO_SEGUNDOS = 180 * 24 * 3600;
 const PROBABILIDAD_LIMPIEZA = 0.02; // limpia en 1 de cada ~50 mensajes
 const MAX_TEXTO = 40;
@@ -105,10 +107,12 @@ export class MemoriaConversaciones {
   obtener(telefono: string, ahoraSegundos: number): Promise<EstadoConversacion | null> {
     return this.seguro('leer la conversación', null, async () => {
       const r = await this.db
-        .prepare('SELECT estado FROM conversaciones WHERE telefono = ?1 AND actualizado_en > ?2')
+        .prepare('SELECT estado, actualizado_en FROM conversaciones WHERE telefono = ?1 AND actualizado_en > ?2')
         .bind(telefono, ahoraSegundos - VIGENCIA_CONVERSACION_SEGUNDOS)
         .run();
-      return validarEstado(jsonODescartar(filaTexto(r, 'estado')));
+      const estado = validarEstado(jsonODescartar(filaTexto(r, 'estado')));
+      const guardadoEn = Number((r.results?.[0] as Record<string, unknown> | undefined)?.actualizado_en ?? 0);
+      return estado?.espera === 'cotizacion' && guardadoEn <= ahoraSegundos - VIGENCIA_COTIZACION_SEGUNDOS ? null : estado;
     });
   }
 

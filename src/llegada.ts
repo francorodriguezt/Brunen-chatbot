@@ -37,6 +37,12 @@ const PREGUNTA_LLEGADA = new RegExp(
 );
 
 /** true si el mensaje pregunta por la llegada de su pedido. No mira si tiene uno: eso lo decide quien llama. */
+/** El mensaje sin la frase que pregunta por la llegada ("a qué hora me traen"), para ver qué más dice (D97). */
+export function sinPreguntaDeLlegada(texto: string): string {
+  const t = preparar(texto).replace(/[?¿!.,]/g, ' ').replace(/\s+/g, ' ');
+  return t.replace(new RegExp(PREGUNTA_LLEGADA.source, 'g'), ' ').replace(/\s+/g, ' ').trim();
+}
+
 export function preguntaPorLlegada(texto: string): boolean {
   const t = preparar(texto).replace(/[?¿!.,]/g, ' ').replace(/\s+/g, ' ');
   return PREGUNTA_LLEGADA.test(t) && !NO_LLEGO.test(t);

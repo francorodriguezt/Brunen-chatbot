@@ -127,7 +127,8 @@ export function cotizacion(lineas: readonly LineaTexto[], total: number, recarga
       ? [`${itemTexto(unica)}: ${formatearCLP(unica.subtotal ?? 0)}${unitario(unica)}.`]
       : [...lineas.map((l) => `- ${itemTexto(l)}: ${formatearCLP(l.subtotal ?? 0)}`), `Total: ${formatearCLP(total)}.`];
   if (recarga) filas.push('Es el precio de recarga: si no tienes bidones para cambiar, se cobra la carga inicial y te confirmamos el valor.');
-  filas.push('El despacho es gratis. ¿Te los anoto? Responde «sí».');
+  const uno = lineas.reduce((suma, l) => suma + l.cantidad, 0) === 1;
+  filas.push(`El despacho es gratis. ¿Te ${uno ? 'lo' : 'los'} anoto? Responde «sí».`);
   return filas.join('\n');
 }
 

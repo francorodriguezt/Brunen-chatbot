@@ -991,6 +991,31 @@ describe('cotizar lo que preguntan y contestar dos cosas a la vez (D95)', () => 
     expect(d.respuesta).not.toContain('Repartimos entre');
   });
 
+  it('después de una cotización, "ok gracias" o "perfecto" es un cierre: no anota nada; "dale" y "sí" sí (D97)', async () => {
+    for (const cierre of ['ok gracias', 'perfecto, muchas gracias', 'ya', 'bueno', 'Ok 👍']) {
+      const charla = conversacion();
+      await charla.decir('cuanto salen 3 de 20?');
+      expect((await charla.decir(cierre)).pedido, cierre).toBeUndefined();
+    }
+    for (const si of ['dale', 'sí, por favor', 'si anótalo']) {
+      const charla = conversacion();
+      await charla.decir('cuanto salen 3 de 20?');
+      expect(lineas(await charla.decir(si)), si).toEqual([['20L', 3]]);
+    }
+  });
+
+  it('"¿a qué hora me traen los 2 de 20?" de un cliente con pedido en curso recibe su estado, no otro pedido (D97)', async () => {
+    for (const texto of ['a que hora me traen los 2 de 20?', 'cuando me traen mis 4 de 20?', '¿a qué hora me traen los 3 bidones?', 'quiero saber a qué hora llega mi pedido']) {
+      const d = await conversacion({ puertos: { estadoDeMiPedido: async () => ({ tipo: 'en_reparto', antes: 1 }) } }).decir(texto);
+      expect(d.respuesta, texto).toBe('Tu pedido va en el reparto de hoy: antes del tuyo quedan 1 entrega.');
+      expect(d.pedido, texto).toBeUndefined();
+    }
+  });
+
+  it('con un solo bidón la oferta dice "¿Te lo anoto?" (D97)', async () => {
+    expect((await conversacion().decir('cuanto sale 1 de 20?')).respuesta).toBe('1 bidón de 20 L: $4.500.\nEl despacho es gratis. ¿Te lo anoto? Responde «sí».');
+  });
+
   it('bidones y una pregunta, sin decir que los quiere: contesta y ofrece anotarlos', async () => {
     const charla = conversacion();
     const d = await charla.decir('2 de 20, llegan a Vitacura?');

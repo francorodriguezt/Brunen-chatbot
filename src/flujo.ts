@@ -18,8 +18,18 @@ import type { BusquedaCliente } from './clientes';
 import { fusionarConEstado, responderEnContexto } from './contexto';
 import type { EstadoConversacion } from './conversacion';
 import type { PropuestaEntrega } from './entrega';
-import { interpretar, type Intencion, type Interpretacion, type ItemInterpretado } from './interprete';
-import { preguntaPorLlegada, type EstadoDeMiPedido } from './llegada';
+import { extraerItems, tieneVerboDePedido, type Intencion, type Interpretacion, type ItemInterpretado } from './interprete';
+import { preguntaPorLlegada, sinPreguntaDeLlegada, type EstadoDeMiPedido } from './llegada';
+
+/**
+ * "Mándame 2 de 20, ¿a qué hora llegan?" es un pedido nuevo; "¿a qué hora me traen los 2 de 20?" o "quiero saber a qué
+ * hora llega mi pedido" preguntan por el que ya tiene. Es nuevo solo si, fuera de la pregunta, pide con un verbo y nombra
+ * bidones (D95, D97).
+ */
+function pidePedidoNuevo(texto: string): boolean {
+  const resto = sinPreguntaDeLlegada(texto);
+  return tieneVerboDePedido(resto) && extraerItems(resto).length > 0;
+}
 import type { ResultadoInterpretacion } from './llm';
 import { decidir, decidirDatos, decidirEdificio, decidirSinEdificio, type Decision, type EntradaMotor } from './motor';
 import type { DatosPrevios } from './pedidos';
@@ -137,7 +147,7 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
 
   // "¿Cuándo llega?" de un cliente con pedido (D78): se le dice en qué está, sin pasar por el intérprete ni la IA.
   // Si además pide bidones ("mándame 2 de 20, ¿a qué hora llegan?") es un pedido nuevo: va por el camino de siempre (D95).
-  if (!contextual && p.estadoDeMiPedido && preguntaPorLlegada(entrada.texto) && interpretar(entrada.texto).intencion !== 'pedido') {
+  if (!contextual && p.estadoDeMiPedido && preguntaPorLlegada(entrada.texto) && !pidePedidoNuevo(entrada.texto)) {
     let suPedido: EstadoDeMiPedido | null = null;
     try {
       suPedido = await p.estadoDeMiPedido(entrada.telefono);

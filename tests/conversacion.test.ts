@@ -32,6 +32,16 @@ describe('validarEstado', () => {
 });
 
 describe('MemoriaConversaciones: conversación a medias', () => {
+  it('una cotización ofrecida vence en una hora; lo demás, en 12 (D97)', async () => {
+    const memoria = new MemoriaConversaciones(crearBaseSqlite());
+    const oferta: EstadoConversacion = { espera: 'cotizacion', items: [{ tipo: '20L', cantidad: 3 }] };
+    await memoria.guardar(TEL, oferta, AHORA);
+    expect(await memoria.obtener(TEL, AHORA + 3599)).toEqual(oferta);
+    expect(await memoria.obtener(TEL, AHORA + 3601)).toBeNull();
+    await memoria.guardar(TEL, A_MEDIAS, AHORA);
+    expect(await memoria.obtener(TEL, AHORA + 3601)).toEqual(A_MEDIAS);
+  });
+
   it('guarda y recupera el pedido a medias', async () => {
     const memoria = new MemoriaConversaciones(crearBaseSqlite());
     await memoria.guardar(TEL, A_MEDIAS, AHORA);
