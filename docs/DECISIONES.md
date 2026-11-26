@@ -771,7 +771,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **La app lee la ruta al volver** de Google Maps si pasaron más de 2 minutos: así ve pronto un cambio sin tocar Actualizar.
 - **Panel:** en Reparto, "Publicada a las 8:00. El repartidor la tiene desde las 8:05", o en rojo "Cambiada a las 12:40: el repartidor todavía no confirma el cambio en su app. Avísale por WhatsApp.". En Hoy, una fila con lo mismo. Al publicar de nuevo, el aviso dice que el repartidor verá el cambio.
 - Por qué una fila por día y no el historial de cada orden: lo que se necesita es saber si el repartidor vio el último cambio. Guardar cada versión completa no lo pide nadie todavía.
-- Verificado: 6 pruebas nuevas (versión que sube y empieza en 1 cada día, sin la tabla, confirmar que no baja, versión inexistente, sesión y cabecera) y de punta a punta en el navegador con datos ficticios (aviso, Entendido, la línea del panel y la confirmación sola de la primera versión). **Para publicar hay que aplicar la migración 0017 en la base real.** Sin publicar.
+- Verificado: 6 pruebas nuevas (versión que sube y empieza en 1 cada día, sin la tabla, confirmar que no baja, versión inexistente, sesión y cabecera) y de punta a punta en el navegador con datos ficticios (aviso, Entendido, la línea del panel y la confirmación sola de la primera versión). Publicado el 2026-11-26 con la migración 0017 en la base real (ver D97).
 
 ### D95 · 2026-11-26 · El bot cotiza lo que preguntan, ofrece anotarlo y contesta dos cosas a la vez
 **Mejoras A y B de [PROPUESTA_SIGUIENTES_PASOS.md](PROPUESTA_SIGUIENTES_PASOS.md); Franco pidió construirlas ("construye todo lo que puedas").** El código sigue calculando y la IA no redacta: solo cambia qué responde el bot con lo que ya entendía.
