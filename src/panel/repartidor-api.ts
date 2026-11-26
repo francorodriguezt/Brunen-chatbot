@@ -78,7 +78,7 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
   const pedidos = await ctx.repositorio.pedidosDelDia(hoy);
   const porId = new Map(pedidos.map((p) => [p.id, p]));
   const entregas = await ctx.entregas.deDia(hoy);
-  const reparto = armarReparto(pedidos, hoy);
+  const reparto = armarReparto(pedidos, hoy, await ctx.repositorio.viajesPublicados(hoy));
   const conocidos = await ctx.puntos.deDirecciones(reparto.paradas.map((p) => ({ direccion: p.direccion, comuna: p.comuna })));
   const paradas = reparto.paradas.map((parada) => {
     const pedido = porId.get(parada.idPedido);

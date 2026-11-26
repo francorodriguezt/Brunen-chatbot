@@ -10,7 +10,8 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] La app del repartidor dice dónde recargar (planta o Actum) según la ruta, no siempre "Actum".
 - [x] Cuántos bidones de cada tamaño cargar en cada viaje.
 - [x] Que las cargas del mapa y de la lista coincidan: arman los viajes igual; el mapa dice "lo que queda" y la lista dice si va en el orden publicado o por comuna. (D73)
-- [ ] Elegir en conjunto dónde cortar cada viaje y dónde recargar (no viaje por viaje). Antes hay que guardar los cortes al publicar la ruta: si no, la lista y la app del repartidor (que no tienen coordenadas) cortarían distinto que el mapa.
+- [ ] Elegir en conjunto dónde cortar cada viaje y dónde recargar (no viaje por viaje). Ya se puede: los viajes quedan guardados al publicar (D86), así que la app y el mapa usarían los mismos cortes.
+- [x] Guardar los viajes al publicar la ruta: el mapa, la lista y la app del repartidor muestran los mismos. (D86; falta la migración 0016 en la base real)
 - [x] Aprender el tiempo en cada parada con la hora de cada entrega (D80). Falta: el tiempo entre paradas por zona y hora.
 - [x] Recalcular desde donde está el repartidor (su última posición o su última entrega, D80).
 - [ ] Horarios de clientes ("solo en la tarde") como condición de la ruta.
@@ -68,7 +69,7 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] `PANEL_SECRETO` y panel publicado (D81). Falta: bot de Telegram y cargar el historial.
 - [x] Actualizar `CLAUDE.md` (decía que los pedidos van a Google Sheets y los comprobantes a Drive). (D84)
 - [ ] Pruebas del panel en el navegador; medir la CPU después de publicar. (La app del repartidor se probó el 2026-11-25 con datos ficticios: sin señal, servidor caído y rechazos, D84.)
-- [x] La cola del repartidor ya no pierde marcas; `/salud` revisa la base; pendientes de D80 cerrados salvo los cortes de viaje. (D84)
+- [x] La cola del repartidor ya no pierde marcas; `/salud` revisa la base; pendientes de D80 cerrados (D84, y los cortes de viaje en D86).
 - [ ] Ley 21.719 (rige desde el 15-oct-2027, D82): aviso de privacidad y plazo de guardado. Borrador listo en `AVISO_PRIVACIDAD.md` (D85). **(Dueño)**
 - [x] `npm run comprobar` después de cada publicación. (D85)
 

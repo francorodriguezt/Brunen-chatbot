@@ -247,7 +247,7 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       const fecha = url.searchParams.get('fecha');
       if (!esFecha(fecha) || Number.isNaN(Date.parse(`${fecha}T00:00:00Z`))) return error(400, 'Fecha no válida.');
       const pedidos = await repositorio.pedidosDelDia(fecha);
-      const reparto = armarReparto(pedidos, fecha);
+      const reparto = armarReparto(pedidos, fecha, await repositorio.viajesPublicados(fecha));
       if (ruta === '/api/reparto') {
         const delDia = ctx.entregas ? await ctx.entregas.deDia(fecha) : new Map();
         // El cierre del día (D64): efectivo, vacíos y paradas, con lo que marcó el repartidor.

@@ -82,15 +82,26 @@ export interface RepartoDelDia {
 /**
  * Parte las paradas en viajes de hasta `capacidad` bidones, sin cambiar su orden: cuando la siguiente parada no cabe,
  * empieza otro viaje. Un pedido más grande que el furgón va solo en su viaje y queda marcado.
+ *
+ * Con `viajes` (los guardados al publicar la ruta, D86), cada parada publicada va en su viaje aunque después cambie una
+ * cantidad o se cancele un pedido: así no se mueven paradas de un viaje a otro en plena ruta. Lo que llegó después de
+ * publicar sigue por capacidad, a continuación. Un viaje que quedó sobre el tope se marca igual.
  */
-export function armarCargas(paradas: ParadaDeReparto[], capacidad: number = CAPACIDAD_FURGON): CargaDelFurgon[] {
+export function armarCargas(paradas: ParadaDeReparto[], capacidad: number = CAPACIDAD_FURGON, viajes?: ReadonlyMap<string, number>): CargaDelFurgon[] {
   const cargas: CargaDelFurgon[] = [];
   let actual: CargaDelFurgon | null = null;
+  let viajeGuardado: number | null = null;
   for (const parada of paradas) {
-    if (!actual || (actual.totalBidones > 0 && actual.totalBidones + parada.totalBidones > capacidad)) {
+    const guardado = viajes?.get(parada.idPedido) ?? null;
+    const empieza =
+      !actual ||
+      (guardado !== null ? guardado !== viajeGuardado : actual.totalBidones > 0 && actual.totalBidones + parada.totalBidones > capacidad);
+    if (empieza) {
       actual = { numero: cargas.length + 1, desde: parada.orden, hasta: parada.orden, totalBidones: 0, excedeFurgon: false };
       cargas.push(actual);
+      viajeGuardado = guardado;
     }
+    if (!actual) continue;
     actual.hasta = parada.orden;
     actual.totalBidones += parada.totalBidones;
     actual.excedeFurgon = actual.totalBidones > capacidad;
@@ -105,8 +116,11 @@ const comparar = (a: string, b: string): number => (comparador ??= new Intl.Coll
 
 const sinBidones = (): Record<TipoBidon, number> => ({ '20L': 0, '12L': 0, '10L': 0 });
 
-/** Los pedidos de un día (YYYY-MM-DD) que salen a reparto. La fecha que cuenta es la confirmada; si no hay, la que propuso el bot. */
-export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string): RepartoDelDia {
+/**
+ * Los pedidos de un día (YYYY-MM-DD) que salen a reparto. La fecha que cuenta es la confirmada; si no hay, la que propuso
+ * el bot. `viajes`: los guardados al publicar la ruta (D86); se usan solo si cubren todas las paradas publicadas.
+ */
+export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string, viajes?: ReadonlyMap<string, number>): RepartoDelDia {
   const paradas: ParadaDeReparto[] = [];
   let sinConfirmar = 0;
   for (const pedido of pedidos) {
@@ -144,7 +158,9 @@ export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string):
   });
   const publicada = paradas.some((parada) => posicion.get(parada.idPedido) != null);
   paradas.forEach((parada, i) => (parada.orden = i + 1));
-  const cargas = armarCargas(paradas);
+  const publicadas = paradas.filter((parada) => posicion.get(parada.idPedido) != null);
+  const conViajes = viajes !== undefined && publicadas.length > 0 && publicadas.every((parada) => viajes.has(parada.idPedido));
+  const cargas = armarCargas(paradas, CAPACIDAD_FURGON, conViajes ? viajes : undefined);
 
   const carga = sinBidones();
   for (const parada of paradas) for (const tipo of TAMANOS) carga[tipo] += parada.bidones[tipo];

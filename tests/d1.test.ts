@@ -93,6 +93,7 @@ describe('migraciones', () => {
       { name: 'ultimos_pedidos' },
       { name: 'uso_llm' },
       { name: 'usuarios' },
+      { name: 'viajes_publicados' },
     ]);
   });
 });

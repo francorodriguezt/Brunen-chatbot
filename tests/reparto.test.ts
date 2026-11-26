@@ -274,6 +274,35 @@ describe('orden de la ruta publicada (fase C, D63)', () => {
   });
 });
 
+describe('viajes guardados al publicar la ruta (D86)', () => {
+  const de = (id: string, ordenRuta: number | null, cantidad: number) =>
+    pedido(id, { ordenRuta, lineas: [{ tipo: '20L', cantidad, precioUnitario: 3300, subtotal: cantidad * 3300 }] });
+  const viajes = new Map([
+    ['A', 1],
+    ['B', 1],
+    ['C', 2],
+  ]);
+  const cargaDe = (reparto: ReturnType<typeof armarReparto>) => reparto.paradas.map((p) => [p.idPedido, p.carga]);
+
+  it('cada parada sigue en su viaje aunque se cancele un pedido o suba una cantidad', () => {
+    // Al publicar: A y B (60) en el viaje 1, C en el 2. Después se canceló A: por capacidad, C subiría al viaje 1.
+    const sinA = [de('B', 2, 30), de('C', 3, 30)];
+    expect(cargaDe(armarReparto(sinA, DIA))).toEqual([['B', 1], ['C', 1]]);
+    expect(cargaDe(armarReparto(sinA, DIA, viajes))).toEqual([['B', 1], ['C', 2]]);
+    // Una cantidad que sube después de publicar no mueve paradas: el viaje queda marcado sobre el tope.
+    const reparto = armarReparto([de('A', 1, 30), de('B', 2, 40), de('C', 3, 30)], DIA, viajes);
+    expect(reparto.cargas.map((c) => [c.numero, c.totalBidones, c.excedeFurgon])).toEqual([[1, 70, true], [2, 30, false]]);
+  });
+
+  it('lo que llegó después de publicar sigue por capacidad; si falta el viaje de una parada publicada, todo va por capacidad', () => {
+    const dos = new Map([['A', 1], ['B', 2]]);
+    expect(cargaDe(armarReparto([de('A', 1, 30), de('B', 2, 30), de('NUEVO', null, 20)], DIA, dos))).toEqual([['A', 1], ['B', 2], ['NUEVO', 2]]);
+    expect(cargaDe(armarReparto([de('A', 1, 30), de('B', 2, 30), de('NUEVO', null, 40)], DIA, dos))).toEqual([['A', 1], ['B', 2], ['NUEVO', 3]]);
+    // C está publicada pero sin viaje guardado: no se mezclan los dos criterios.
+    expect(cargaDe(armarReparto([de('A', 1, 30), de('B', 2, 30), de('C', 3, 30)], DIA, dos))).toEqual([['A', 1], ['B', 1], ['C', 2]]);
+  });
+});
+
 describe('mensajeDeParada: un mensaje por parada, como el que hoy se escribe a mano (D64)', () => {
   it('número y nombre, dirección con notas, teléfono, y lo que deja con lo que cobra en efectivo', () => {
     const [parada] = armarReparto(

@@ -193,6 +193,18 @@ describe('cada viaje del repartidor (D67)', () => {
   });
 });
 
+describe('los viajes del repartidor son los guardados al publicar (D86)', () => {
+  it('cada parada va en el viaje que tenía al publicar la ruta, aunque por capacidad cupieran juntas', async () => {
+    const { db, env, repartidor } = await entorno();
+    const repositorio = new RepositorioD1(db, () => 1);
+    await repositorio.publicarOrdenDeRuta(HOY, ['P261113-AAAAA', 'P261113-BBBBB']);
+    await repositorio.guardarViajesPublicados(HOY, new Map([['P261113-AAAAA', 1], ['P261113-BBBBB', 2]]));
+    const r = (await (await pedir(env, '/api/repartidor/ruta', repartidor)).json()) as { paradas: Parada[]; cargas: Array<{ numero: number }> };
+    expect(r.paradas.map((p) => [p.idPedido, p.carga])).toEqual([['P261113-AAAAA', 1], ['P261113-BBBBB', 2]]);
+    expect(r.cargas.map((c) => c.numero)).toEqual([1, 2]);
+  });
+});
+
 describe('el repartidor y el mapa (fase C, D63)', () => {
   it('cada parada trae su punto exacto si se conoce (para que Navegar lo use), y nunca uno aproximado', async () => {
     const { env, db, repartidor } = await entorno();
