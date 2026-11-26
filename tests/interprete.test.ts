@@ -12,6 +12,8 @@ describe('interpretar: casos de tests/mensajes.json', () => {
 describe('interpretar: forma exacta del resultado', () => {
   it('un pedido que además pregunta algo guarda la pregunta (D95)', () => {
     expect(interpretar('mandame 2 de 20, a que hora llegan?')).toEqual({ intencion: 'pedido', items: [{ tipo: '20L', cantidad: 2 }], tipo_pregunta: 'horario' });
+    // "Entrega el viernes" en un pedido no es una pregunta por el horario.
+    expect(interpretar('quiero 2 de 20 con entrega el viernes').tipo_pregunta).toBeUndefined();
   });
 
   it('un pedido completo no trae acción ni claves de más', () => {

@@ -18,7 +18,7 @@ import type { BusquedaCliente } from './clientes';
 import { fusionarConEstado, responderEnContexto } from './contexto';
 import type { EstadoConversacion } from './conversacion';
 import type { PropuestaEntrega } from './entrega';
-import { extraerItems, type Intencion, type Interpretacion, type ItemInterpretado } from './interprete';
+import { interpretar, type Intencion, type Interpretacion, type ItemInterpretado } from './interprete';
 import { preguntaPorLlegada, type EstadoDeMiPedido } from './llegada';
 import type { ResultadoInterpretacion } from './llm';
 import { decidir, decidirDatos, decidirEdificio, decidirSinEdificio, type Decision, type EntradaMotor } from './motor';
@@ -136,8 +136,8 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
   if (estado?.espera === 'edificio' && p.memoria) await p.memoria.borrar(entrada.telefono);
 
   // "¿Cuándo llega?" de un cliente con pedido (D78): se le dice en qué está, sin pasar por el intérprete ni la IA.
-  // Si además nombra bidones ("mándame 2 de 20, ¿a qué hora llegan?") es un pedido nuevo: va por el intérprete (D95).
-  if (!contextual && p.estadoDeMiPedido && preguntaPorLlegada(entrada.texto) && extraerItems(entrada.texto).length === 0) {
+  // Si además pide bidones ("mándame 2 de 20, ¿a qué hora llegan?") es un pedido nuevo: va por el camino de siempre (D95).
+  if (!contextual && p.estadoDeMiPedido && preguntaPorLlegada(entrada.texto) && interpretar(entrada.texto).intencion !== 'pedido') {
     let suPedido: EstadoDeMiPedido | null = null;
     try {
       suPedido = await p.estadoDeMiPedido(entrada.telefono);

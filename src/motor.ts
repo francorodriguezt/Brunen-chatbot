@@ -153,7 +153,8 @@ function responderPregunta(e: EntradaMotor): Decision {
     const suyos = e.precios.tabla.filter((t) => tipos.has(t.tipo));
     return informar(textos.precios(suyos.length > 0 ? suyos : e.precios.tabla));
   }
-  if (tipo === 'zona') return informar(textos.zona(comuna));
+  // A una comuna donde no llegamos no se le ofrece anotar nada.
+  if (tipo === 'zona') return comuna && !esComunaAtendida(comuna) ? { intencion: 'pregunta', respuesta: textos.zona(comuna), memoria: MANTENER } : informar(textos.zona(comuna));
   if (tipo === 'horario') return informar(textos.horarios());
   // Los datos de pago están en la hoja CONFIGURACION y los entrega una persona (PENDIENTE del dueño).
   if (tipo === 'pago') return escalar(e, 'pago', 'Pregunta cómo pagar o por los datos de transferencia');

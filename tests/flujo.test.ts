@@ -974,6 +974,23 @@ describe('cotizar lo que preguntan y contestar dos cosas a la vez (D95)', () => 
     expect(lineas(d)).toEqual([['20L', 2]]);
   });
 
+  it('"¿a qué hora llega mi pedido de 2 de 20?" sigue recibiendo el estado de su pedido', async () => {
+    const d = await conversacion({ puertos: { estadoDeMiPedido: async () => ({ tipo: 'en_reparto', antes: 2 }) } }).decir('a que hora llega mi pedido de 2 de 20?');
+    expect(d.respuesta).toBe('Tu pedido va en el reparto de hoy: antes del tuyo quedan 2 entregas.');
+  });
+
+  it('a una comuna donde no llegamos no se le ofrece anotar nada', async () => {
+    const d = await conversacion().decir('2 de 20, llegan a Maipú?');
+    expect(d.respuesta).toContain('Por ahora no despachamos a Maipú.');
+    expect(d.respuesta).not.toContain('Responde «sí»');
+  });
+
+  it('un pedido que dice el día de entrega no queda para revisión por eso', async () => {
+    const d = await conversacion().decir('quiero 2 de 20 con entrega el viernes');
+    expect(d.alerta?.tipo).toBe('pedido');
+    expect(d.respuesta).not.toContain('Repartimos entre');
+  });
+
   it('bidones y una pregunta, sin decir que los quiere: contesta y ofrece anotarlos', async () => {
     const charla = conversacion();
     const d = await charla.decir('2 de 20, llegan a Vitacura?');
