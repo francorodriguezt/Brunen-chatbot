@@ -291,6 +291,18 @@ function verificarSuscripcion(url: URL, env: Env): Response {
   return new Response('Forbidden', { status: 403 });
 }
 
+/** Una consulta mínima a D1 (no lee filas). Sin base conectada no hay nada que revisar. */
+async function baseResponde(env: Env): Promise<boolean> {
+  if (!env.DB) return true;
+  try {
+    await env.DB.prepare('SELECT 1').bind().run();
+    return true;
+  } catch (falla) {
+    console.error('Salud: la base no responde:', falla instanceof Error ? falla.message : falla);
+    return false;
+  }
+}
+
 /** Los webhooks de Meta pesan pocos KB; un tope generoso corta el tráfico basura. */
 const MAX_CUERPO_BYTES = 256 * 1024;
 
@@ -298,9 +310,11 @@ export default {
   async fetch(request: Request, env: Env, ctx: Contexto): Promise<Response> {
     const url = new URL(request.url);
 
-    // HEAD también: los monitores gratuitos (UptimeRobot) suelen consultar con HEAD.
+    // HEAD también: los monitores gratuitos (UptimeRobot) suelen consultar con HEAD. Revisa que la base responda
+    // (D84): sin ella el bot no anota pedidos. No dice qué falló, solo "error".
     if (url.pathname === '/salud' && (request.method === 'GET' || request.method === 'HEAD')) {
-      return new Response(request.method === 'HEAD' ? null : 'ok', { status: 200 });
+      const sano = await baseResponde(env);
+      return new Response(request.method === 'HEAD' ? null : sano ? 'ok' : 'error', { status: sano ? 200 : 503 });
     }
 
     if (url.pathname !== '/webhook') {

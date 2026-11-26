@@ -168,12 +168,15 @@ export class RepositorioSeguimiento {
     return deLaJornada.length;
   }
 
-  /** La posición más reciente de hoy de cualquier repartidor (hoy hay uno solo), con su nombre. */
+  /**
+   * La posición más reciente de hoy, con el nombre del repartidor. Si hay dos repartidores (el de emergencia), vale el
+   * que tiene la jornada abierta: el que terminó la suya no lleva la ruta (D80, revisado en D84).
+   */
   async ultimaDeHoy(hoy: string): Promise<PosicionDelRepartidor | null> {
     const [fila] = await this.filas(
       `SELECT p.lat, p.lng, p.precision_m, p.en, u.nombre, j.terminada_en
        FROM posiciones p JOIN jornadas j ON j.id = p.jornada_id JOIN usuarios u ON u.id = p.usuario_id
-       WHERE j.fecha = ?1 ORDER BY p.en DESC LIMIT 1`,
+       WHERE j.fecha = ?1 ORDER BY (j.terminada_en IS NULL) DESC, p.en DESC LIMIT 1`,
       hoy,
     );
     if (!fila) return null;
@@ -187,7 +190,16 @@ export class RepositorioSeguimiento {
     };
   }
 
-  /** Borra las posiciones de más de 3 días. */
+  /** Al desactivar a un repartidor en Equipo (D80, D84): se borran sus posiciones y sus jornadas. El consentimiento queda como constancia. */
+  async olvidar(usuarioId: number): Promise<void> {
+    await this.db.prepare('DELETE FROM posiciones WHERE usuario_id = ?1').bind(usuarioId).run();
+    await this.db.prepare('DELETE FROM jornadas WHERE usuario_id = ?1').bind(usuarioId).run();
+  }
+
+  /**
+   * Borra las posiciones de más de 3 días. Se cuenta desde que el teléfono la midió, que nunca es después de guardarla
+   * (no se aceptan del futuro): ninguna queda más de 3 días guardada.
+   */
   async limpiar(ahoraSegundos: number): Promise<void> {
     await this.db.prepare('DELETE FROM posiciones WHERE en < ?1').bind(ahoraSegundos - DIAS_DE_HISTORIAL * 86400).run();
   }

@@ -9,6 +9,7 @@
  */
 
 import type { RepositorioD1 } from '../repositorio';
+import type { RepositorioSeguimiento } from '../seguimiento';
 import { error, esperadoComoEscritura, json, leerCuerpo } from './api';
 import { DURACION_RECORDADA_SEGUNDOS, type Cuentas, type ErrorDeCuenta, type ResultadoDeIngreso, type Rol, type Usuario } from './cuentas';
 import { formatearRut } from './rut';
@@ -21,6 +22,8 @@ export interface ContextoDeIngreso {
   ahoraSegundos: number;
   /** false solo en localhost, donde no hay HTTPS: ahí la cookie no puede llevar `Secure`. */
   cookieSegura: boolean;
+  /** Para borrar el seguimiento de un repartidor al desactivarlo (D84). */
+  seguimiento?: RepositorioSeguimiento;
 }
 
 export function tokenDeCookie(request: Request): string | null {
@@ -255,7 +258,13 @@ export async function manejarUsuarios(request: Request, url: URL, ctx: ContextoD
     if (esPropio) return error(403, 'No puedes desactivar tu propia cuenta.');
     if (typeof cuerpo.activo !== 'boolean') return error(400, 'Solicitud no válida.');
     const cambiado = await ctx.cuentas.cambiarEstado(id, cuerpo.activo, ctx.ahoraSegundos);
-    return cambiado.ok ? json({ ok: true }) : errorDeCuenta(cambiado.error);
+    if (!cambiado.ok) return errorDeCuenta(cambiado.error);
+    // Desactivado: su ubicación y sus jornadas ya no tienen para qué guardarse (D84). Si falla, la cuenta igual queda
+    // desactivada y las posiciones se borran solas a los 3 días.
+    if (!cuerpo.activo && objetivo.rol === 'repartidor') {
+      await ctx.seguimiento?.olvidar(id).catch((falla: unknown) => console.error('No se pudo borrar el seguimiento:', falla instanceof Error ? falla.message : falla));
+    }
+    return json({ ok: true });
   }
   const cerradas = await ctx.cuentas.cerrarSesionesDe(id, esPropio ? (tokenDeCookie(request) ?? undefined) : undefined);
   return json({ ok: true, cerradas });
