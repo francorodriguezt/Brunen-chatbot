@@ -1754,6 +1754,9 @@ async function recargarVistaActual() {
   try {
     await { hoy: cargarHoy, pedidos: cargarPedidos, clientes: cargarClientes, reparto: cargarReparto, avisos: cargarAvisos, equipo: cargarEquipo }[estado.vista]();
     estado.ultimaCarga = Date.now();
+    // Que se vea de cuándo son los datos: si el teléfono estuvo sin señal, la hora queda atrás (Prompt Maestro, D88).
+    $('actualizado').replaceChildren(h('span', { clase: 'actualizado-palabra' }, 'Actualizado '), formatoHora.format(new Date(estado.ultimaCarga)));
+    $('actualizado').hidden = false;
   } catch (falla) {
     avisar(falla.message, true);
   }
