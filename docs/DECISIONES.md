@@ -739,7 +739,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 
 ### D90 · 2026-11-26 · App del repartidor: la siguiente parada, el avance y la sincronización a la vista
 **Lo primero de [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md) que no necesita decisiones.**
-- **Siguiente parada:** arriba, destacada, con Navegar e "Ir a la parada"; su tarjeta dice "Siguiente" y tiene un borde azul. Es la primera pendiente en el orden de la ruta publicada: no se reordena nada. Cuando no queda ninguna, dice "Todas las paradas están listas".
+- **Siguiente parada:** arriba, destacada, con Navegar e "Ir a la parada"; su tarjeta dice "Siguiente" y tiene un contorno azul. Es la primera pendiente en el orden de la ruta publicada: no se reordena nada. Cuando no queda ninguna, dice "Todas las paradas están listas".
 - **Avance:** "1 de 6 listas" va primero en las cifras; "cargas" pasa a llamarse "viajes", como en los encabezados.
 - **Línea de sincronización** fija: "Al día", "Enviando…", "N marcas por enviar" o "Sin conexión", con la hora de la última sincronización. Nunca dice "al día" si queda algo sin confirmar por el servidor.
 - La copia sin señal pasa a `brunen-v3`.
