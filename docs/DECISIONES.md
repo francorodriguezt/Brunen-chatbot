@@ -779,7 +779,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Solo con cantidad escrita con número:** "¿cuánto sale el bidón de 20?" pregunta por el precio de uno y recibe la tabla de ese tamaño, sin oferta (antes recibía la tabla completa).
 - **Bidones y una pregunta sin pedir:** "2 de 20, ¿llegan a Vitacura?" contesta la pregunta y ofrece anotarlos. No se anota nada sin el "sí": puede estar averiguando.
 - **Pedido y pregunta juntos:** "mándame 2 de 20, ¿a qué hora llegan?" anota el pedido y, en la misma respuesta, dice el horario de reparto sin prometer una hora. "¿Cómo pago?" recibe las formas de pago del conocimiento (efectivo o transferencia, antes o después). En los dos casos el aviso queda para revisión con "También preguntó…", por si hace falta contestar más. Antes la pregunta se perdía.
-- **Error corregido (de D78):** un cliente con un pedido en curso que escribía "mándame 2 de 20, ¿a qué hora llegan?" recibía el estado del pedido anterior y el nuevo se perdía. Ahora, si el mensaje nombra bidones, es un pedido nuevo.
+- **Error corregido (de D78):** un cliente con un pedido en curso que escribía "mándame 2 de 20, ¿a qué hora llegan?" recibía el estado del pedido anterior y el nuevo se perdía. Ahora es un pedido nuevo si, fuera de la frase que pregunta por la llegada, pide con un verbo y nombra bidones (ajustado en D97).
 - Sigue siendo una respuesta por mensaje del cliente. A un cliente bloqueado no se le ofrece anotar nada.
 - **Textos nuevos (borradores para que Felipe los apruebe):** la cotización, la oferta, el horario corto y las formas de pago (`src/textos.ts`).
 - Verificado: 10 pruebas nuevas, primero en rojo (cotización con "sí", mayorista, dos tamaños, sin ficha, empresa y hoja caída, un tamaño, pedido con pregunta de horario y de pago, cliente con pedido en curso, oferta sin pedir, bloqueado). Sin publicar.
@@ -793,3 +793,26 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - Usa el intérprete tal cual (`src/interprete.ts`), empaquetado al vuelo con esbuild, que ya viene con wrangler: sin dependencias nuevas.
 - **Primer hallazgo, ya corregido:** "el agua venía rara", "viene turbio" y "olor raro" no se entendían como reclamos. Se sumaron a la lista de reclamos y como casos en `tests/mensajes.json`.
 - Verificado: 6 pruebas con chats ficticios (los dos formatos, negocio, grupos, ocultar y la medición) y de punta a punta con dos chats ficticios.
+
+### D97 · 2026-11-26 · Lo que encontró la revisión de código de lo sin publicar (D87 a D96)
+**Franco pidió una revisión con un revisor aparte (`/superpowers:requesting-code-review`) de todo lo que no está publicado.** No encontró nada crítico, encontró 4 problemas importantes y 13 menores. Se corrigió lo importante y la mayoría de lo menor, con pruebas primero.
+- **"Ok gracias" después de una cotización anotaba un pedido.** La cotización (D95) usaba la misma lista de "sí" que "lo de siempre" (D69), que acepta "ok", "ya", "bueno" y "perfecto". Después de preguntar un precio, eso casi siempre es un cierre. Ahora solo un sí claro ("sí", "dale", "confirmo", "anótalo") anota una cotización, y la oferta vence en una hora (las demás esperas, en 12).
+- **"¿A qué hora me traen los 2 de 20?" volvía a perder el estado del pedido (D78).** "Me traen" es a la vez pregunta por la llegada y verbo de pedir. Ahora un mensaje con la pregunta por la llegada es un pedido nuevo solo si, fuera de esa frase, pide con un verbo y nombra bidones. "Mándame 2 de 20, ¿a qué hora llegan?" sigue siendo un pedido; "¿a qué hora me traen los 3 bidones?" y "quiero saber a qué hora llega mi pedido" reciben el estado.
+- **La confirmación sola de la versión de la ruta (D94) podía repetirse sin pausa** si el servidor fallaba o respondía 409. Ahora se intenta una vez por cada carga de la ruta, y la pantalla se vuelve a dibujar solo si salió bien. Verificado en el navegador: con el servidor respondiendo 500, un solo intento.
+- **El medidor (D96) no ocultaba direcciones escritas en minúscula** ("los aromos 1234", "av. grecia 2001 casa 4") ni el nombre que dice el mensaje ("soy juan perez"). Además, las respuestas a "¿me das tu dirección?" caían justo en la lista de no entendidos. Ahora oculta direcciones con mayúscula o no (sin tocar cantidades, tamaños, fechas ni horas), el nombre después de "soy", "me llamo" o "a nombre de", y los números de casa. Lo que responde a un mensaje del negocio que pidió datos no se mide ni se muestra (el bot lo entiende por el contexto, D37). Los mensajes seguidos se juntan con hasta 1 minuto entre uno y otro (el bot espera 7 segundos; los chats exportados solo dicen el minuto). El informe dice "se intentó ocultar".
+- **Menores corregidos:**
+  - al volver de Google Maps con un formulario abierto, la ruta ya no se recarga (se borraba lo que el repartidor estaba escribiendo);
+  - publicar una ruta con más de 30 días de anticipación ya no borra la versión de hoy;
+  - el aviso al volver a publicar ya no promete algo que no siempre pasa;
+  - la app del repartidor no falla si una copia vieja de la página no tiene las cajas nuevas;
+  - "Borrar sus datos" (D87) borra también el motivo libre de una cancelación;
+  - "¿Te lo anoto?" con un bidón;
+  - la app del repartidor no destaca una "siguiente" parada sin ruta publicada, como Hoy en el panel;
+  - esbuild queda declarado en las dependencias de desarrollo;
+  - los documentos ya no dicen en qué carpeta del computador quedaron el secreto del panel y la clave de Google;
+  - se corrigieron los textos de D95 y de la propuesta que no calzaban con el código.
+- **Sin cambio, a sabiendas:**
+  - sin la migración 0017, cada lectura de la ruta deja una línea en los registros (desaparece al aplicarla);
+  - mientras el teléfono tenga la app anterior, nunca confirma la versión y el panel dice que no ha abierto la ruta (se actualiza sola la próxima vez que abra la app con señal);
+  - avisar cuando la ruta cambia sin volver a publicarse queda en `MEJORAS.md`.
+- Verificado: 1.607 pruebas; las nuevas fallaron primero. Sin publicar.
