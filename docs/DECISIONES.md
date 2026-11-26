@@ -727,3 +727,6 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - Lo que identifica al cliente (sus teléfonos y su ficha) se borra al final: si algo falla a mitad de camino, repetirlo termina el trabajo. Son unas 20 consultas, bajo el tope de 50 del plan gratis.
 - Verificado: 4 pruebas nuevas (todo lo que se borra y lo que no, otro cliente intacto, la dirección compartida, el pedido sin asociar del segundo teléfono, el rechazo con un pedido vivo y la confirmación obligatoria) y en el navegador con la base de prueba.
 - Sin publicar: se publica junto con lo siguiente, con permiso de Franco. No necesita migraciones.
+
+### D88 · 2026-11-26 · La hora de los datos en el panel
+**Una idea del Prompt Maestro 2.7 que vale la pena:** cada vista del panel dice de cuándo son sus datos ("Actualizado 14:02" en la barra). Si el teléfono estuvo sin señal o la pestaña quedó abierta, se nota que la hora quedó atrás. En el teléfono se ve solo la hora, para que la barra siga en una línea (medido a 375 px). Sin publicar.
