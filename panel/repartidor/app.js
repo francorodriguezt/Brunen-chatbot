@@ -2,11 +2,12 @@
  * Panel del repartidor (fase D, D61): la ruta de hoy, una tarjeta por parada, con Navegar, Llamar, Entregado (cuántos
  * vacíos retiró y si cobró) y No se pudo (el motivo).
  *
- * Sin señal: lo que marca se guarda en el teléfono y se envía solo cuando vuelve la conexión, y la última ruta que
- * cargó se sigue viendo. Ambas cosas se borran al salir.
+ * Sin señal: lo que marca se guarda en el teléfono y se envía solo cuando vuelve la conexión (`cola.js`, D84), y la
+ * última ruta que cargó se sigue viendo. Ambas cosas se borran al salir; si quedan marcas sin enviar, pregunta antes.
  */
 
 import { mostrarIngreso, pedir, registrarAplicacion } from '/ingreso.js';
+import { agregar, cuerpoParaEnviar, enviarPendientes, normalizar, nuevaMarca, pendientes, quitar, rechazadas } from './cola.js';
 
 const $ = (id) => document.getElementById(id);
 const ZONA = 'America/Santiago';
@@ -21,7 +22,8 @@ const REINTENTO_MS = 30_000;
 let ruta = null;
 /** La tarjeta con su formulario abierto: { id, tipo: 'entregado' | 'no-se-pudo' }. */
 let abierta = null;
-let enviando = false;
+/** El envío de la cola que está en curso (uno a la vez). */
+let envioEnCurso = null;
 
 // ---- Utilidades ----
 
@@ -70,7 +72,8 @@ function avisar(texto, esError = false) {
 }
 
 const hoy = () => formatoDia.format(new Date());
-const cola = () => leer(CLAVE_COLA) ?? [];
+const cola = () => normalizar(leer(CLAVE_COLA));
+const guardarCola = (nueva) => guardar(CLAVE_COLA, nueva.length > 0 ? nueva : null);
 
 function textoBidones(bidones) {
   return ['20L', '12L', '10L']
@@ -102,18 +105,47 @@ function mostrarRuta(usuario) {
 
 // ---- La ruta ----
 
-/** Lo marcado sin señal se ve en la tarjeta como si ya hubiera llegado. */
+/**
+ * Lo marcado sin señal se ve en la tarjeta como si ya hubiera llegado, con "(por enviar)". Lo que el servidor rechazó
+ * no cambia la tarjeta: se muestra el motivo para que el repartidor avise a la oficina (D84).
+ */
 function aplicarCola() {
   if (!ruta) return;
-  for (const accion of cola()) {
-    const parada = ruta.paradas.find((p) => p.idPedido === accion.id);
+  for (const marca of cola()) {
+    const parada = ruta.paradas.find((p) => p.idPedido === marca.id);
     if (!parada) continue;
-    if (accion.tipo === 'entregado') {
+    if (marca.rechazo) parada.rechazo = { op: marca.op, tipo: marca.tipo, motivo: marca.rechazo };
+    else if (marca.tipo === 'entregado') {
       const monto = parada.cobrar ?? parada.cobrado ?? parada.montoEfectivo ?? null;
-      Object.assign(parada, { estado: 'entregado', vaciosRetirados: accion.cuerpo.vacios, cobrado: accion.cuerpo.cobrado ? monto : null, cobrar: null, porEnviar: true });
+      Object.assign(parada, { estado: 'entregado', vaciosRetirados: marca.cuerpo.vacios, cobrado: marca.cuerpo.cobrado ? monto : null, cobrar: null, porEnviar: true });
     }
-    else Object.assign(parada, { estado: 'no_se_pudo', motivo: accion.cuerpo.motivo, porEnviar: true });
+    else Object.assign(parada, { estado: 'no_se_pudo', motivo: marca.cuerpo.motivo, porEnviar: true });
   }
+}
+
+/** Las marcas rechazadas de paradas que ya no están en la ruta (por ejemplo, de otro día): van arriba de la lista. */
+function pintarNoAnotadas() {
+  const caja = $('no-anotadas');
+  const enLaRuta = new Set((ruta?.paradas ?? []).map((p) => p.idPedido));
+  const sueltas = rechazadas(cola()).filter((m) => !enLaRuta.has(m.id));
+  caja.hidden = sueltas.length === 0;
+  caja.replaceChildren(
+    ...(sueltas.length > 0 ? [h('b', {}, sueltas.length === 1 ? 'Una marca no se anotó' : `${sueltas.length} marcas no se anotaron`), h('span', {}, '. Avisa a la oficina.')] : []),
+    ...sueltas.map((m) =>
+      h(
+        'p',
+        { clase: 'no-anotada' },
+        `${m.nombre || m.id} (${m.tipo === 'entregado' ? 'Entregado' : 'No se pudo'}): ${m.rechazo} `,
+        boton('Entendido', 'boton boton-chico', () => olvidarMarca(m.op)),
+      ),
+    ),
+  );
+}
+
+/** "Entendido": el repartidor ya vio el rechazo; se quita del teléfono. */
+function olvidarMarca(op) {
+  guardarCola(quitar(cola(), op));
+  void cargarRuta();
 }
 
 async function cargarRuta() {
@@ -139,6 +171,7 @@ function pintar() {
   if ('wakeLock' in navigator) void ajustarPantalla();
   pintarUbicacion();
   ajustarSeguimiento();
+  pintarNoAnotadas();
   const lista = $('paradas');
   const cifras = $('cifras-ruta');
   if (!ruta || ruta.paradas.length === 0) {
@@ -224,6 +257,15 @@ function tarjeta(p) {
       p.estado === 'entregado' && p.vaciosRetirados !== null ? h('span', { clase: 'suave' }, `Retiró ${p.vaciosRetirados} ${p.vaciosRetirados === 1 ? 'vacío' : 'vacíos'}.`) : null,
       p.estado === 'no_se_pudo' ? h('span', { clase: 'suave' }, `Motivo: ${textoMotivo(p.motivo)}.`) : null,
     ),
+    p.rechazo
+      ? h(
+          'p',
+          { clase: 'revision no-anotada' },
+          h('b', {}, `No se anotó «${p.rechazo.tipo === 'entregado' ? 'Entregado' : 'No se pudo'}»: `),
+          `${p.rechazo.motivo} Avisa a la oficina. `,
+          boton('Entendido', 'boton boton-chico', () => olvidarMarca(p.rechazo.op)),
+        )
+      : null,
     h(
       'div',
       { clase: 'acciones' },
@@ -560,55 +602,58 @@ function ubicacionActual() {
   });
 }
 
-/** Envía una acción. true = llegó o el servidor la rechazó (no se reintenta); false = sin señal (se reintenta). */
-async function enviar(accion) {
-  try {
-    const { estado, datos } = await pedir(`/api/repartidor/pedidos/${encodeURIComponent(accion.id)}/${accion.tipo}`, accion.cuerpo);
-    if (estado === 401) {
-      pedirClave();
-      return false;
-    }
-    if (estado !== 200) avisar(datos?.error ?? 'No se pudo anotar. Revisa la parada.', true);
-    return true;
-  } catch {
-    return false;
-  }
-}
+/** Envía una marca: `{ estado, datos }`, o lanza si no hay red (la cola la deja para después). */
+const enviar = (marca) => pedir(`/api/repartidor/pedidos/${encodeURIComponent(marca.id)}/${marca.tipo}`, cuerpoParaEnviar(marca));
 
 async function marcar(parada, tipo, cuerpo) {
   abierta = null;
-  const accion = { id: parada.idPedido, tipo, cuerpo };
-  guardar(CLAVE_COLA, [...cola().filter((a) => !(a.id === accion.id && a.tipo === accion.tipo)), accion]);
+  const marca = nuevaMarca({ parada, tipo, cuerpo, fecha: ruta?.fecha ?? hoy(), ahoraMs: Date.now() });
+  guardarCola(agregar(cola(), marca));
   aplicarCola();
   pintar();
-  await vaciarCola();
-  if (cola().some((a) => a.id === accion.id && a.tipo === accion.tipo)) avisar('Sin señal: quedó guardado en el teléfono y se envía cuando vuelva.');
-  else avisar(tipo === 'entregado' ? 'Entrega anotada.' : 'Anotado: avisamos para reagendar.');
+  const resumen = await vaciarCola();
+  // Se dice "anotada" solo si el servidor la confirmó (D84).
+  const quedo = cola().find((m) => m.op === marca.op);
+  if (!quedo) avisar(tipo === 'entregado' ? 'Entrega anotada.' : 'Anotado: avisamos para reagendar.');
+  else if (quedo.rechazo) avisar(`No se anotó: ${quedo.rechazo}`, true);
+  else if (resumen?.detenida === 'sin_sesion') avisar('Entra de nuevo: lo marcado quedó guardado en el teléfono y se envía después.');
+  else if (resumen?.detenida === 'servidor') avisar('El sistema no respondió: quedó guardado en el teléfono y se reintenta solo.');
+  else avisar('Sin señal: quedó guardado en el teléfono y se envía cuando vuelva.');
 }
 
-/** Envía lo pendiente en orden; se detiene en el primero que no sale (sin señal). */
+/** Envía lo pendiente, en orden (uno a la vez). Si otro envío está en curso, espera a que termine y vuelve a revisar. */
 async function vaciarCola() {
-  if (enviando) return;
-  enviando = true;
-  try {
-    for (const accion of cola()) {
-      if (!(await enviar(accion))) break;
-      guardar(CLAVE_COLA, cola().filter((a) => !(a.id === accion.id && a.tipo === accion.tipo)));
-    }
-  } finally {
-    enviando = false;
+  while (envioEnCurso) await envioEnCurso;
+  envioEnCurso = enviarPendientes({ leer: cola, guardar: guardarCola, enviar }).finally(() => {
+    envioEnCurso = null;
+  });
+  const resumen = await envioEnCurso;
+  if (resumen.detenida === 'sin_sesion') {
+    pedirClave();
+    return resumen;
   }
   if (navigator.onLine) await cargarRuta();
+  else {
+    aplicarCola();
+    pintar();
+  }
+  return resumen;
 }
 
 async function salir() {
+  // Lo que no llegó al servidor se perdería al salir: se pregunta antes (D84).
+  const sinEnviar = pendientes(cola()).length;
+  if (sinEnviar > 0) {
+    const texto = sinEnviar === 1 ? 'Hay 1 marca sin enviar' : `Hay ${sinEnviar} marcas sin enviar`;
+    if (!window.confirm(`${texto}. Con señal, toca «Actualizar» para enviarlas. Si sales ahora, se pierden. ¿Salir igual?`)) return;
+  }
   try {
     await pedir('/api/sesion/salir', {});
   } catch {
     /* sin conexión: igual se vuelve al ingreso; la sesión sigue viva hasta que haya señal */
   }
   guardar(CLAVE_RUTA, null);
-  guardar(CLAVE_COLA, null);
+  guardarCola([]);
   guardar(CLAVE_POSICIONES, null);
   if (vigilancia !== null) navigator.geolocation.clearWatch(vigilancia);
   vigilancia = null;
@@ -634,7 +679,7 @@ async function iniciar() {
   }, REINTENTO_MS);
   window.addEventListener('online', () => void vaciarCola());
   setInterval(() => {
-    if (cola().length > 0) void vaciarCola();
+    if (pendientes(cola()).length > 0) void vaciarCola();
   }, REINTENTO_MS);
 
   let usuario = null;

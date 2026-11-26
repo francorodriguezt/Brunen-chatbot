@@ -105,6 +105,25 @@ describe('No se pudo (fase D, D61)', () => {
   });
 });
 
+describe('marcas que llegan tarde, sin señal (D84)', () => {
+  it('se anotan con la hora del teléfono y el historial lo dice; la versión del pedido queda con la hora real', async () => {
+    const { db, entregas } = await base(pedido(), pedido({ idPedido: 'P261113-BBBBB', direccion: 'Calle Otra 9' }));
+    const hecho = AHORA - 3 * 3600; // a las 9:00
+    await entregas.entregar('P261113-AAAAA', { vacios: 3, cobrado: false }, { ...opciones, hecho });
+    await entregas.noEntregado('P261113-BBBBB', { motivo: 'no_estaba', detalle: '' }, { ...opciones, hecho });
+    expect(db.sql('SELECT id, entregado_en, no_entregado_en, actualizado_en FROM pedidos ORDER BY id')).toEqual([
+      { id: 'P261113-AAAAA', entregado_en: hecho, no_entregado_en: null, actualizado_en: AHORA },
+      { id: 'P261113-BBBBB', entregado_en: null, no_entregado_en: hecho, actualizado_en: AHORA },
+    ]);
+    expect(db.sql("SELECT pedido_id, detalle FROM historial_pedidos WHERE accion IN ('entrega', 'no_entregado') ORDER BY pedido_id")).toEqual([
+      { pedido_id: 'P261113-AAAAA', detalle: 'Retiró 3 vacíos. Lo marcó sin señal el 2026-11-13 a las 09:00.' },
+      { pedido_id: 'P261113-BBBBB', detalle: 'No estaba o no contestó. Lo marcó sin señal el 2026-11-13 a las 09:00.' },
+    ]);
+    // El "No se pudo" atrasado cuenta para su día.
+    expect((await entregas.deDia(HOY)).get('P261113-BBBBB')?.noEntregado).toEqual({ motivo: 'no_estaba', en: hecho });
+  });
+});
+
 describe('lo anotado en las paradas de un día', () => {
   it('un "no se pudo" de otro día no cuenta: el pedido reagendado aparece pendiente en su día nuevo', async () => {
     const { db, entregas } = await base(pedido());

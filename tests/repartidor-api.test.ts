@@ -121,6 +121,60 @@ describe('lo que marca el repartidor', () => {
   });
 });
 
+describe('marcas que llegan tarde, sin señal (D84)', () => {
+  async function conPedidosAnteriores() {
+    const base = await entorno();
+    const repositorio = new RepositorioD1(base.db, () => 1);
+    await repositorio.guardarPedido(pedido({ idPedido: 'P261112-EEEEE', fechaEntrega: '2026-11-12', direccion: 'Calle Ayer 1' }), AHORA - 90_000);
+    await repositorio.guardarPedido(pedido({ idPedido: 'P261110-GGGGG', fechaEntrega: '2026-11-10', direccion: 'Calle Martes 2' }), AHORA - 300_000);
+    await repositorio.guardarPedido(pedido({ idPedido: 'P261109-FFFFF', fechaEntrega: '2026-11-09', direccion: 'Calle Lunes 3' }), AHORA - 400_000);
+    return base;
+  }
+  const marcar = (env: EntornoPanel, token: string, id: string, cuerpo: Record<string, unknown>) =>
+    pedir(env, `/api/repartidor/pedidos/${id}/entregado`, token, { vacios: 3, cobrado: false, ...cuerpo });
+
+  it('una marca de la ruta de ayer se anota en su día y a la hora del teléfono', async () => {
+    const { db, env, repartidor } = await conPedidosAnteriores();
+    const marcadoEn = AHORA - 20 * 3600; // ayer a las 16:00
+    expect((await marcar(env, repartidor, 'P261112-EEEEE', { fecha: '2026-11-12', marcadoEn })).status).toBe(200);
+    expect(db.sql("SELECT estado, entregado_en FROM pedidos WHERE id = 'P261112-EEEEE'")).toEqual([{ estado: 'Entregado', entregado_en: marcadoEn }]);
+    expect(db.sql("SELECT detalle FROM historial_pedidos WHERE pedido_id = 'P261112-EEEEE' AND accion = 'entrega'")).toEqual([
+      { detalle: 'Retiró 3 vacíos. Lo marcó sin señal el 2026-11-12 a las 16:00.' },
+    ]);
+  });
+
+  it('vale hasta 3 días atrás; sin la fecha de su ruta, o con una más antigua o futura, vale solo hoy', async () => {
+    const { env, repartidor } = await conPedidosAnteriores();
+    const sinFecha = await marcar(env, repartidor, 'P261112-EEEEE', {});
+    expect(sinFecha.status).toBe(409);
+    expect(await sinFecha.json()).toEqual({ error: 'Ese pedido no es de la ruta de ese día: puede que lo hayan cambiado de fecha.' });
+    expect((await marcar(env, repartidor, 'P261110-GGGGG', { fecha: '2026-11-10' })).status).toBe(200);
+    expect((await marcar(env, repartidor, 'P261109-FFFFF', { fecha: '2026-11-09' })).status).toBe(409);
+    expect((await marcar(env, repartidor, 'P261114-DDDDD', { fecha: '2026-11-14' })).status).toBe(409);
+    // Una fecha que no existe no sirve: vale hoy.
+    expect((await marcar(env, repartidor, 'P261113-AAAAA', { fecha: '2026-11-99' })).status).toBe(200);
+  });
+
+  it('la hora del teléfono vale solo si la marca llegó con atraso, y nunca una del futuro', async () => {
+    const { db, env, repartidor } = await entorno();
+    expect((await marcar(env, repartidor, 'P261113-AAAAA', { fecha: HOY, marcadoEn: AHORA - 30 })).status).toBe(200);
+    expect((await pedir(env, '/api/repartidor/pedidos/P261113-BBBBB/no-se-pudo', repartidor, { motivo: 'no_estaba', detalle: '', fecha: HOY, marcadoEn: AHORA + 3600 })).status).toBe(200);
+    expect(db.sql("SELECT id, entregado_en, no_entregado_en FROM pedidos WHERE id IN ('P261113-AAAAA', 'P261113-BBBBB') ORDER BY id")).toEqual([
+      { id: 'P261113-AAAAA', entregado_en: AHORA, no_entregado_en: null },
+      { id: 'P261113-BBBBB', entregado_en: null, no_entregado_en: AHORA },
+    ]);
+    expect(db.sql("SELECT COUNT(*) AS n FROM historial_pedidos WHERE detalle LIKE '%sin señal%'")).toEqual([{ n: 0 }]);
+  });
+
+  it('repetir la misma marca (se perdió la respuesta) deja el pedido igual', async () => {
+    const { db, env, repartidor } = await entorno();
+    for (let i = 0; i < 2; i++) expect((await marcar(env, repartidor, 'P261113-AAAAA', { cobrado: true })).status).toBe(200);
+    expect(db.sql("SELECT estado, vacios_retirados, cobrado_en_entrega, estado_pago, entregado_en FROM pedidos WHERE id = 'P261113-AAAAA'")).toEqual([
+      { estado: 'Entregado', vacios_retirados: 3, cobrado_en_entrega: 9900, estado_pago: 'pagado', entregado_en: AHORA },
+    ]);
+  });
+});
+
 describe('cada viaje del repartidor (D67)', () => {
   it('dice cuántos bidones de cada tamaño cargar y trae la ruta del viaje en Google Maps, sin las ya entregadas', async () => {
     const { env, repartidor } = await entorno();
