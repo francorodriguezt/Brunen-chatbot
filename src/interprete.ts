@@ -469,7 +469,10 @@ export function interpretar(texto: string): Interpretacion {
   if (quierePedir) {
     const accion = accionDePedido(items);
     // Si además preguntó algo ("mándame 2 de 20, ¿a qué hora llegan?"), la pregunta va con el pedido (D95).
-    return resultado('pedido', { ...(accion && { accion }), ...(pideEnvases && { pide_envase: true }), ...(tipoPregunta && { tipo_pregunta: tipoPregunta }) });
+    // "Con entrega el viernes" calza con los días de reparto, pero en un pedido no es una pregunta: sin "?" vale solo
+    // si es una frase de pregunta ("a qué hora", "cuándo llegan").
+    const pregunta = tipoPregunta && (t.includes('?') || tipoPregunta !== 'horario' || PREGUNTA_HORARIO.test(t)) ? tipoPregunta : undefined;
+    return resultado('pedido', { ...(accion && { accion }), ...(pideEnvases && { pide_envase: true }), ...(pregunta && { tipo_pregunta: pregunta }) });
   }
 
   // Envases vacíos para devolver (regla 5: se anotan para el repartidor). No es un pedido.
