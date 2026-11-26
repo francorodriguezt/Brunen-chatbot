@@ -24,6 +24,9 @@ let ruta = null;
 let abierta = null;
 /** El envío de la cola que está en curso (uno a la vez). */
 let envioEnCurso = null;
+/** Cuándo confirmó el servidor la ruta por última vez (ms) y si el último intento falló por falta de señal (D90). */
+let ultimaSincronizacion = null;
+let sinConexion = false;
 
 // ---- Utilidades ----
 
@@ -155,8 +158,11 @@ async function cargarRuta() {
     if (estado !== 200 || !datos) throw new Error('sin ruta');
     ruta = datos;
     guardar(CLAVE_RUTA, datos);
+    ultimaSincronizacion = Date.now();
+    sinConexion = false;
     $('aviso-conexion').hidden = true;
   } catch {
+    sinConexion = true;
     const guardada = leer(CLAVE_RUTA);
     ruta = guardada?.fecha === hoy() ? guardada : null;
     $('aviso-conexion').textContent = ruta ? 'Sin conexión: ves la última ruta que se cargó. Lo que marques se envía cuando vuelva la señal.' : 'Sin conexión. Cuando vuelva la señal, toca Actualizar.';
@@ -172,10 +178,12 @@ function pintar() {
   pintarUbicacion();
   ajustarSeguimiento();
   pintarNoAnotadas();
+  pintarSincronizacion();
   const lista = $('paradas');
   const cifras = $('cifras-ruta');
   if (!ruta || ruta.paradas.length === 0) {
     cifras.replaceChildren();
+    pintarSiguiente(null);
     lista.replaceChildren(h('p', { clase: 'vacio' }, ruta ? 'No hay entregas confirmadas para hoy.' : 'Todavía no se pudo cargar la ruta de hoy.'));
     return;
   }
@@ -184,20 +192,77 @@ function pintar() {
   // replaceChildren escribe "null" si recibe null: se filtran los que no van.
   cifras.replaceChildren(
     ...[
-      cifra(ruta.paradas.length, ruta.paradas.length === 1 ? 'parada' : 'paradas'),
+      // El avance primero, como "1 de 6" (D90).
+      cifra(`${hechas} de ${ruta.paradas.length}`, ruta.paradas.length === 1 ? 'lista' : 'listas'),
       cifra(ruta.totalBidones, ruta.totalBidones === 1 ? 'bidón' : 'bidones'),
-      ruta.cargas.length > 1 ? cifra(ruta.cargas.length, 'cargas') : null,
-      cifra(hechas, hechas === 1 ? 'lista' : 'listas'),
+      ruta.cargas.length > 1 ? cifra(ruta.cargas.length, 'viajes') : null,
     ].filter(Boolean),
   );
+  // La siguiente es la primera pendiente en el orden de la ruta publicada: no se reordena nada (D90).
+  const siguiente = ruta.paradas.find((p) => p.estado === 'pendiente') ?? null;
+  pintarSiguiente(siguiente);
   lista.replaceChildren(
     ...ruta.paradas.flatMap((parada) => {
       // Cada viaje lleva su encabezado (aunque sea uno solo): qué cargar, dónde recargar y su ruta en Maps.
       const carga = ruta.cargas.find((c) => c.desde === parada.orden);
       const titulo = carga ? encabezadoDeCarga(carga) : null;
-      return titulo ? [titulo, tarjeta(parada)] : [tarjeta(parada)];
+      const esta = tarjeta(parada, parada === siguiente);
+      return titulo ? [titulo, esta] : [esta];
     }),
   );
+}
+
+/** La siguiente parada, arriba y destacada (D90): a quién, dónde, y botones para navegar o ir a su tarjeta. */
+function pintarSiguiente(p) {
+  const caja = $('siguiente');
+  if (!ruta || ruta.paradas.length === 0) {
+    caja.hidden = true;
+    return;
+  }
+  if (!p) {
+    caja.replaceChildren(h('p', {}, h('b', {}, 'Todas las paradas están listas.')));
+    caja.hidden = false;
+    return;
+  }
+  const { lugar, google } = enlacesDe(p);
+  caja.replaceChildren(
+    h('p', { clase: 'suave' }, 'Siguiente parada'),
+    h('p', { clase: 'siguiente-nombre' }, `${p.orden}. ${p.nombre || 'Sin nombre'}`),
+    h('p', {}, lugar),
+    h(
+      'div',
+      { clase: 'acciones' },
+      h('a', { clase: 'boton boton-principal', href: google, target: '_blank', rel: 'noopener noreferrer' }, 'Navegar'),
+      boton('Ir a la parada', 'boton', () => document.getElementById(`parada-${p.idPedido}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })),
+    ),
+  );
+  caja.hidden = false;
+}
+
+/** Una línea fija con la conexión y lo marcado (D90). Nunca dice "al día" si queda algo sin confirmar por el servidor. */
+function pintarSincronizacion() {
+  const linea = $('estado-sincronizacion');
+  const porEnviar = pendientes(cola()).length;
+  const marcas = (n) => `${n} ${n === 1 ? 'marca' : 'marcas'} por enviar`;
+  let texto;
+  if (sinConexion || !navigator.onLine) texto = porEnviar > 0 ? `Sin conexión · ${marcas(porEnviar)}` : 'Sin conexión';
+  else if (envioEnCurso) texto = 'Enviando…';
+  else texto = porEnviar > 0 ? marcas(porEnviar) : 'Al día';
+  if (ultimaSincronizacion) texto += ` · última sincronización ${formatoHora.format(new Date(ultimaSincronizacion))}`;
+  linea.textContent = texto;
+  linea.classList.toggle('pendiente', porEnviar > 0 || sinConexion);
+}
+
+/** Enlaces para navegar a una parada: a su punto exacto si se conoce (D63); si no, a la dirección escrita. */
+function enlacesDe(p) {
+  const lugar = [p.direccion, p.comuna].filter(Boolean).join(', ') || 'sin dirección';
+  const destino = encodeURIComponent(`${lugar}, Chile`);
+  const coordenadas = p.punto ? `${p.punto.lat},${p.punto.lng}` : null;
+  return {
+    lugar,
+    google: coordenadas ? `https://www.google.com/maps/dir/?api=1&destination=${coordenadas}&travelmode=driving` : `https://www.google.com/maps/search/?api=1&query=${destino}`,
+    waze: coordenadas ? `https://waze.com/ul?ll=${coordenadas}&navigate=yes` : `https://waze.com/ul?q=${destino}&navigate=yes`,
+  };
 }
 
 const NOMBRE_DE_DEPOSITO = { planta: 'la planta', actum: 'Actum' };
@@ -227,24 +292,20 @@ function encabezadoDeCarga(carga) {
   );
 }
 
-function insignia(parada) {
+function insignia(parada, esSiguiente) {
   if (parada.estado === 'entregado') return h('span', { clase: 'insignia verde' }, parada.porEnviar ? 'Entregado (por enviar)' : 'Entregado');
   if (parada.estado === 'no_se_pudo') return h('span', { clase: 'insignia rojo' }, parada.porEnviar ? 'No se pudo (por enviar)' : 'No se pudo');
+  if (esSiguiente) return h('span', { clase: 'insignia azul' }, 'Siguiente');
   return null;
 }
 
-function tarjeta(p) {
-  const lugar = [p.direccion, p.comuna].filter(Boolean).join(', ') || 'sin dirección';
-  const destino = encodeURIComponent(`${lugar}, Chile`);
-  // Con el punto exacto de la dirección (D63) se navega a las coordenadas; si no, a la dirección escrita.
-  const coordenadas = p.punto ? `${p.punto.lat},${p.punto.lng}` : null;
-  const enGoogle = coordenadas ? `https://www.google.com/maps/dir/?api=1&destination=${coordenadas}&travelmode=driving` : `https://www.google.com/maps/search/?api=1&query=${destino}`;
-  const enWaze = coordenadas ? `https://waze.com/ul?ll=${coordenadas}&navigate=yes` : `https://waze.com/ul?q=${destino}&navigate=yes`;
+function tarjeta(p, esSiguiente = false) {
+  const { lugar, google: enGoogle, waze: enWaze } = enlacesDe(p);
   const formulario = abierta?.id === p.idPedido ? (abierta.tipo === 'entregado' ? formularioEntregado(p) : formularioNoSePudo(p)) : null;
   return h(
     'article',
-    { clase: `tarjeta parada parada-${p.estado}` },
-    h('div', { clase: 'tarjeta-cabecera' }, h('span', { clase: 'persona-nombre' }, `${p.orden}. ${p.nombre || 'Sin nombre'}`), insignia(p)),
+    { clase: `tarjeta parada parada-${p.estado}${esSiguiente ? ' parada-siguiente' : ''}`, id: `parada-${p.idPedido}` },
+    h('div', { clase: 'tarjeta-cabecera' }, h('span', { clase: 'persona-nombre' }, `${p.orden}. ${p.nombre || 'Sin nombre'}`), insignia(p, esSiguiente)),
     h(
       'div',
       { clase: 'datos' },
@@ -627,6 +688,7 @@ async function vaciarCola() {
   envioEnCurso = enviarPendientes({ leer: cola, guardar: guardarCola, enviar }).finally(() => {
     envioEnCurso = null;
   });
+  pintarSincronizacion(); // "Enviando…"
   const resumen = await envioEnCurso;
   if (resumen.detenida === 'sin_sesion') {
     pedirClave();
@@ -678,6 +740,10 @@ async function iniciar() {
     if (colaDePosiciones().length > 0) void enviarPosiciones();
   }, REINTENTO_MS);
   window.addEventListener('online', () => void vaciarCola());
+  window.addEventListener('offline', () => {
+    sinConexion = true;
+    pintarSincronizacion();
+  });
   setInterval(() => {
     if (pendientes(cola()).length > 0) void vaciarCola();
   }, REINTENTO_MS);
