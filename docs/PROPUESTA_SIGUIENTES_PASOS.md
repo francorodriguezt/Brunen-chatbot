@@ -51,7 +51,7 @@ Esto es la base para lo que sigue en finanzas (gastos, margen): sin saber qué e
 | # | Mejora | Hoy | Con el cambio | ¿Quién decide? |
 |---|---|---|---|---|
 | A | **Cotizar lo que preguntan** (hecho, D95) | "¿Cuánto salen 3 de 20?" recibe la tabla completa de precios | "3 bidones de 20 L: $9.900, despacho gratis. ¿Te los anoto?" (cliente especial o mayorista: su precio, o lo confirma una persona) | Franco |
-| B | **Dos cosas en un mensaje** (hecho, D95) | Gana una sola intención: "mándame 2 de 20, ¿llegan hoy antes de las 12?" anota el pedido y la pregunta se pierde | Una sola respuesta que anota y contesta; lo que no pueda contestar queda como aviso | Franco |
+| B | **Dos cosas en un mensaje** (hecho, D95) | Gana una sola intención: "mándame 2 de 20, ¿a qué hora llegan?" anota el pedido y la pregunta se pierde | Una sola respuesta que anota y contesta; lo que no pueda contestar queda como aviso | Franco |
 | C | **Responder cómo pagar** | Siempre se deriva a una persona | El bot entrega los datos de transferencia de la hoja CONFIGURACION | Felipe (son datos bancarios) |
 | D | **Aprender de lo que no entiende** (hecho: `npm run medir-bot`, D96) | El corpus de pruebas tiene 83 mensajes, todos ficticios | Lista en el panel de los "no entendido" para revisarlos, quitarles nombres y direcciones y sumarlos a las pruebas; se mide el porcentaje de acierto | Franco |
 | E | **Preguntas frecuentes nuevas** | Solo precio, zona, horario y pago | Envases, carga inicial, mínimo de pedido, cómo funciona el cambio de bidón | Franco redacta, Felipe confirma los datos |
