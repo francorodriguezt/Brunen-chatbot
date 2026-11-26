@@ -74,9 +74,6 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] `npm run comprobar` después de cada publicación. (D85)
 - [x] Borrar los datos de un cliente que lo pide, desde su ficha. (D87)
 
-## 8. Experiencias móviles (D89, 2026-11-26)
-La especificación de la app del repartidor y del panel en iPhone, comparada con lo que hay: [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md). Lo primero, sin decisiones: siguiente parada destacada, el avance "8 de 12", una línea fija de sincronización y observaciones al entregar.
-
 ## 7. Hacia la visión de Franco (D83, 2026-11-25)
 Meta de largo plazo: asistentes de IA, roles dentro del panel, un panel de análisis avanzado y finanzas. Cada paso sirve solo, cuesta USD 0 al mes y se mide antes de seguir. La flota no hace falta (un repartidor): basta con no impedirla.
 
@@ -86,3 +83,6 @@ Meta de largo plazo: asistentes de IA, roles dentro del panel, un panel de anál
 4. [ ] **Roles dentro del panel:** operadora (pedidos, avisos, clientes; sin Equipo ni finanzas) y despacho (reparto y ruta). Los permisos se revisan en el servidor, no solo escondiendo botones.
 5. [ ] **Panel de análisis:** ventas, bidones, clientes y cobros por período, comuna y producto; margen cuando existan los gastos. Cada cifra con su definición y su fecha de corte; nunca cifras inventadas ni "rentabilidad" con costos incompletos.
 6. [ ] **Asistentes de IA:** primero solo consultas en palabras sobre cifras que ya calcula el código ("¿cuántos bidones entregamos en Ñuñoa este mes?"); después borradores (un mensaje, un pedido) que una persona confirma. Nunca cambian precios, pagos ni rutas solos. Con el plan gratis de Groq (verificar cuotas antes) y enviando solo lo mínimo.
+
+## 8. Experiencias móviles (D89, 2026-11-26)
+La especificación de la app del repartidor y del panel en iPhone, comparada con lo que hay: [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md). Lo primero, sin decisiones: siguiente parada destacada, el avance "8 de 12", una línea fija de sincronización y observaciones al entregar.
