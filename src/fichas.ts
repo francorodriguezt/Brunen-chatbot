@@ -43,7 +43,30 @@ export interface FichaDeCliente extends ResumenDeCliente {
   creadoEn: number;
 }
 
-export type ErrorDeCliente = 'no_existe' | 'datos_invalidos' | 'telefono_invalido' | 'telefono_de_otro' | 'mismo_cliente';
+export type ErrorDeCliente = 'no_existe' | 'datos_invalidos' | 'telefono_invalido' | 'telefono_de_otro' | 'mismo_cliente' | 'pedidos_vivos';
+
+/** Lo que quedó después de borrar los datos de un cliente (D87). */
+export interface ResultadoDeOlvido {
+  /** Pedidos que quedaron sin datos personales (se conservan para la contabilidad). */
+  pedidos: number;
+  avisos: number;
+  telefonos: number;
+  direcciones: number;
+  /** Lo que vive fuera de la base y tiene que hacer una persona. */
+  aMano: string[];
+  /** Lo que se borra solo, más adelante. */
+  seBorraSolo: string;
+}
+
+/** Las tareas a mano después de borrar a un cliente: la planilla guarda su historial y Telegram, sus comprobantes. */
+function tareasAMano(telefonos: readonly string[]): string[] {
+  const buscar = telefonos.join(' o ');
+  return [
+    `En la planilla, hoja RESPALDO_PEDIDOS: busca ${buscar || 'su nombre'} y borra esas filas. Esa hoja guarda todo el historial y no se borra sola.`,
+    'Si el cliente está en la hoja CLIENTES de la planilla, borra su fila.',
+    'En el grupo de Telegram, borra sus comprobantes y los avisos con sus datos.',
+  ];
+}
 export type ResultadoCliente<T> = { ok: true; valor: T } | { ok: false; error: ErrorDeCliente; otroId?: number };
 
 /**
@@ -352,5 +375,71 @@ export class RepositorioClientes {
     );
     await this.cambios('DELETE FROM clientes WHERE id = ?1', origen);
     return { ok: true, valor: true };
+  }
+
+  /**
+   * Borra los datos personales de un cliente que lo pide (D87; ver docs/AVISO_PRIVACIDAD.md). Sus pedidos se conservan
+   * para la contabilidad (cantidades, montos, fechas, boleta o factura) pero sin nombre, teléfono, dirección ni notas, y
+   * con `cliente_id = 0`: así no se vuelven a asociar a nadie. Se borran su ficha, sus teléfonos y direcciones, su pedido
+   * fijo, lo que escribió en los avisos, la memoria del bot con su teléfono y el punto del mapa de sus direcciones (si
+   * ningún otro cliente usa la misma). No se puede si tiene un pedido sin entregar. El historial de cada pedido dice
+   * quién lo hizo y cuándo.
+   *
+   * Lo que identifica al cliente (sus teléfonos y su ficha) se borra al final: si algo falla a mitad de camino, repetirlo
+   * termina el trabajo. Lo que vive fuera de la base (la planilla y Telegram) lo hace una persona: `aMano` dice qué.
+   * Son unas 20 consultas, bajo el tope de 50 por invocación del plan gratis.
+   */
+  async olvidar(id: number, quien: string, ahora: number): Promise<ResultadoCliente<ResultadoDeOlvido>> {
+    const ficha = await this.ficha(id);
+    if (!ficha) return { ok: false, error: 'no_existe' };
+    const telefonosDe = 'SELECT telefono FROM telefonos_cliente WHERE cliente_id = ?1';
+    const suyos = `(cliente_id = ?1 OR (cliente_id IS NULL AND telefono IN (${telefonosDe})))`;
+    const [vivos] = await this.filas(`SELECT COUNT(*) AS n FROM pedidos WHERE ${suyos} AND estado IN ('Pendiente_Confirmacion', 'Confirmado', 'En_Ruta')`, id);
+    if (numero(vivos?.n) > 0) return { ok: false, error: 'pedidos_vivos' };
+
+    await this.cambios(
+      `INSERT INTO historial_pedidos (pedido_id, en, quien, accion, detalle)
+       SELECT id, ?2, ?3, 'datos borrados', 'El cliente pidió borrar sus datos: se quitaron su nombre, teléfono, dirección y notas.'
+       FROM pedidos WHERE ${suyos}`,
+      id,
+      ahora,
+      quien,
+    );
+    const avisos = await this.cambios(
+      `UPDATE avisos SET telefono = '', nombre = '', texto = '', motivos = '[]', resumen = 'Datos del cliente borrados a su pedido.'
+       WHERE telefono IN (${telefonosDe}) OR id_pedido IN (SELECT id FROM pedidos WHERE ${suyos})`,
+      id,
+    );
+    // La memoria del bot con sus teléfonos. Los mensajes ya procesados quedan sin el teléfono: evitan responder dos veces.
+    for (const tabla of ['conversaciones', 'ultimos_pedidos', 'mensajes_pendientes', 'conversaciones_tomadas']) {
+      await this.cambios(`DELETE FROM ${tabla} WHERE telefono IN (${telefonosDe})`, id);
+    }
+    await this.cambios(`UPDATE mensajes_procesados SET telefono = '' WHERE telefono IN (${telefonosDe})`, id);
+    await this.cambios('DELETE FROM pedidos_fijos WHERE cliente_id = ?1', id);
+    // El punto del mapa de cada dirección suya, si ningún otro cliente usa la misma (un edificio, una oficina).
+    await this.cambios(
+      'DELETE FROM puntos WHERE clave IN (SELECT clave FROM direcciones_cliente WHERE cliente_id = ?1) AND clave NOT IN (SELECT clave FROM direcciones_cliente WHERE cliente_id != ?1)',
+      id,
+    );
+    const pedidos = await this.cambios(
+      `UPDATE pedidos SET nombre = '', telefono = '', direccion = '', notas_repartidor = '', observaciones = '', cliente_id = 0, actualizado_en = ?2
+       WHERE ${suyos}`,
+      id,
+      ahora,
+    );
+    const direcciones = await this.cambios('DELETE FROM direcciones_cliente WHERE cliente_id = ?1', id);
+    await this.cambios('DELETE FROM telefonos_cliente WHERE cliente_id = ?1', id);
+    await this.cambios('DELETE FROM clientes WHERE id = ?1', id);
+    return {
+      ok: true,
+      valor: {
+        pedidos,
+        avisos,
+        telefonos: ficha.telefonos.length,
+        direcciones,
+        aMano: tareasAMano(ficha.telefonos),
+        seBorraSolo: 'La hoja RESPALDO_CLIENTES se actualiza sola esta noche y la copia de seguridad de la base se borra sola en 7 días.',
+      },
+    };
   }
 }

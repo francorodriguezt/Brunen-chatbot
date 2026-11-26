@@ -1903,7 +1903,38 @@ function fichaDelCliente(cliente, pedidos, fijo) {
     h('h3', {}, 'Unir con otro cliente'),
     h('p', { clase: 'suave' }, 'Si este cliente aparece dos veces (por ejemplo, pidió desde otro teléfono), escribe un teléfono de la otra ficha: todo pasa a esta.'),
     h('div', { clase: 'fila-ficha' }, campoUnir, boton('Unir', 'boton boton-chico', () => void unirClientes(cliente, campoUnir.value))),
+    h('h3', {}, 'Borrar los datos de este cliente'),
+    h('p', { clase: 'suave' }, 'Solo si el cliente lo pide. Se borran su nombre, teléfonos, direcciones, notas, su pedido fijo y lo que escribió por WhatsApp. Sus pedidos quedan sin datos personales, para la contabilidad.'),
+    h('div', { clase: 'fila-ficha' }, boton('Borrar sus datos', 'boton boton-chico boton-peligro', () => void olvidarCliente(cliente))),
   );
+}
+
+/** Borrar los datos de un cliente que lo pide (D87). Después dice qué falta hacer a mano: lo arma el servidor. */
+async function olvidarCliente(cliente) {
+  const confirmado = await pedirConfirmacion({
+    titulo: 'Borrar los datos del cliente',
+    texto: `Se borran el nombre, los teléfonos, las direcciones y las notas de ${cliente.nombre || 'este cliente'}, su pedido fijo y lo que escribió por WhatsApp. Sus pedidos quedan sin datos personales, para la contabilidad. No se puede deshacer.`,
+    etiqueta: 'Borrar sus datos',
+    clase: 'boton-peligro',
+    conMotivo: false,
+  });
+  if (!confirmado) return;
+  let resultado;
+  try {
+    resultado = await api(`/api/clientes/${cliente.id}/olvidar`, { confirmar: true });
+  } catch (falla) {
+    return errorDeCliente(falla.message);
+  }
+  $('dialogo-cliente').close();
+  await recargarVistaActual();
+  const hecho = `Listo: ${resultado.pedidos} ${resultado.pedidos === 1 ? 'pedido quedó' : 'pedidos quedaron'} sin datos personales.`;
+  await pedirConfirmacion({
+    titulo: 'Datos borrados',
+    texto: [hecho, '', 'Falta hacer a mano:', ...resultado.aMano.map((tarea) => `• ${tarea}`), '', resultado.seBorraSolo].join('\n'),
+    etiqueta: 'Entendido',
+    clase: 'boton-principal',
+    conMotivo: false,
+  });
 }
 
 /**

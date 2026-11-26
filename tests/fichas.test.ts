@@ -207,3 +207,93 @@ describe('a quién le toca pedir (D58)', () => {
     expect(await b.clientes.porPedir('2026-11-03')).toEqual({ clientes: [], inactivos: 1 });
   });
 });
+
+describe('borrar los datos de un cliente que lo pide (D87)', () => {
+  const ANA = '56911111111';
+  const ANA_OTRO = '56933333333';
+  const BETO = '56922222222';
+
+  /** Ana tiene dos teléfonos, un pedido fijo, avisos, memoria del bot y una dirección que comparte con Beto. Todo ficticio. */
+  async function conDosClientes() {
+    const { db, pedidos, clientes } = await base();
+    await pedidos.guardarPedido(pedido('P261020-AAAAA', { estado: 'Entregado' as PedidoARegistrar['estado'], observaciones: 'Pidió factura', notasRepartidor: 'Timbre 4B' }), AHORA - 30 * DIA);
+    await pedidos.guardarPedido(pedido('P261021-AAAAB', { estado: 'Cancelado' as PedidoARegistrar['estado'] }), AHORA - 20 * DIA);
+    await pedidos.guardarPedido(pedido('P261022-AAAAC', { telefono: BETO, nombre: 'Beto Prueba', estado: 'Entregado' as PedidoARegistrar['estado'] }), AHORA - 10 * DIA);
+    await vincularTodo(clientes);
+    const ana = (await clientes.clienteDeTelefono(ANA)) as number;
+    const beto = (await clientes.clienteDeTelefono(BETO)) as number;
+    await clientes.agregarTelefono(ana, ANA_OTRO, AHORA);
+    await clientes.registrarDireccion(ana, 'Pasaje Solo 9', 'Macul', '', AHORA - DIA);
+    // Un pedido del otro teléfono que todavía no se asoció a la ficha.
+    db.sql(
+      "INSERT INTO pedidos (id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, estado, lineas, total, actualizado_en) VALUES ('P261023-AAAAD', ?, ?, 'Ana', 'Macul', 'Pasaje Solo 9', '2026-10-23', 'Entregado', '[]', 4500, ?)",
+      AHORA - 5 * DIA,
+      ANA_OTRO,
+      AHORA - 5 * DIA,
+    );
+    await pedidos.guardarAviso({ tipo: 'reclamo', telefono: ANA, nombre: 'Ana Prueba', resumen: 'Reclamo de Ana', motivos: ['reclamo'], texto: 'venía roto' }, 'wamid.ana', AHORA - DIA);
+    await pedidos.guardarAviso({ tipo: 'reclamo', telefono: BETO, nombre: 'Beto Prueba', resumen: 'Reclamo de Beto', motivos: [], texto: 'tarde' }, 'wamid.beto', AHORA - DIA);
+    for (const tel of [ANA, BETO]) {
+      db.sql('INSERT INTO conversaciones (telefono, estado, actualizado_en) VALUES (?, ?, ?)', tel, '{}', AHORA);
+      db.sql('INSERT INTO ultimos_pedidos (telefono, items, actualizado_en) VALUES (?, ?, ?)', tel, '[]', AHORA);
+      db.sql('INSERT INTO mensajes_pendientes (wamid, telefono, texto, recibido_en) VALUES (?, ?, ?, ?)', `wamid.p.${tel}`, tel, 'hola', AHORA);
+      db.sql('INSERT INTO conversaciones_tomadas (telefono, hasta, ultimo_eco_en) VALUES (?, ?, ?)', tel, AHORA + 3600, AHORA);
+      db.sql('INSERT INTO mensajes_procesados (wamid, recibido_en, telefono) VALUES (?, ?, ?)', `wamid.m.${tel}`, AHORA, tel);
+    }
+    db.sql("INSERT INTO pedidos_fijos (cliente_id, telefono, lineas, cada_dias, proxima_fecha, creado_en, actualizado_en) VALUES (?, ?, '[]', 7, '2026-11-30', ?, ?)", ana, ANA, AHORA, AHORA);
+    // "Calle Falsa 123" es de los dos (un edificio); "Pasaje Solo 9" es solo de Ana.
+    await clientes.registrarDireccion(beto, 'Calle Falsa 123', 'Ñuñoa', '', AHORA - DIA);
+    for (const [direccion, comuna] of [['Calle Falsa 123', 'Ñuñoa'], ['Pasaje Solo 9', 'Macul']]) {
+      db.sql("INSERT INTO puntos (clave, lat, lng, origen, actualizado_en) VALUES (?, -33.45, -70.6, 'manual', ?)", claveDeDireccion(direccion as string, comuna as string), AHORA);
+    }
+    return { db, pedidos, clientes, ana, beto };
+  }
+
+  it('borra todo lo que identifica al cliente y deja sus pedidos sin datos personales, para la contabilidad', async () => {
+    const { db, clientes, ana, beto } = await conDosClientes();
+    const r = await clientes.olvidar(ana, 'operadora@brunen.test', AHORA);
+    expect(r).toMatchObject({ ok: true, valor: { pedidos: 3, avisos: 1, telefonos: 2, direcciones: 2 } });
+    if (!r.ok) return;
+    expect(r.valor.aMano[0]).toContain(`busca ${ANA} o ${ANA_OTRO}`);
+
+    expect(db.sql("SELECT id, nombre, telefono, direccion, notas_repartidor, observaciones, cliente_id, total, estado FROM pedidos WHERE id != 'P261022-AAAAC' ORDER BY id")).toEqual([
+      { id: 'P261020-AAAAA', nombre: '', telefono: '', direccion: '', notas_repartidor: '', observaciones: '', cliente_id: 0, total: 6600, estado: 'Entregado' },
+      { id: 'P261021-AAAAB', nombre: '', telefono: '', direccion: '', notas_repartidor: '', observaciones: '', cliente_id: 0, total: 6600, estado: 'Cancelado' },
+      { id: 'P261023-AAAAD', nombre: '', telefono: '', direccion: '', notas_repartidor: '', observaciones: '', cliente_id: 0, total: 4500, estado: 'Entregado' },
+    ]);
+    expect(db.sql("SELECT COUNT(*) AS n FROM historial_pedidos WHERE accion = 'datos borrados' AND quien = 'operadora@brunen.test'")).toEqual([{ n: 3 }]);
+
+    // Lo de Ana ya no está; lo de Beto sigue igual.
+    expect(db.sql('SELECT id FROM clientes')).toEqual([{ id: beto }]);
+    expect(db.sql('SELECT telefono FROM telefonos_cliente')).toEqual([{ telefono: BETO }]);
+    expect(db.sql('SELECT DISTINCT cliente_id FROM direcciones_cliente')).toEqual([{ cliente_id: beto }]);
+    expect(db.sql('SELECT telefono, nombre, texto, resumen FROM avisos ORDER BY id')).toEqual([
+      { telefono: '', nombre: '', texto: '', resumen: 'Datos del cliente borrados a su pedido.' },
+      { telefono: BETO, nombre: 'Beto Prueba', texto: 'tarde', resumen: 'Reclamo de Beto' },
+    ]);
+    for (const tabla of ['conversaciones', 'ultimos_pedidos', 'mensajes_pendientes', 'conversaciones_tomadas']) {
+      expect(db.sql(`SELECT telefono FROM ${tabla}`)).toEqual([{ telefono: BETO }]);
+    }
+    expect(db.sql('SELECT telefono FROM mensajes_procesados ORDER BY wamid')).toEqual([{ telefono: '' }, { telefono: BETO }]);
+    expect(db.sql('SELECT COUNT(*) AS n FROM pedidos_fijos')).toEqual([{ n: 0 }]);
+    expect(db.sql('SELECT clave FROM puntos')).toEqual([{ clave: claveDeDireccion('Calle Falsa 123', 'Ñuñoa') }]);
+    expect(db.sql("SELECT nombre, telefono, cliente_id FROM pedidos WHERE id = 'P261022-AAAAC'")).toEqual([{ nombre: 'Beto Prueba', telefono: BETO, cliente_id: beto }]);
+    // Nada vuelve a crear su ficha.
+    expect(await vincularTodo(clientes)).toBe(0);
+    expect(db.sql('SELECT COUNT(*) AS n FROM clientes')).toEqual([{ n: 1 }]);
+  });
+
+  it('no se puede con un pedido sin entregar, y no toca nada', async () => {
+    const { db, pedidos, clientes, ana } = await conDosClientes();
+    await pedidos.guardarPedido(pedido('P261124-AAAAE', { estado: 'Confirmado' as PedidoARegistrar['estado'] }), AHORA);
+    await vincularTodo(clientes);
+    expect(await clientes.olvidar(ana, 'x', AHORA)).toEqual({ ok: false, error: 'pedidos_vivos' });
+    expect(db.sql('SELECT COUNT(*) AS n FROM telefonos_cliente WHERE cliente_id = ?', ana)).toEqual([{ n: 2 }]);
+    expect(db.sql("SELECT COUNT(*) AS n FROM historial_pedidos WHERE accion = 'datos borrados'")).toEqual([{ n: 0 }]);
+  });
+
+  it('un cliente que no existe da no_existe', async () => {
+    const { clientes } = await base();
+    expect(await clientes.olvidar(999, 'x', AHORA)).toEqual({ ok: false, error: 'no_existe' });
+  });
+});
