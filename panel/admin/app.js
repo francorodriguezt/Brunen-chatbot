@@ -1628,6 +1628,50 @@ function filaDeHoy({ texto, detalle, tono = '', alTocar }) {
   return h('li', {}, h('button', { type: 'button', clase: `fila-hoy ${tono}`, onclick: alTocar }, h('span', { clase: 'fila-hoy-texto' }, texto), detalle ? h('span', { clase: 'fila-hoy-detalle' }, detalle) : null));
 }
 
+/**
+ * Mientras quedan entregas hoy: dónde se vio al repartidor y lo que viene (especificación móvil, D92). Se muestra la hora
+ * de la última ubicación, no "hace N min": la pantalla no se vuelve a dibujar si nada cambió y ese texto quedaría viejo.
+ * Las próximas entregas, solo con la ruta publicada: sin ella no se sabe el orden.
+ */
+function filasDelRepartidor(repartoHoy, irAParada) {
+  const reparto = repartoHoy?.reparto;
+  const seguimiento = repartoHoy?.seguimiento ?? null;
+  const entregas = repartoHoy?.entregas ?? {};
+  if (!reparto) return [];
+  const pendientes = reparto.paradas.filter((p) => p.estado !== 'Entregado' && !entregas[p.idPedido]?.noEntregado);
+  if (pendientes.length === 0) return [];
+  const filas = [];
+  const r = seguimiento?.repartidor ?? null;
+  if (r) {
+    const hora = formatoHora.format(new Date(r.en * 1000));
+    filas.push(
+      filaDeHoy({
+        texto: r.enVivo ? `${r.nombre || 'Repartidor'} · en vivo` : `${r.nombre || 'Repartidor'} · última ubicación a las ${hora}`,
+        detalle: r.enVivo ? `Última ubicación: ${hora}` : 'Se actualiza mientras tiene la app abierta en la ruta',
+        tono: r.enVivo ? 'en-vivo' : 'tranquila',
+        alTocar: () => irAParada(seguimiento.siguiente),
+      }),
+    );
+  } else if (seguimiento) {
+    filas.push(filaDeHoy({ texto: 'Sin ubicación del repartidor hoy', detalle: 'Aparece cuando inicia la ruta en su app', tono: 'tranquila', alTocar: () => irAParada(null) }));
+  }
+  if (reparto.publicada) {
+    const quien = (p) => `${p.nombre || p.direccion || 'Sin nombre'}${p.comuna ? ` (${p.comuna})` : ''}`;
+    const [primera, ...resto] = pendientes;
+    const ventana = seguimiento?.horas?.[primera.idPedido];
+    const despues = resto.slice(0, 2).map(quien);
+    const masAun = resto.length - despues.length;
+    filas.push(
+      filaDeHoy({
+        texto: `${resto.length === 0 ? 'Última entrega' : 'Siguiente'}: ${quien(primera)}${ventana ? ` · ${ventanaEnTexto(ventana)} aprox.` : ''}`,
+        detalle: despues.length > 0 ? `Después: ${despues.join(', ')}${masAun > 0 ? ` y ${plural(masAun, 'más', 'más')}` : ''}` : null,
+        alTocar: () => irAParada(primera.idPedido),
+      }),
+    );
+  }
+  return filas;
+}
+
 function pintarHoy({ hoy, siguiente, resumen, repartoHoy, repartoSiguiente, cerradoSiguiente = null, avisos, porPedir }) {
   const cerradoHoy = repartoHoy?.sinReparto ?? null;
   $('titulo-hoy').textContent = fechaLarga(hoy);
@@ -1655,9 +1699,10 @@ function pintarHoy({ hoy, siguiente, resumen, repartoHoy, repartoSiguiente, cerr
     pintarFiltros();
     void activarVista('pedidos');
   };
-  const irAlReparto = (fecha) => {
+  const irAlReparto = async (fecha, idParada = null) => {
     estado.fechaReparto = fecha;
-    void activarVista('reparto');
+    await activarVista('reparto');
+    if (idParada) document.getElementById(`parada-${idParada}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const problemasDelReparto = caja
@@ -1704,6 +1749,7 @@ function pintarHoy({ hoy, siguiente, resumen, repartoHoy, repartoSiguiente, cerr
         cerradoHoy !== null ? (paradas + (reparto?.sinConfirmar ?? 0) > 0 ? 'urgente' : 'tranquila') : problemasDelReparto.length > 0 ? 'urgente' : paradas > 0 ? 'con-algo' : 'tranquila',
       alTocar: () => irAlReparto(hoy),
     }),
+    ...(cerradoHoy === null ? filasDelRepartidor(repartoHoy, (idParada) => irAlReparto(hoy, idParada)) : []),
     repartoSiguiente
       ? (() => {
           const pedidosSiguiente = repartoSiguiente.paradas.length + repartoSiguiente.sinConfirmar;
