@@ -152,6 +152,7 @@ function olvidarMarca(op) {
 }
 
 async function cargarRuta() {
+  limpiarVencido(); // la app puede quedar abierta de un día para otro
   try {
     const { estado, datos } = await pedir('/api/repartidor/ruta');
     if (estado === 401) return pedirClave();
@@ -728,7 +729,22 @@ async function salir() {
   pedirClave();
 }
 
+/**
+ * Lo guardado en el teléfono vence (D93). La ruta de otro día, que trae nombres, direcciones y teléfonos, se borra: sin
+ * señal solo sirve la de hoy. Las posiciones de más de 6 horas también, porque el servidor ya no las acepta. Las marcas
+ * no vencen solas: una de hace más de 3 días el servidor la rechaza y queda a la vista hasta que toque "Entendido".
+ */
+const POSICION_VIGENTE_S = 6 * 3600;
+function limpiarVencido() {
+  if (leer(CLAVE_RUTA) && leer(CLAVE_RUTA).fecha !== hoy()) guardar(CLAVE_RUTA, null);
+  const posiciones = colaDePosiciones();
+  const desde = Math.floor(Date.now() / 1000) - POSICION_VIGENTE_S;
+  const vigentes = Array.isArray(posiciones) ? posiciones.filter((p) => typeof p?.en === 'number' && p.en >= desde) : [];
+  if (vigentes.length !== posiciones.length) guardar(CLAVE_POSICIONES, vigentes.length > 0 ? vigentes : null);
+}
+
 async function iniciar() {
+  limpiarVencido();
   registrarAplicacion();
   $('salir').addEventListener('click', () => void salir());
   $('cambiar-sesion').addEventListener('click', () => void salir());
