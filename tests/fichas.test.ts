@@ -255,6 +255,8 @@ describe('borrar los datos de un cliente que lo pide (D87)', () => {
     db.sql("INSERT INTO historial_pedidos (pedido_id, en, quien, accion, detalle) VALUES ('P261020-AAAAA', ?, 'Repartidor: Prueba', 'no_entregado', 'No estaba o no contestó (la vecina dijo que viaja)')", AHORA);
     db.sql("INSERT INTO historial_pedidos (pedido_id, en, quien, accion, detalle) VALUES ('P261022-AAAAC', ?, 'Repartidor: Prueba', 'no_entregado', 'Estaba cerrado (portón)')", AHORA);
     db.sql("INSERT INTO historial_pedidos (pedido_id, en, quien, accion, detalle) VALUES ('P261023-AAAAD', ?, 'Repartidor: Prueba', 'entrega', 'Retiró 1 vacío. Nota: se lo dejé a su hija')", AHORA);
+    // El motivo de una cancelación lo escribe la operadora con sus palabras (D97).
+    db.sql("INSERT INTO historial_pedidos (pedido_id, en, quien, accion, detalle) VALUES ('P261021-AAAAB', ?, 'operadora@brunen.test', 'estado: Confirmado -> Cancelado', 'Ana se va de viaje con su hija')", AHORA);
     const r = await clientes.olvidar(ana, 'operadora@brunen.test', AHORA);
     expect(r).toMatchObject({ ok: true, valor: { pedidos: 3, avisos: 1, telefonos: 2, direcciones: 2 } });
     if (!r.ok) return;
@@ -266,6 +268,7 @@ describe('borrar los datos de un cliente que lo pide (D87)', () => {
       { id: 'P261023-AAAAD', nombre: '', telefono: '', direccion: '', notas_repartidor: '', observaciones: '', cliente_id: 0, total: 4500, estado: 'Entregado' },
     ]);
     expect(db.sql("SELECT COUNT(*) AS n FROM historial_pedidos WHERE accion = 'datos borrados' AND quien = 'operadora@brunen.test'")).toEqual([{ n: 3 }]);
+    expect(db.sql("SELECT detalle FROM historial_pedidos WHERE accion LIKE 'estado:%'")).toEqual([{ detalle: 'Detalle borrado a pedido del cliente.' }]);
     expect(db.sql("SELECT pedido_id, detalle FROM historial_pedidos WHERE accion IN ('no_entregado', 'entrega') ORDER BY pedido_id")).toEqual([
       { pedido_id: 'P261020-AAAAA', detalle: 'Detalle borrado a pedido del cliente.' },
       { pedido_id: 'P261022-AAAAC', detalle: 'Estaba cerrado (portón)' },
