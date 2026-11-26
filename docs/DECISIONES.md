@@ -744,3 +744,6 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Línea de sincronización** fija: "Al día", "Enviando…", "N marcas por enviar" o "Sin conexión", con la hora de la última sincronización. Nunca dice "al día" si queda algo sin confirmar por el servidor.
 - La copia sin señal pasa a `brunen-v3`.
 - Verificado en el navegador a 375 px con datos ficticios: la siguiente avanza al marcar una entrega sin señal, la línea muestra la marca por enviar y vuelve a "Al día" con la señal, e "Ir a la parada" deja la tarjeta bajo la barra fija (había quedado tapada; se corrigió con un margen). Sin publicar.
+
+### D91 · 2026-11-26 · Una observación al marcar Entregado
+**Lo último de la lista de experiencias móviles que no necesita decisiones.** Al marcar Entregado, el repartidor puede escribir una observación opcional ("dejé en conserjería"). Va al historial del pedido ("Retiró 3 vacíos. Nota: ..."), en una línea y con un tope de 200 caracteres; una que no es texto se ignora. Como la escribe con sus palabras y puede nombrar a alguien, al borrar los datos de un cliente (D87) se borra junto con el detalle de sus No se pudo. Verificado con pruebas y de punta a punta en local. Sin publicar.

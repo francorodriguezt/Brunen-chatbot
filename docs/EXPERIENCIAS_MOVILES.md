@@ -67,7 +67,7 @@ La especificación coincide con lo que ya decidimos: un solo backend (los Worker
 
 ## Orden recomendado
 
-1. **Chicos, sin decisiones** (app del repartidor): ~~siguiente parada destacada, el avance "8 de 12" y una línea fija de sincronización~~ (hechos, D90); observaciones al entregar.
+1. **Chicos, sin decisiones** (app del repartidor): ~~siguiente parada destacada, el avance "8 de 12" y una línea fija de sincronización~~ (hechos, D90); ~~observaciones al entregar~~ (hecho, D91).
 2. **Panel en el teléfono:** el repartidor y su última ubicación en Hoy, y las alertas "sin señal" y "ruta no iniciada" (con umbrales que decidas).
 3. **Versiones de la ruta**, con el acuse del repartidor.
 4. **Cobros** (propuesta 2): ahí entran el monto, el medio de pago, el pago parcial y "por verificar".

@@ -85,4 +85,4 @@ Meta de largo plazo: asistentes de IA, roles dentro del panel, un panel de anál
 6. [ ] **Asistentes de IA:** primero solo consultas en palabras sobre cifras que ya calcula el código ("¿cuántos bidones entregamos en Ñuñoa este mes?"); después borradores (un mensaje, un pedido) que una persona confirma. Nunca cambian precios, pagos ni rutas solos. Con el plan gratis de Groq (verificar cuotas antes) y enviando solo lo mínimo.
 
 ## 8. Experiencias móviles (D89, 2026-11-26)
-La especificación de la app del repartidor y del panel en iPhone, comparada con lo que hay: [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md). Hechos (D90): siguiente parada destacada, el avance "1 de 6" y una línea fija de sincronización. Sigue, sin decisiones: observaciones al entregar.
+La especificación de la app del repartidor y del panel en iPhone, comparada con lo que hay: [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md). Hechos (D90): siguiente parada destacada, el avance "1 de 6" y una línea fija de sincronización. También la observación al entregar (D91). Lo que sigue necesita decisiones o es más grande: ver el orden en EXPERIENCIAS_MOVILES.md.
