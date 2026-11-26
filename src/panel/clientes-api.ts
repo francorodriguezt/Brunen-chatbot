@@ -24,6 +24,8 @@ export interface ContextoClientes {
   /** Puntos exactos de las direcciones (D63): para el mapa de clientes. */
   puntos?: RepositorioPuntos;
   ahoraSegundos: number;
+  /** Quién usa el panel: queda en el historial al borrar los datos de un cliente (D87). */
+  correo?: string;
 }
 
 const MENSAJES = {
@@ -32,6 +34,7 @@ const MENSAJES = {
   telefono_invalido: [422, 'El teléfono no es válido. Escríbelo con el 9 adelante, por ejemplo 9 1234 5678.'],
   telefono_de_otro: [409, 'Ese teléfono ya es de otro cliente. Si son el mismo, usa "Unir con otro cliente".'],
   mismo_cliente: [422, 'Es el mismo cliente.'],
+  pedidos_vivos: [409, 'Tiene pedidos sin entregar: entrégalos o cancélalos antes de borrar sus datos.'],
 } as const;
 
 function errorDeCliente(codigo: keyof typeof MENSAJES, otroId?: number): Response {
@@ -106,7 +109,7 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
     return json({ clientes: await clientes.listar(cuerpo.texto) });
   }
 
-  const accion = /^\/api\/clientes\/(\d{1,9})\/(editar|telefonos|unir|fijo)$/.exec(ruta);
+  const accion = /^\/api\/clientes\/(\d{1,9})\/(editar|telefonos|unir|fijo|olvidar)$/.exec(ruta);
   if (!accion) return error(404, 'No encontrado.');
   const id = Number(accion[1]);
 
@@ -114,6 +117,13 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
     const r = await ctx.fijos.guardar(id, cuerpo, ahoraSegundos);
     if (r.ok) return json({ ok: true, fijo: r.fijo });
     return error(422, r.error === 'sin_telefono' ? 'Ese cliente no tiene teléfono: agrégale uno primero.' : 'Revisa el tamaño, la cantidad (1 a 200), cada cuántos días (1 a 60) y la próxima fecha.');
+  }
+
+  // Borrar los datos de un cliente que lo pide (D87). No se puede deshacer: la pantalla pide confirmar y el cuerpo lo repite.
+  if (accion[2] === 'olvidar') {
+    if (cuerpo.confirmar !== true) return error(400, 'Solicitud no válida.');
+    const r = await clientes.olvidar(id, ctx.correo ?? 'panel', ahoraSegundos);
+    return r.ok ? json({ ok: true, ...r.valor }) : errorDeCliente(r.error);
   }
 
   if (accion[2] === 'editar') {

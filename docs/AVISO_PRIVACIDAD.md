@@ -90,7 +90,7 @@ Lo que pide la Ley 21.719 como "registro": qué datos, para qué, dónde y por c
 ## 4. Lo que el sistema todavía no hace y el aviso promete
 
 Antes de publicar el aviso hay que construir o decidir:
-1. **Borrar a un cliente a pedido:** un botón en su ficha que borre o anonimice sus datos en D1, avise qué queda por ley (boletas y facturas) y saque su fila de la copia en Google Sheets. Los comprobantes en Telegram se borran a mano.
+1. ~~**Borrar a un cliente a pedido**~~: hecho (D87). En su ficha, "Borrar sus datos": borra lo que lo identifica y deja sus pedidos sin datos personales. Su fila en RESPALDO_PEDIDOS y en la hoja CLIENTES, y sus comprobantes en Telegram, los borra una persona: el panel dice cuáles.
 2. **Plazo automático para pedidos y fichas**, cuando el dueño lo fije.
 3. **Entregarle sus datos a un cliente** que los pida (exportar su ficha y sus pedidos).
 4. **Quién responde** las solicitudes y en qué plazo.

@@ -72,6 +72,7 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] La cola del repartidor ya no pierde marcas; `/salud` revisa la base; pendientes de D80 cerrados (D84, y los cortes de viaje en D86).
 - [ ] Ley 21.719 (rige desde el 15-oct-2027, D82): aviso de privacidad y plazo de guardado. Borrador listo en `AVISO_PRIVACIDAD.md` (D85). **(Dueño)**
 - [x] `npm run comprobar` después de cada publicación. (D85)
+- [x] Borrar los datos de un cliente que lo pide, desde su ficha. (D87)
 
 ## 7. Hacia la visión de Franco (D83, 2026-11-25)
 Meta de largo plazo: asistentes de IA, roles dentro del panel, un panel de análisis avanzado y finanzas. Cada paso sirve solo, cuesta USD 0 al mes y se mide antes de seguir. La flota no hace falta (un repartidor): basta con no impedirla.

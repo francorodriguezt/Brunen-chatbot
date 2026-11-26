@@ -986,6 +986,24 @@ describe('la API: clientes (D53)', () => {
     expect(despues.cliente.pedidos).toBe(3);
   });
 
+  it('borra los datos de un cliente que lo pide: no con pedidos sin entregar, y pide confirmar (D87)', async () => {
+    const { env, db } = await entornoPanel();
+    const { clientes } = (await (await pedir(env, '/api/clientes')).json()) as { clientes: Array<{ id: number; nombre: string }> };
+    const ana = clientes.find((c) => c.nombre === 'Ana Prueba')?.id;
+    const conPedidos = await pedir(env, `/api/clientes/${ana}/olvidar`, { metodo: 'POST', cuerpo: { confirmar: true } });
+    expect(conPedidos.status).toBe(409);
+    expect(await conPedidos.json()).toEqual({ error: 'Tiene pedidos sin entregar: entrégalos o cancélalos antes de borrar sus datos.' });
+    db.sql("UPDATE pedidos SET estado = 'Entregado'");
+    expect((await pedir(env, `/api/clientes/${ana}/olvidar`, { metodo: 'POST', cuerpo: {} })).status).toBe(400);
+    const r = await pedir(env, `/api/clientes/${ana}/olvidar`, { metodo: 'POST', cuerpo: { confirmar: true } });
+    expect(r.status).toBe(200);
+    const cuerpo = (await r.json()) as { pedidos: number; aMano: string[]; seBorraSolo: string };
+    expect(cuerpo.pedidos).toBe(2);
+    expect(cuerpo.aMano).toHaveLength(3);
+    expect((await pedir(env, `/api/clientes/${ana}`)).status).toBe(404);
+    expect(db.sql("SELECT DISTINCT quien FROM historial_pedidos WHERE accion = 'datos borrados'")).toEqual([{ quien: 'operadora@brunen.test' }]);
+  });
+
   it('corregir la dirección de un pedido la suma al historial de su cliente', async () => {
     const { env } = await entornoPanel();
     const { clientes } = (await (await pedir(env, '/api/clientes')).json()) as { clientes: Array<{ id: number }> };

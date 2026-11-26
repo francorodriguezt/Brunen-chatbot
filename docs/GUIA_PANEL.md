@@ -20,6 +20,7 @@ Es lo primero que se ve. Arriba, en una frase, cómo va el día (entregas, efect
 - **Buscar**: por nombre, parte del teléfono, dirección o comuna.
 - **Ver ficha**: cambiar el nombre, el tipo de cliente y las notas; agregar otro teléfono; ver todas sus direcciones (la primera es la vigente) y sus últimos pedidos.
 - **Unir con otro cliente**: si alguien aparece dos veces, escribe un teléfono de la otra ficha y todo pasa a esta. No se puede deshacer.
+- **Borrar sus datos**: solo si el cliente lo pide (su derecho por la ley de datos personales). Se borra todo lo que lo identifica; sus pedidos quedan sin nombre, teléfono ni dirección, para la contabilidad. No se puede si tiene un pedido sin entregar. Al terminar, el panel dice lo que falta hacer a mano en la planilla y en Telegram. No se puede deshacer.
 - **Por comuna y en el mapa**: cuántos clientes hay en cada comuna (toca una para ver sus clientes) y el mapa con un círculo por comuna. Los puntos son los clientes cuyo lugar exacto ya se conoce: aparecen a medida que el repartidor entrega.
 
 ## Días sin reparto
