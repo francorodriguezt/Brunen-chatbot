@@ -10,6 +10,10 @@ describe('interpretar: casos de tests/mensajes.json', () => {
 });
 
 describe('interpretar: forma exacta del resultado', () => {
+  it('un pedido que además pregunta algo guarda la pregunta (D95)', () => {
+    expect(interpretar('mandame 2 de 20, a que hora llegan?')).toEqual({ intencion: 'pedido', items: [{ tipo: '20L', cantidad: 2 }], tipo_pregunta: 'horario' });
+  });
+
   it('un pedido completo no trae acción ni claves de más', () => {
     expect(interpretar('Hola, me puede traer 2 bidones de 20 mañana?')).toEqual({
       intencion: 'pedido',

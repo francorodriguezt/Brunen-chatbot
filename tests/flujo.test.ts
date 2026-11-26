@@ -915,3 +915,77 @@ describe('la hora en camino (D80)', () => {
     expect(d.respuesta).toBe('Tu pedido va en camino: eres la próxima entrega y llegaría entre las 12:05 y las 12:25, aprox.');
   });
 });
+
+describe('cotizar lo que preguntan y contestar dos cosas a la vez (D95)', () => {
+  const lineas = (d: { pedido?: { lineas: ReadonlyArray<{ tipo: string; cantidad: number }> } }) => d.pedido?.lineas.map((l) => [l.tipo, l.cantidad]);
+
+  it('"¿cuánto salen 3 de 20?" recibe su total, sin anotar nada; con "sí" queda anotado', async () => {
+    const charla = conversacion();
+    const cotizacion = await charla.decir('cuanto salen 3 de 20?');
+    expect(cotizacion.pedido).toBeUndefined();
+    expect(cotizacion.alerta).toBeUndefined();
+    expect(cotizacion.respuesta).toBe('3 bidones de 20 L: $9.900 ($3.300 c/u).\nEl despacho es gratis. ¿Te los anoto? Responde «sí».');
+    const si = await charla.decir('sí');
+    expect(si.pedido?.lineas).toEqual([{ tipo: '20L', cantidad: 3, precioUnitario: 3300, subtotal: 9900 }]);
+  });
+
+  it('cada cliente ve su precio, y con dos tamaños va el total', async () => {
+    const mayorista = await conversacion({ cliente: conocido({ tipo: 'mayorista' }) }).decir('a cuanto me salen 10 de 20?');
+    expect(mayorista.respuesta).toContain('10 bidones de 20 L: $12.500 ($1.250 c/u).');
+    const mezclado = await conversacion().decir('cuanto sale 1 de 20 y 1 de 12?');
+    expect(mezclado.respuesta).toBe('- 1 bidón de 20 L: $4.500\n- 1 bidón de 12 L: $2.500\nTotal: $7.000.\nEl despacho es gratis. ¿Te los anoto? Responde «sí».');
+  });
+
+  it('a un cliente sin ficha se le dice que es el precio de recarga', async () => {
+    const d = await conversacion({ cliente: { estado: 'nuevo' } }).decir('cuanto salen 2 de 20?');
+    expect(d.respuesta).toContain('2 bidones de 20 L: $6.600 ($3.300 c/u).');
+    expect(d.respuesta).toContain('Es el precio de recarga: si no tienes bidones para cambiar, se cobra la carga inicial y te confirmamos el valor.');
+  });
+
+  it('sin un precio seguro (empresa, hoja CLIENTES caída) muestra la tabla como antes y ofrece anotarlo', async () => {
+    for (const cliente of [conocido({ tipo: 'empresa' }), { estado: 'no_disponible' } as BusquedaCliente]) {
+      const d = await conversacion({ cliente }).decir('cuanto salen 3 de 20?');
+      expect(d.respuesta).toMatch(/^Estos son nuestros valores:/);
+      expect(d.respuesta).toContain('¿Te anoto 3 bidones de 20 L? Responde «sí».');
+    }
+  });
+
+  it('"¿cuánto sale el de 12?" muestra solo ese tamaño', async () => {
+    const d = await conversacion().decir('cuanto sale el bidon de 12?');
+    expect(d.respuesta).toBe('Estos son nuestros valores:\n- Bidón 12 L: 1: $2.500 · 2 o más: $2.400 c/u\nEl despacho es gratis.');
+  });
+
+  it('pedido y pregunta en el mismo mensaje: se anota y se contesta en la misma respuesta; la pregunta queda en el aviso', async () => {
+    const d = await conversacion().decir('mandame 2 de 20, a que hora llegan?');
+    expect(lineas(d)).toEqual([['20L', 2]]);
+    expect(d.respuesta).toContain('Anotamos tu pedido:');
+    expect(d.respuesta).toContain('Repartimos entre las 10:00 y las 18:00 (los sábados hasta las 15:00); no podemos darte una hora exacta.');
+    expect(d.respuesta?.split('\n').at(-1)).toBe('Si algo cambia, te avisamos por aquí.');
+    expect(d.alerta?.tipo).toBe('pedido_revision');
+    expect(d.alerta?.motivos.join(' ')).toContain('También preguntó por el horario');
+    const pago = await conversacion().decir('quiero 2 de 20, como puedo pagar?');
+    expect(lineas(pago)).toEqual([['20L', 2]]);
+    expect(pago.respuesta).toContain('Puedes pagar en efectivo al recibir o por transferencia, antes o después de la entrega. Si quieres transferir, te enviamos los datos.');
+    expect(pago.alerta?.motivos.join(' ')).toContain('También preguntó cómo pagar');
+  });
+
+  it('un cliente con un pedido en curso que pide otro y pregunta la hora: se anota el nuevo, no se pierde', async () => {
+    const d = await conversacion({ puertos: { estadoDeMiPedido: async () => ({ tipo: 'agendado', fecha: '2026-10-29' }) } }).decir('mandame 2 de 20, a que hora llegan?');
+    expect(lineas(d)).toEqual([['20L', 2]]);
+  });
+
+  it('bidones y una pregunta, sin decir que los quiere: contesta y ofrece anotarlos', async () => {
+    const charla = conversacion();
+    const d = await charla.decir('2 de 20, llegan a Vitacura?');
+    expect(d.pedido).toBeUndefined();
+    expect(d.respuesta).toContain('Sí, despachamos a Vitacura.');
+    expect(d.respuesta).toContain('¿Te anoto 2 bidones de 20 L? Responde «sí».');
+    expect(lineas(await charla.decir('si'))).toEqual([['20L', 2]]);
+  });
+
+  it('un cliente bloqueado recibe la tabla, sin oferta', async () => {
+    const d = await conversacion({ cliente: conocido({ estado: 'bloqueado' }) }).decir('cuanto salen 3 de 20?');
+    expect(d.respuesta).toMatch(/^Estos son nuestros valores:/);
+    expect(d.respuesta).not.toContain('Responde «sí»');
+  });
+});

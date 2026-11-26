@@ -115,6 +115,32 @@ function tramo(t: TramoPrecio): string {
   return `${t.desde} a ${t.hasta}: ${formatearCLP(t.precio)} c/u`;
 }
 
+/**
+ * Lo que costaría lo que preguntó (D95): su precio, el de su ficha si tiene uno especial o es mayorista, y una oferta
+ * para anotarlo con un "sí". A quien no tiene ficha se le aclara que es el precio de recarga.
+ */
+export function cotizacion(lineas: readonly LineaTexto[], total: number, recarga: boolean): string {
+  const unitario = (l: LineaTexto) => (l.cantidad > 1 && l.subtotal !== null ? ` (${formatearCLP(l.subtotal / l.cantidad)} c/u)` : '');
+  const [unica] = lineas;
+  const filas =
+    lineas.length === 1 && unica
+      ? [`${itemTexto(unica)}: ${formatearCLP(unica.subtotal ?? 0)}${unitario(unica)}.`]
+      : [...lineas.map((l) => `- ${itemTexto(l)}: ${formatearCLP(l.subtotal ?? 0)}`), `Total: ${formatearCLP(total)}.`];
+  if (recarga) filas.push('Es el precio de recarga: si no tienes bidones para cambiar, se cobra la carga inicial y te confirmamos el valor.');
+  filas.push('El despacho es gratis. ¿Te los anoto? Responde «sí».');
+  return filas.join('\n');
+}
+
+/** Después de contestar una pregunta en la que nombró bidones (D95). */
+export const ofrecerAnotar = (lineas: readonly Pick<LineaTexto, 'tipo' | 'cantidad'>[]): string => `¿Te anoto ${resumenLineas(lineas)}? Responde «sí».`;
+
+/** Respuesta corta a "¿a qué hora llegan?" dentro de la respuesta de un pedido (D95). Despacho: conocimiento, sección 6. */
+export const horarioDelReparto = (): string => 'Repartimos entre las 10:00 y las 18:00 (los sábados hasta las 15:00); no podemos darte una hora exacta.';
+
+/** "¿Cómo pago?" dentro de la respuesta de un pedido (D95). Pagos: conocimiento, sección 7. Los datos los envía una persona. */
+export const comoPagar = (): string =>
+  'Puedes pagar en efectivo al recibir o por transferencia, antes o después de la entrega. Si quieres transferir, te enviamos los datos.';
+
 /** Los valores de la hoja PRECIOS, por tipo de bidón. */
 export function precios(tabla: readonly TramoPrecio[]): string {
   const lineas = (['20L', '12L', '10L'] as const)
@@ -162,6 +188,8 @@ export function pedidoAnotado(datos: {
    */
   direccion?: string;
   comuna?: string;
+  /** La respuesta a lo que además preguntó (D95), antes del cierre. */
+  extra?: string;
 }): string {
   const conPrecio = datos.total !== null;
   const filas = datos.lineas.map((l) => `- ${itemTexto(l)}${conPrecio && l.subtotal !== null ? `: ${formatearCLP(l.subtotal)}` : ''}`);
@@ -190,6 +218,7 @@ export function pedidoAnotado(datos: {
   }
   const lugar = lugarDeEntrega(datos.direccion, datos.comuna);
   if (lugar) partes.push(`Entrega en: ${lugar}. Si cambiaste de dirección, escríbenos la nueva.`);
+  if (datos.extra) partes.push(datos.extra);
   partes.push('Si algo cambia, te avisamos por aquí.');
   return partes.join('\n');
 }

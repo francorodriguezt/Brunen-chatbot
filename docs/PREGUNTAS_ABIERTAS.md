@@ -52,6 +52,10 @@ Las preguntas vienen de [PENDIENTES.md](PENDIENTES.md), [PROPUESTA_SIGUIENTES_PA
 36. **Un vacío que falta** después de justificarlo: ¿se retira al día siguiente, queda como deuda del cliente o se cobra?
 37. **¿Cuánto tiempo al día les toma hoy** anotar los pedidos, armar la ruta y escribirle al repartidor? Sirve para medir cuánto se ahorra.
 
+## Agregadas después
+
+45. **(Felipe) Textos nuevos del bot (D95):** la cotización ("3 bidones de 20 L: $9.900 ($3.300 c/u). El despacho es gratis. ¿Te los anoto? Responde «sí»."), el horario corto dentro de un pedido y las formas de pago. ¿Los aprueba? Están en `src/textos.ts`.
+
 ## Lo que tienes que hacer tú (no son preguntas)
 
 38. **Bot de Telegram:** sigue sin crearse; revisé que no está cargado `TELEGRAM_BOT_TOKEN`. Pasos en [PASOS_FRANCO.md](PASOS_FRANCO.md), punto 2.
