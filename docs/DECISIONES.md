@@ -726,7 +726,13 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Lo que vive fuera de la base lo hace una persona, y el panel lo dice al terminar:** la hoja RESPALDO_PEDIDOS solo agrega filas (D66), así que sus filas viejas siguen ahí hasta que alguien las borre (el panel dice qué teléfono buscar); su fila en la hoja CLIENTES, si está; y sus comprobantes y avisos en Telegram. La hoja RESPALDO_CLIENTES se rehace sola cada noche y la copia de la base (Time Travel) dura 7 días.
 - Lo que identifica al cliente (sus teléfonos y su ficha) se borra al final: si algo falla a mitad de camino, repetirlo termina el trabajo. Son unas 20 consultas, bajo el tope de 50 del plan gratis.
 - Verificado: 4 pruebas nuevas (todo lo que se borra y lo que no, otro cliente intacto, la dirección compartida, el pedido sin asociar del segundo teléfono, el rechazo con un pedido vivo y la confirmación obligatoria) y en el navegador con la base de prueba.
-- Sin publicar: se publica junto con lo siguiente, con permiso de Franco. No necesita migraciones.
+- **Publicado el 2026-11-26** con permiso de Franco, junto con D88: pública `64759a8c`, administración `c78a64b0`. Sin migraciones. `npm run comprobar`: 9 de 9 bien.
 
 ### D88 · 2026-11-26 · La hora de los datos en el panel
-**Una idea del Prompt Maestro 2.7 que vale la pena:** cada vista del panel dice de cuándo son sus datos ("Actualizado 14:02" en la barra). Si el teléfono estuvo sin señal o la pestaña quedó abierta, se nota que la hora quedó atrás. En el teléfono se ve solo la hora, para que la barra siga en una línea (medido a 375 px). Sin publicar.
+**Una idea del Prompt Maestro 2.7 que vale la pena:** cada vista del panel dice de cuándo son sus datos ("Actualizado 14:02" en la barra). Si el teléfono estuvo sin señal o la pestaña quedó abierta, se nota que la hora quedó atrás. En el teléfono se ve solo la hora, para que la barra siga en una línea (medido a 375 px). Publicado el 2026-11-26 con D87.
+
+### D89 · 2026-11-26 · Especificación de experiencias móviles y maquetas V07 y V08
+**Franco compartió una especificación para la app del repartidor (Android) y el panel en iPhone, con dos maquetas, y pidió sumarla a las mejoras posibles, sin aplicarla de una vez.**
+- Quedó en [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md): cada requisito comparado con lo que hay hoy, lo que falta, su tamaño y si alguien tiene que decidir. Las maquetas están en `docs/img/maquetas/`.
+- La especificación coincide con las decisiones vigentes (un backend, dos experiencias, permisos en el servidor, sin frameworks nuevos, costo cero). Choca en tres puntos que se dejan anotados: la entrega parcial (fuera hasta aprobarla, igual que hoy), mostrarle precios al repartidor (hoy ve solo lo que cobra) y una ruta por repartidor (hoy hay uno).
+- Las maquetas traen datos inventados que no se copian (un bidón de 6 L que no existe, precios y rutas de ejemplo) y funciones que no existen todavía (escáner, inventario, finanzas, versiones de ruta).
