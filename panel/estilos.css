@@ -135,6 +135,15 @@ a { color: var(--acento); }
 .cifras li { background: var(--neutro-suave); border-radius: 10px; padding: 0.3rem 0.7rem; font-size: 0.92rem; }
 .cifras b { font-size: 1.1rem; }
 .revision .boton { margin-left: 0.3rem; }
+/* App del repartidor (D90): la siguiente parada destacada y la línea de sincronización. */
+.siguiente-parada { border: 2px solid var(--acento); background: var(--acento-suave); border-radius: 12px; padding: 0.75rem 0.9rem; margin: 0.75rem 0; }
+.siguiente-parada p { margin: 0.15rem 0; }
+.siguiente-nombre { font-weight: 700; font-size: 1.1rem; }
+.parada-siguiente { border-left: 4px solid var(--acento); }
+/* Al ir a una parada, que la barra fija de arriba no tape su nombre. */
+.parada { scroll-margin-top: 4.5rem; }
+.sincronizacion { margin: 0.4rem 0 0; font-size: 0.9rem; }
+.sincronizacion.pendiente { color: var(--aviso); }
 /* Una marca del repartidor que el servidor no aceptó (D84). */
 .no-anotada { margin: 0.4rem 0 0; }
 .parada .tarjeta-cabecera { justify-content: flex-start; flex-wrap: nowrap; align-items: flex-start; }
