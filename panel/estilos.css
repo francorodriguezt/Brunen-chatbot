@@ -139,7 +139,7 @@ a { color: var(--acento); }
 .siguiente-parada { border: 2px solid var(--acento); background: var(--acento-suave); border-radius: 12px; padding: 0.75rem 0.9rem; margin: 0.75rem 0; }
 .siguiente-parada p { margin: 0.15rem 0; }
 .siguiente-nombre { font-weight: 700; font-size: 1.1rem; }
-.parada-siguiente { border-left: 4px solid var(--acento); }
+.parada-siguiente { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento), var(--sombra); }
 /* Al ir a una parada, que la barra fija de arriba no tape su nombre. */
 .parada { scroll-margin-top: 4.5rem; }
 .sincronizacion { margin: 0.4rem 0 0; font-size: 0.9rem; }
