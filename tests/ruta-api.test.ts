@@ -218,6 +218,9 @@ describe('versiones de la ruta publicada (D94)', () => {
     expect(segunda.version).toBe(2);
     expect(await repositorio.publicacionDe(FECHA)).toEqual({ version: 2, publicadaEn: AHORA, vistaVersion: null, vistaEn: null });
     expect(await repositorio.registrarPublicacion('2026-11-14', AHORA)).toBe(1);
+    // Una ruta publicada con más de 30 días de anticipación no borra la de hoy (D97).
+    await repositorio.registrarPublicacion('2027-01-20', AHORA);
+    expect((await repositorio.publicacionDe(FECHA))?.version).toBe(2);
   });
 
   it('sin la tabla (antes de aplicar la migración 0017) la ruta se publica igual, sin versión', async () => {
