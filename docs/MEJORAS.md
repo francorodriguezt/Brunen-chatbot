@@ -11,7 +11,7 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] Cuántos bidones de cada tamaño cargar en cada viaje.
 - [x] Que las cargas del mapa y de la lista coincidan: arman los viajes igual; el mapa dice "lo que queda" y la lista dice si va en el orden publicado o por comuna. (D73)
 - [ ] Elegir en conjunto dónde cortar cada viaje y dónde recargar (no viaje por viaje). Ya se puede: los viajes quedan guardados al publicar (D86), así que la app y el mapa usarían los mismos cortes.
-- [x] Guardar los viajes al publicar la ruta: el mapa, la lista y la app del repartidor muestran los mismos. (D86; falta la migración 0016 en la base real)
+- [x] Guardar los viajes al publicar la ruta: el mapa, la lista y la app del repartidor muestran los mismos. (D86, publicado)
 - [x] Aprender el tiempo en cada parada con la hora de cada entrega (D80). Falta: el tiempo entre paradas por zona y hora.
 - [x] Recalcular desde donde está el repartidor (su última posición o su última entrega, D80).
 - [ ] Horarios de clientes ("solo en la tarde") como condición de la ruta.

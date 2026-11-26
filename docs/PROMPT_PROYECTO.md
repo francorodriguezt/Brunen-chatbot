@@ -205,7 +205,7 @@ Ejemplo del tono esperado (al terminar una tarea):
 
 ## 6. Mejoras propuestas (las hace la IA, en este orden)
 1. **Borrador del aviso de privacidad** (la ley rige desde el 15-oct-2027, D82; conviene tenerlo antes de abrir a todos).
-2. **Aplicar la migración 0016 en la base real y publicar** (D86: los viajes quedan guardados al publicar la ruta; hecho en el código). Con eso quedan cerrados todos los pendientes de D80.
+2. ~~Pendientes de D80~~: cerrados y publicados (D84 y D86; migración 0016 aplicada en la base real el 2026-11-25).
 3. **Que el bot lea las fichas de D1** en vez de la hoja CLIENTES (una sola fuente de clientes).
 4. **`npm run comprobar`**: revisión automática tras publicar (`/salud`, firma falsa, token falso, portada, 404 de la pública, redirección a Access).
 5. Sumar a `tests/mensajes.json` cada mensaje real mal entendido y medir el acierto (cuando haya clientes reales).
@@ -409,7 +409,7 @@ Si eres otra IA o una persona sin acceso a ese computador, salta esta sección.
 | A9 | Historial de git con correo personal y líneas de coautoría antiguas | Baja | Decisión pendiente de Franco (reescribir o no) |
 | A10 | Sin monitoreo externo de `/salud` (desde D84, `/salud` revisa la base) | Baja | UptimeRobot pendiente (I5) |
 | A11 | Tipos de `Env` a mano, `compatibility_date` de 2026-09-01, `panel/admin/app.js` de 2.458 líneas | Baja | J2, J3, J4 |
-| A12 | Viajes guardados al publicar (D86): falta la migración 0016 en la base real | Baja | Mejora 2 |
+| A12 | Pendientes de D80 | — | Cerrados y publicados (D84, D86) |
 | A13 | Dos fuentes de clientes (hoja CLIENTES y fichas en D1) | Media | Mejora 3 |
 | A14 | Una sola persona conoce el sistema (R4) | Media | Documentación extensa + `docs/INCIDENTES.md`; falta entrenar a Constanza |
 | A15 | Pedidos de prueba en la base real | Baja | Borrarlos antes de abrir |

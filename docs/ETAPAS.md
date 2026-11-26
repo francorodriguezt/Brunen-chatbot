@@ -171,7 +171,7 @@ Cómo conversa: [CONVERSACIONES.md](CONVERSACIONES.md) (12 casos, generados con 
 
 ## Plataforma de administración y reparto (D49)
 
-**Actualización (2026-11-25, D86):** los viajes quedan guardados al publicar la ruta (migración 0016, sin aplicar en la base real).
+**Actualización (2026-11-25, D86):** los viajes quedan guardados al publicar la ruta (migración 0016 aplicada en la base real y publicado).
 
 **Actualización (2026-11-25, D84):** la app del repartidor ya no pierde marcas sin señal o con el servidor fallando, acepta marcas atrasadas de hasta 3 días con la hora del teléfono, y se cerró lo pendiente de D80 salvo guardar los cortes de viaje. Sin publicar. La visión de Franco para lo que sigue está en D83 y en `MEJORAS.md` §7.
 
