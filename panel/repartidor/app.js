@@ -353,10 +353,13 @@ function formularioEntregado(p) {
   const cobro = monto !== null && monto !== undefined ? h('input', { type: 'checkbox', checked: corrigiendo ? p.cobrado !== null : true }) : null;
   // Solo si esa dirección no tiene su punto en el mapa o el que tiene es impreciso, y solo al entregar (no al corregir).
   const ubicar = !corrigiendo && (!p.punto || p.punto.afinar) && 'geolocation' in navigator ? h('input', { type: 'checkbox', checked: true }) : null;
+  // Una nota opcional para la oficina (D91): queda en el historial del pedido.
+  const observacion = h('input', { type: 'text', maxlength: 200, placeholder: 'Observación (opcional)', 'aria-label': 'Observación' });
   const confirmar = async () => {
     const numero = Number(vacios.value);
     if (!Number.isInteger(numero) || numero < 0 || numero > 200) return avisar('Escribe cuántos vacíos retiraste (0 si ninguno).', true);
-    const cuerpo = { vacios: numero, cobrado: cobro ? cobro.checked : false };
+    const nota = observacion.value.trim();
+    const cuerpo = { vacios: numero, cobrado: cobro ? cobro.checked : false, ...(nota ? { observacion: nota } : {}) };
     if (ubicar?.checked) {
       avisar('Buscando dónde estás (unos segundos)…');
       Object.assign(cuerpo, await ubicacionActual());
@@ -370,6 +373,7 @@ function formularioEntregado(p) {
     cobro ? h('label', {}, cobro, ` Cobré ${pesos.format(monto)} en efectivo`) : null,
     ubicar ? h('label', {}, ubicar, ' Guardar dónde queda esta dirección, para el mapa de la ruta') : null,
     ubicar ? h('p', { clase: 'suave nota-ubicacion' }, 'El teléfono dice dónde estás solo en este momento, una vez. No se sigue tu recorrido.') : null,
+    observacion,
     h('div', { clase: 'acciones' }, boton('Confirmar entrega', 'boton boton-principal', () => void confirmar()), boton('Cancelar', 'boton', () => abrir(p.idPedido, 'entregado'))),
   );
 }

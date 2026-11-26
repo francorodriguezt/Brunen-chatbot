@@ -166,6 +166,16 @@ describe('marcas que llegan tarde, sin señal (D84)', () => {
     expect(db.sql("SELECT COUNT(*) AS n FROM historial_pedidos WHERE detalle LIKE '%sin señal%'")).toEqual([{ n: 0 }]);
   });
 
+  it('la nota al entregar llega al historial; una que no es texto se ignora (D91)', async () => {
+    const { db, env, repartidor } = await entorno();
+    expect((await marcar(env, repartidor, 'P261113-AAAAA', { observacion: 'Dejé en conserjería' })).status).toBe(200);
+    expect((await marcar(env, repartidor, 'P261113-BBBBB', { observacion: 12 })).status).toBe(200);
+    expect(db.sql("SELECT pedido_id, detalle FROM historial_pedidos WHERE accion = 'entrega' ORDER BY pedido_id")).toEqual([
+      { pedido_id: 'P261113-AAAAA', detalle: 'Retiró 3 vacíos. Nota: Dejé en conserjería' },
+      { pedido_id: 'P261113-BBBBB', detalle: 'Retiró 3 vacíos.' },
+    ]);
+  });
+
   it('repetir la misma marca (se perdió la respuesta) deja el pedido igual', async () => {
     const { db, env, repartidor } = await entorno();
     for (let i = 0; i < 2; i++) expect((await marcar(env, repartidor, 'P261113-AAAAA', { cobrado: true })).status).toBe(200);

@@ -85,11 +85,15 @@ export class RepositorioEntregas {
     return { pedido };
   }
 
-  /** "Entregado". Se puede volver a marcar el mismo día para corregir los vacíos o el cobro. */
-  async entregar(id: string, datos: { vacios: number; cobrado: boolean }, o: Opciones): Promise<ResultadoDeEntrega> {
+  /**
+   * "Entregado". Se puede volver a marcar el mismo día para corregir los vacíos o el cobro. `observacion` (opcional,
+   * D91): lo que el repartidor quiera dejar anotado ("dejé en conserjería"); va al historial del pedido.
+   */
+  async entregar(id: string, datos: { vacios: number; cobrado: boolean; observacion?: string }, o: Opciones): Promise<ResultadoDeEntrega> {
     if (!Number.isInteger(datos.vacios) || datos.vacios < 0 || datos.vacios > MAXIMO_VACIOS || typeof datos.cobrado !== 'boolean') {
       return { ok: false, error: 'datos_invalidos' };
     }
+    const observacion = (datos.observacion ?? '').trim().replace(/\s+/g, ' ').slice(0, MAXIMO_DETALLE);
     const encontrado = await this.pedidoDelDia(id, o.fecha, new Set<EstadoDePedido>([...ESTADOS_EN_RUTA, 'Entregado']));
     if (!('pedido' in encontrado)) return { ok: false, error: encontrado.error };
     const { pedido } = encontrado;
@@ -116,7 +120,7 @@ export class RepositorioEntregas {
     );
     const vacios = `Retiró ${datos.vacios} ${datos.vacios === 1 ? 'vacío' : 'vacíos'}`;
     const detalle = datos.cobrado ? `${vacios}; cobró${pedido.total !== null ? ` $${pedido.total.toLocaleString('es-CL')}` : ''}.` : `${vacios}.`;
-    await this.historial(id, o, 'entrega', detalle + textoDeAtraso(o));
+    await this.historial(id, o, 'entrega', detalle + (observacion ? ` Nota: ${observacion}` : '') + textoDeAtraso(o));
     return { ok: true };
   }
 

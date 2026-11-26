@@ -226,7 +226,7 @@ export async function manejarRepartidor(request: Request, url: URL, ctx: Context
   const opciones = opcionesDeMarca(cuerpo, ctx.ahoraSegundos, ctx.nombre);
   const resultado =
     accion[2] === 'entregado'
-      ? await ctx.entregas.entregar(id, { vacios: cuerpo.vacios as number, cobrado: cuerpo.cobrado as boolean }, opciones)
+      ? await ctx.entregas.entregar(id, { vacios: cuerpo.vacios as number, cobrado: cuerpo.cobrado as boolean, ...(typeof cuerpo.observacion === 'string' ? { observacion: cuerpo.observacion } : {}) }, opciones)
       : await ctx.entregas.noEntregado(id, { motivo: String(cuerpo.motivo ?? ''), detalle: typeof cuerpo.detalle === 'string' ? cuerpo.detalle : '' }, opciones);
   if (resultado.ok) {
     if (accion[2] === 'entregado') await aprenderPunto(ctx, id, cuerpo);

@@ -405,10 +405,10 @@ export class RepositorioClientes {
       ahora,
       quien,
     );
-    // El detalle de un "No se pudo" lo escribe el repartidor con sus palabras y puede nombrar a alguien: se borra. El
-    // resto del historial solo dice qué campos cambiaron, no sus valores.
+    // El detalle de un "No se pudo" y la nota de una entrega (D91) los escribe el repartidor con sus palabras y pueden
+    // nombrar a alguien: se borran. El resto del historial solo dice qué campos cambiaron, no sus valores.
     await this.cambios(
-      `UPDATE historial_pedidos SET detalle = 'Detalle borrado a pedido del cliente.' WHERE accion = 'no_entregado' AND pedido_id IN (SELECT id FROM pedidos WHERE ${suyos})`,
+      `UPDATE historial_pedidos SET detalle = 'Detalle borrado a pedido del cliente.' WHERE accion IN ('no_entregado', 'entrega') AND pedido_id IN (SELECT id FROM pedidos WHERE ${suyos})`,
       id,
     );
     const avisos = await this.cambios(

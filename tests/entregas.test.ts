@@ -75,6 +75,17 @@ describe('Entregado (fase D, D61)', () => {
   });
 });
 
+describe('la nota al entregar (D91)', () => {
+  it('queda en el historial, en una línea y con un tope de 200 caracteres; sin nota no se agrega nada', async () => {
+    const { db, entregas } = await base(pedido(), pedido({ idPedido: 'P261113-BBBBB', direccion: 'Calle Otra 9' }));
+    await entregas.entregar('P261113-AAAAA', { vacios: 2, cobrado: false, observacion: '  Dejé en   conserjería\n ' }, opciones);
+    await entregas.entregar('P261113-BBBBB', { vacios: 1, cobrado: false, observacion: 'x'.repeat(300) }, opciones);
+    const detalles = db.sql("SELECT pedido_id, detalle FROM historial_pedidos WHERE accion = 'entrega' ORDER BY pedido_id") as Array<{ detalle: string }>;
+    expect(detalles[0]?.detalle).toBe('Retiró 2 vacíos. Nota: Dejé en conserjería');
+    expect(detalles[1]?.detalle).toBe(`Retiró 1 vacío. Nota: ${'x'.repeat(200)}`);
+  });
+});
+
 describe('No se pudo (fase D, D61)', () => {
   it('deja el pedido abierto con su motivo y crea un aviso para reagendarlo, una sola vez', async () => {
     const { db, repositorio, entregas } = await base(pedido());
