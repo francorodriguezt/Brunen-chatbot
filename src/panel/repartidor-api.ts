@@ -147,6 +147,8 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
     totalBidones: reparto.totalBidones,
     motivos: Object.entries(MOTIVOS_NO_ENTREGA).map(([valor, texto]) => ({ valor, texto })),
     ubicacion: await estadoDeUbicacion(ctx, hoy),
+    // D94: la versión publicada y la que confirmó su app; con una nueva sin confirmar, la app avisa del cambio.
+    publicacion: await ctx.repositorio.publicacionDe(hoy).then((p) => (p ? { version: p.version, publicadaEn: p.publicadaEn, vista: p.vistaVersion } : null)),
   });
 }
 
@@ -211,12 +213,24 @@ async function aprenderPunto(ctx: ContextoRepartidor, id: string, cuerpo: Record
   }
 }
 
+/** La app confirma que tiene esa versión de la ruta de hoy (D94). */
+async function confirmarVersion(request: Request, url: URL, ctx: ContextoRepartidor): Promise<Response> {
+  const rechazo = esperadoComoEscritura(request, url);
+  if (rechazo) return rechazo;
+  const cuerpo = await leerCuerpo(request);
+  if (!cuerpo || !Number.isInteger(cuerpo.version) || (cuerpo.version as number) < 1) return error(400, 'Solicitud no válida.');
+  const hoy = fechaHoraLocal(new Date(ctx.ahoraSegundos * 1000)).fecha;
+  const ok = await ctx.repositorio.confirmarPublicacion(hoy, cuerpo.version as number, ctx.ahoraSegundos).catch(() => false);
+  return ok ? json({ ok: true }) : error(409, 'Esa versión de la ruta ya no está: actualiza la ruta.');
+}
+
 /** Devuelve null si la ruta no es del repartidor. */
 export async function manejarRepartidor(request: Request, url: URL, ctx: ContextoRepartidor): Promise<Response | null> {
   const ruta = url.pathname;
   if (!ruta.startsWith('/api/repartidor/')) return null;
 
   if (ruta === '/api/repartidor/ruta' && request.method === 'GET') return rutaDeHoy(ctx);
+  if (ruta === '/api/repartidor/ruta/vista' && request.method === 'POST') return confirmarVersion(request, url, ctx);
 
   const accion = /^\/api\/repartidor\/pedidos\/([PHF]\d{6}-[0-9A-Z]{5})\/(entregado|no-se-pudo)$/.exec(ruta);
   const deSeguimiento = ruta === '/api/repartidor/ubicacion' || ruta === '/api/repartidor/jornada' || ruta === '/api/repartidor/posiciones';

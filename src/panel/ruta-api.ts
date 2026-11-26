@@ -172,7 +172,14 @@ export async function manejarRuta(request: Request, url: URL, ctx: ContextoRuta)
     } catch (falla) {
       console.error('No se pudieron guardar los viajes publicados:', falla instanceof Error ? falla.message : falla);
     }
-    return json({ ok: true, paradas: datos.entregadas.length + plan.orden.length + datos.sinUbicar.length });
+    // La versión (D94): si falla (sin la migración 0017), la ruta queda publicada igual, sin el aviso al repartidor.
+    let version: number | null = null;
+    try {
+      version = await ctx.repositorio.registrarPublicacion(fecha, ctx.ahoraSegundos);
+    } catch (falla) {
+      console.error('No se pudo anotar la versión de la ruta:', falla instanceof Error ? falla.message : falla);
+    }
+    return json({ ok: true, paradas: datos.entregadas.length + plan.orden.length + datos.sinUbicar.length, version });
   }
   return error(400, 'Solicitud no válida.');
 }

@@ -257,7 +257,7 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
         // Si ese día se marcó sin reparto (D74), el panel lo dice arriba de la lista: los pedidos que tenga hay que moverlos.
         const sinReparto = await motivoSinReparto(ctx.dias?.db, fecha);
         const seguimiento = await seguimientoDelDia(ctx, fecha);
-        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas: Object.fromEntries(delDia), motivos: MOTIVOS_NO_ENTREGA, caja, mensajes, sinReparto, seguimiento });
+        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas: Object.fromEntries(delDia), motivos: MOTIVOS_NO_ENTREGA, caja, mensajes, sinReparto, seguimiento, publicacion: await repositorio.publicacionDe(fecha) });
       }
       return new Response(csvDeReparto(reparto), {
         status: 200,
