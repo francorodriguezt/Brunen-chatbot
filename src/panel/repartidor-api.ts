@@ -4,6 +4,7 @@
  * - GET  /api/repartidor/ruta                         las paradas de hoy, en el orden del reparto y por carga.
  * - POST /api/repartidor/pedidos/:id/entregado        { vacios, cobrado, fecha?, marcadoEn? }
  * - POST /api/repartidor/pedidos/:id/no-se-pudo       { motivo, detalle, fecha?, marcadoEn? }
+ * - POST /api/repartidor/ruta/vista                   { version }  la app tiene esa versión de la ruta de hoy (D94)
  *
  * Lo que ve es lo que hoy se le escribe a mano por WhatsApp (nombre, dirección, teléfono, pedido, forma de pago y lo que
  * hay que cobrar en efectivo, notas para el reparto), y nada más: ni las observaciones internas ni lo que escribió el
@@ -141,6 +142,8 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
   });
   return json({
     fecha: hoy,
+    // Sin ruta publicada las paradas van por comuna: no hay "siguiente" (D97).
+    publicada: reparto.publicada,
     paradas,
     cargas,
     carga: reparto.carga,

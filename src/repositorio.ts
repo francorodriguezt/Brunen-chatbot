@@ -12,7 +12,7 @@
 
 import { TIPOS_DE_AVISO_DE_PEDIDO, type Alerta, type TipoAlerta } from './alertas';
 import type { BaseDatos } from './almacen';
-import { sumarDias } from './despacho';
+import { fechaHoraLocal, sumarDias } from './despacho';
 import type { EntregaParaContar } from './estadisticas';
 import type { CompletarPedido, DatosPrevios, LineaPedido, PedidoARegistrar } from './pedidos';
 import type { ItemPedido, TipoBidon } from './precios';
@@ -529,7 +529,8 @@ export class RepositorioD1 {
    * Borra lo de hace más de 30 días. Lanza si falta la migración 0017: quien publica sigue sin la versión.
    */
   async registrarPublicacion(fecha: string, ahora: number): Promise<number> {
-    await this.db.prepare('DELETE FROM rutas_publicadas WHERE fecha < ?1').bind(sumarDias(fecha, -30)).run();
+    // Desde hoy: publicar una ruta con mucha anticipación no debe borrar la de hoy (D97).
+    await this.db.prepare('DELETE FROM rutas_publicadas WHERE fecha < ?1').bind(sumarDias(fechaHoraLocal(new Date(ahora * 1000)).fecha, -30)).run();
     const [fila] = await this.filas(
       `INSERT INTO rutas_publicadas (fecha, version, publicada_en) VALUES (?1, 1, ?2)
        ON CONFLICT (fecha) DO UPDATE SET version = version + 1, publicada_en = ?2

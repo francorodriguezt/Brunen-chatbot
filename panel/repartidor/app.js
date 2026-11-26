@@ -148,6 +148,8 @@ function pintarNoAnotadas() {
 // ---- Cambios de la ruta publicada (D94) ----
 
 let confirmandoVersion = false;
+/** La versión que se intentó confirmar sola en esta carga de la ruta: una sola vez, aunque falle (D97). */
+let intentoSilencioso = null;
 
 /**
  * Si la oficina volvió a publicar la ruta cuando la app ya tenía otra, se avisa hasta que el repartidor toque
@@ -155,12 +157,17 @@ let confirmandoVersion = false;
  */
 function pintarCambioDeRuta() {
   const caja = $('cambio-ruta');
+  if (!caja) return; // una copia vieja de la página, sin esta caja
   const publicacion = ruta?.publicacion ?? null;
   const cambio = Boolean(publicacion && publicacion.vista !== null && publicacion.vista < publicacion.version);
   caja.hidden = !cambio;
   if (!cambio) {
     caja.replaceChildren();
-    if (publicacion && publicacion.vista === null && !sinConexion) void confirmarVersion(publicacion.version, true);
+    const clave = publicacion ? `${ruta.fecha}:${publicacion.version}` : null;
+    if (publicacion && publicacion.vista === null && !sinConexion && intentoSilencioso !== clave) {
+      intentoSilencioso = clave;
+      void confirmarVersion(publicacion.version, true);
+    }
     return;
   }
   caja.replaceChildren(
@@ -176,14 +183,16 @@ async function confirmarVersion(version, enSilencio) {
   try {
     const { estado } = await pedir('/api/repartidor/ruta/vista', { version });
     if (estado === 401) return pedirClave();
-    if (estado === 200) {
+    if (estado !== 200) {
+      // La oficina la cambió otra vez: se lee de nuevo. Si no, se queda como está, sin reintentar en seguida (D97).
+      if (estado === 409 && !enSilencio) void cargarRuta();
+      return;
+    }
+    {
       if (ruta?.publicacion?.version === version) ruta.publicacion.vista = version;
       // También en la copia sin señal, para que el aviso no vuelva al abrir la app sin conexión.
       const guardada = leer(CLAVE_RUTA);
       if (guardada?.publicacion?.version === version) guardar(CLAVE_RUTA, { ...guardada, publicacion: { ...guardada.publicacion, vista: version } });
-    } else if (estado === 409 && !enSilencio) {
-      void cargarRuta(); // la oficina la cambió otra vez: se lee de nuevo
-      return;
     }
   } catch {
     if (!enSilencio) avisar('Sin señal: toca Entendido de nuevo cuando vuelva.', true);
@@ -207,6 +216,7 @@ async function cargarRuta() {
     if (estado === 401) return pedirClave();
     if (estado !== 200 || !datos) throw new Error('sin ruta');
     ruta = datos;
+    intentoSilencioso = null; // con una ruta recién leída, la confirmación sola se puede intentar otra vez
     guardar(CLAVE_RUTA, datos);
     ultimaSincronizacion = Date.now();
     sinConexion = false;
@@ -250,7 +260,8 @@ function pintar() {
     ].filter(Boolean),
   );
   // La siguiente es la primera pendiente en el orden de la ruta publicada: no se reordena nada (D90).
-  const siguiente = ruta.paradas.find((p) => p.estado === 'pendiente') ?? null;
+  // Sin ruta publicada (van por comuna) no hay orden, y no se destaca ninguna (D97).
+  const siguiente = ruta.publicada === false ? null : (ruta.paradas.find((p) => p.estado === 'pendiente') ?? null);
   pintarSiguiente(siguiente);
   lista.replaceChildren(
     ...ruta.paradas.flatMap((parada) => {
@@ -266,7 +277,8 @@ function pintar() {
 /** La siguiente parada, arriba y destacada (D90): a quién, dónde, y botones para navegar o ir a su tarjeta. */
 function pintarSiguiente(p) {
   const caja = $('siguiente');
-  if (!ruta || ruta.paradas.length === 0) {
+  if (!caja) return;
+  if (!ruta || ruta.paradas.length === 0 || ruta.publicada === false) {
     caja.hidden = true;
     return;
   }
@@ -293,6 +305,7 @@ function pintarSiguiente(p) {
 /** Una línea fija con la conexión y lo marcado (D90). Nunca dice "al día" si queda algo sin confirmar por el servidor. */
 function pintarSincronizacion() {
   const linea = $('estado-sincronizacion');
+  if (!linea) return;
   const porEnviar = pendientes(cola()).length;
   const marcas = (n) => `${n} ${n === 1 ? 'marca' : 'marcas'} por enviar`;
   let texto;
@@ -806,7 +819,8 @@ async function iniciar() {
     ajustarSeguimiento();
     if (document.visibilityState === 'visible') void enviarPosiciones();
     // Al volver de Google Maps, la ruta se lee de nuevo si pasaron 2 minutos: así ve pronto un cambio de la oficina (D94).
-    if (document.visibilityState === 'visible' && Date.now() - (ultimaSincronizacion ?? 0) > 120_000) void vaciarCola();
+    // Con un formulario abierto no: volver a dibujar la lista borraría lo que estaba escribiendo (D97).
+    if (document.visibilityState === 'visible' && abierta === null && Date.now() - (ultimaSincronizacion ?? 0) > 120_000) void vaciarCola();
   });
   setInterval(() => {
     if (colaDePosiciones().length > 0) void enviarPosiciones();

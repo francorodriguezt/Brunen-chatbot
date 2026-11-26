@@ -85,6 +85,7 @@ describe('la ruta del repartidor (fase D, D61)', () => {
     const { env, repartidor } = await entorno();
     const datos = await ruta(env, repartidor);
     expect(datos.fecha).toBe(HOY);
+    expect((datos as unknown as { publicada: boolean }).publicada).toBe(false);
     expect(datos.paradas.map((p) => p.idPedido)).toEqual(['P261113-AAAAA', 'P261113-BBBBB']); // orden por comuna y dirección; sin la pendiente ni la de mañana
     const ana = datos.paradas.find((p) => p.idPedido === 'P261113-AAAAA');
     expect(ana).toMatchObject({ cobrar: 9900, estado: 'pendiente', notas: 'Timbre 4B', telefono: '56911111111', totalBidones: 3, envasesARetirar: 3 });
