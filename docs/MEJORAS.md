@@ -66,6 +66,17 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 ## 6. Cuentas, calidad, legal
 - [x] Zero Trust activado (2026-11-18) y la administración detrás de Access (D81).
 - [x] `PANEL_SECRETO` y panel publicado (D81). Falta: bot de Telegram y cargar el historial.
-- [ ] Actualizar `CLAUDE.md` (todavía dice que los pedidos van a Google Sheets y los comprobantes a Drive).
-- [ ] Pruebas del panel en el navegador; medir la CPU después de publicar.
-- [ ] Ley 21.719: aviso de privacidad y plazo de guardado. **(Dueño)**
+- [x] Actualizar `CLAUDE.md` (decía que los pedidos van a Google Sheets y los comprobantes a Drive). (D84)
+- [ ] Pruebas del panel en el navegador; medir la CPU después de publicar. (La app del repartidor se probó el 2026-11-25 con datos ficticios: sin señal, servidor caído y rechazos, D84.)
+- [x] La cola del repartidor ya no pierde marcas; `/salud` revisa la base; pendientes de D80 cerrados salvo los cortes de viaje. (D84)
+- [ ] Ley 21.719 (rige desde el 15-oct-2027, D82): aviso de privacidad y plazo de guardado. **(Dueño)**
+
+## 7. Hacia la visión de Franco (D83, 2026-11-25)
+Meta de largo plazo: asistentes de IA, roles dentro del panel, un panel de análisis avanzado y finanzas. Cada paso sirve solo, cuesta USD 0 al mes y se mide antes de seguir. La flota no hace falta (un repartidor): basta con no impedirla.
+
+1. [ ] **Cobros, base de las finanzas:** separar "cobrado en terreno" de "pago verificado" (comprobante revisado), pago parcial y saldo pendiente por cliente. Hoy el pedido solo dice pendiente o pagado.
+2. [ ] **Libro de envases:** cada envase entregado o retirado queda como un movimiento que no se borra; el saldo por cliente sale de ahí. Los envases son de Brunen y la carga inicial es venta (D83). Falta el saldo inicial de cada cliente.
+3. [ ] **Gastos simples desde el celular** para Felipe y Constanza: fecha, monto, categoría y foto opcional del documento. Sin esto no hay margen ni rentabilidad que mostrar.
+4. [ ] **Roles dentro del panel:** operadora (pedidos, avisos, clientes; sin Equipo ni finanzas) y despacho (reparto y ruta). Los permisos se revisan en el servidor, no solo escondiendo botones.
+5. [ ] **Panel de análisis:** ventas, bidones, clientes y cobros por período, comuna y producto; margen cuando existan los gastos. Cada cifra con su definición y su fecha de corte; nunca cifras inventadas ni "rentabilidad" con costos incompletos.
+6. [ ] **Asistentes de IA:** primero solo consultas en palabras sobre cifras que ya calcula el código ("¿cuántos bidones entregamos en Ñuñoa este mes?"); después borradores (un mensaje, un pedido) que una persona confirma. Nunca cambian precios, pagos ni rutas solos. Con el plan gratis de Groq (verificar cuotas antes) y enviando solo lo mínimo.

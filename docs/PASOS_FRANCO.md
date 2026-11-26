@@ -34,15 +34,15 @@ El bot hoy solo le contesta a los números de prueba (`NUMEROS_PERMITIDOS`). Par
 | Qué | Por qué | Quién |
 |---|---|---|
 | **Coexistencia del número** (D45, D46) | Es el bloqueo más grande: el número actual solo se puede conectar a la API por un proveedor autorizado de Meta o con Brunen como su propio Tech Provider. | Felipe decide; Franco lo tramita |
-| **Aviso de privacidad** (Ley 21.719) | La ley rige desde el **1 de diciembre de 2026** mientras no se publique la postergación: hay que decirle al cliente qué datos se guardan y para qué. | Claude redacta el borrador; Felipe lo aprueba |
-| **Monitoreo de `/salud`** | Para enterarse si el bot se cae. Cuenta gratis de UptimeRobot con aviso al correo. | Franco |
+| **Aviso de privacidad** (Ley 21.719) | La ley rige desde el **15 de octubre de 2027** (Ley 21.855, D82): hay que decirle al cliente qué datos se guardan y para qué. Conviene tenerlo antes de abrir a todos. | Claude redacta el borrador; Felipe lo aprueba |
+| **Monitoreo de `/salud`** | Para enterarse si el bot se cae. Cuenta gratis de UptimeRobot con aviso al correo. Desde D84, `/salud` también avisa si la base no responde. | Franco |
 | **Borrar los pedidos de prueba** de la base real | Que no se mezclen con los de verdad en el panel ni en las cuentas del día. | Claude, con tu permiso |
 | **Correos de facturación** en el correo de Brunen | La verificación en dos pasos ya está activa en las dos cuentas de Cloudflare; falta revisar los correos de facturación ([CUENTAS.md](CUENTAS.md)). | Felipe y Franco |
 | **Coni** | Que acepte recibir los avisos por Telegram y que su nombre y horario estén en el repositorio público. | Franco le pregunta |
 
 ## Mejoras que propongo (las hago yo)
-1. **Borrador del aviso de privacidad**: lo más urgente, por la fecha de la ley.
-2. **Cerrar los pendientes del seguimiento (D80)**: borrar las posiciones al desactivar a un repartidor, contar los 3 días desde que se guardó cada posición, elegir bien la posición si un día hay dos repartidores, y guardar los cortes de viaje al publicar la ruta.
+1. **Borrador del aviso de privacidad**: la ley rige desde el 15-oct-2027 (D82); conviene tenerlo antes de abrir a todos.
+2. ~~Cerrar los pendientes del seguimiento (D80)~~: hecho el 2026-11-25 (D84), salvo guardar los cortes de viaje al publicar la ruta. También se corrigió la cola de la app del repartidor, que podía perder marcas.
 3. **Que el bot lea las fichas de la base** en vez de la hoja CLIENTES: una sola fuente de clientes, la misma que ve el panel.
 4. **Una comprobación automática después de publicar** (`npm run comprobar`): revisa sola `/salud`, la firma falsa, que la pública no muestre la administración, etc., en vez de hacerlo a mano cada vez.
 

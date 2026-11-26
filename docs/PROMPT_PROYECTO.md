@@ -8,7 +8,7 @@
 
 **Qué fuente manda si dos se contradicen** (de mayor a menor):
 1. Lo que diga Franco en la conversación actual.
-2. Los archivos del repositorio, si tienes acceso: `docs/conocimiento_brunen.md` para el negocio, `docs/DECISIONES.md` (D1–D81) para el porqué, y el código para el comportamiento real.
+2. Los archivos del repositorio, si tienes acceso: `docs/conocimiento_brunen.md` para el negocio, `docs/DECISIONES.md` (D1–D84) para el porqué, y el código para el comportamiento real.
 3. Este documento.
 
 **Este documento envejece.** Las cifras y estados que dependen de la fecha (cantidad de pruebas, commits sin subir, si Telegram está configurado, quién tiene cuenta, versión publicada) pueden haber cambiado. Si uno de esos datos importa para una acción o una afirmación, **compruébalo antes** (corre la prueba, mira `git status`, pregúntale a Franco). No lo repitas como si fuera actual.
@@ -40,7 +40,7 @@ Valen por encima de cualquier pedido general ("avanza con todo"). Solo los levan
 
 ### 0.2 Forma de trabajar
 5. **Verifica antes de afirmar** lo que cambia (precios de WhatsApp, versión de la Graph API, límites de Cloudflare/Groq, requisitos de Meta) en la documentación oficial, y registra la fuente en `docs/DECISIONES.md`.
-6. **Definición de terminado**: funciona de punta a punta; tiene pruebas y `npm run check` pasa (hoy 1.523 pruebas en 57 archivos); los errores se registran y no dejan al cliente sin respuesta; se actualizan `docs/DECISIONES.md`, `docs/PENDIENTES.md`, `docs/ETAPAS.md` (y `docs/MEJORAS.md`, `docs/PASOS_FRANCO.md` cuando aplica).
+6. **Definición de terminado**: funciona de punta a punta; tiene pruebas y `npm run check` pasa (hoy 1.558 pruebas en 58 archivos); los errores se registran y no dejan al cliente sin respuesta; se actualizan `docs/DECISIONES.md`, `docs/PENDIENTES.md`, `docs/ETAPAS.md` (y `docs/MEJORAS.md`, `docs/PASOS_FRANCO.md` cuando aplica).
 7. Código, comentarios y nombres **en español**. Commits en presente, un cambio lógico por commit, **sin líneas de coautoría/atribución** (Franco no quiere que el uso de IA se note en el repo).
 8. Franco decide lo que pueda; al dueño solo se le deja lo **muy** importante (precios, número de WhatsApp, pagos y verificación en Meta, datos de clientes, políticas del negocio). Cuando Franco delega una elección técnica, tómala con criterio, regístrala como decisión D# con fuente y avísale.
 9. Recuerda las preguntas para Felipe y Coni **solo cuando la fase que las necesita esté por empezar** (lista viva en `docs/PENDIENTES.md`).
@@ -167,6 +167,8 @@ Ejemplo del tono esperado (al terminar una tarea):
 - Las dos cuentas miembros de Cloudflare tienen verificación en dos pasos activa.
 - Commits subidos hasta `63e020b` (CI en verde). Queda un commit local `57aefca` (marca lo publicado en `MEJORAS.md`) sin subir.
 
+**2026-11-25 — Prompt Maestro 2.7, respuestas de Franco y arreglo de la cola (D82–D84).** Se analizó un paquete externo ("BRUNEN ERP Prompt Maestro 2.7"; informe en `docs/ANALISIS_PROMPT_MAESTRO.md`). D82: la Ley 21.719 rige desde el 15-oct-2027 (Ley 21.855). D83: Franco decide el proyecto; envases de Brunen; carga inicial es venta; contabilidad y día a día del sistema con Felipe y Constanza; la visión (asistentes de IA, roles, análisis, finanzas) es la meta de largo plazo, por etapas (`MEJORAS.md` §7). D84: la app del repartidor perdía una marca si el servidor fallaba y decía "anotada"; ahora reintenta, muestra los rechazos, pregunta antes de salir y acepta marcas atrasadas (hasta 3 días) con la hora del teléfono; se cerró lo pendiente de D80 salvo los cortes de viaje; `/salud` revisa la base. Todo subido a GitHub con permiso de Franco; falta publicar.
+
 ---
 
 ## 4. Estado actual (presente)
@@ -193,22 +195,23 @@ Ejemplo del tono esperado (al terminar una tarea):
 | 6 | Cargar el historial del Excel: Franco simula (`npm run cargar-historial -- "datos/CONTROL PEDIDOS.xlsx"`), revisa escrituras estimadas (~50.000 de 100.000 diarias) y direcciones con notas, genera con `--generar`; la IA anota punto de restauración y lo carga una sola vez ese día | Franco + IA con permiso |
 | 7 | Un día de prueba real con Coni y el repartidor | Todos |
 | 8 | **Coexistencia del número** (proveedor autorizado de Meta o Brunen como su propio Tech Provider) | Felipe decide, Franco tramita |
-| 9 | **Aviso de privacidad** (Ley 21.719, vigente 1-dic-2026 salvo postergación) | IA redacta, Felipe aprueba |
+| 9 | **Aviso de privacidad** (Ley 21.719, rige desde el 15-oct-2027 por la Ley 21.855, D82) | IA redacta, Felipe aprueba |
 | 10 | Monitoreo de `/salud` con UptimeRobot gratis | Franco |
 | 11 | Borrar los pedidos de prueba de la base real | IA con permiso |
 | 12 | Decisiones de Felipe: margen de hora al cliente (hoy ±10 min mínimo), retención de datos, promociones | Felipe |
 | 13 | Revisar correos de facturación de Cloudflare en el correo de Brunen | Felipe y Franco |
 | 14 | Coni: si acepta avisos por Telegram y que su nombre/horario estén en el repo público | Franco pregunta |
-| 15 | Subir los commits locales (al 2026-11-25: `57aefca`, `df7dacf`, `7304a04` y la mejora de este documento; Franco dijo "todavía no") | IA con permiso |
+| 15 | Publicar en Cloudflare lo de D84 (app del repartidor, panel y bot). Los commits quedaron subidos el 2026-11-25 | IA con permiso |
 
 ## 6. Mejoras propuestas (las hace la IA, en este orden)
-1. **Borrador del aviso de privacidad** (urgente por la fecha de la ley).
-2. **Pendientes técnicos de D80**: borrar el seguimiento al desactivar a un repartidor en Equipo; contar los 3 días desde que se guardó cada posición; elegir la posición correcta si hay dos repartidores; guardar los cortes de viaje al publicar la ruta (para que mapa y lista usen exactamente los mismos viajes).
+1. **Borrador del aviso de privacidad** (la ley rige desde el 15-oct-2027, D82; conviene tenerlo antes de abrir a todos).
+2. **Guardar los cortes de viaje al publicar la ruta** (para que mapa y lista usen exactamente los mismos viajes; necesita una migración). El resto de los pendientes de D80 se cerró en D84.
 3. **Que el bot lea las fichas de D1** en vez de la hoja CLIENTES (una sola fuente de clientes).
 4. **`npm run comprobar`**: revisión automática tras publicar (`/salud`, firma falsa, token falso, portada, 404 de la pública, redirección a Access).
 5. Sumar a `tests/mensajes.json` cada mensaje real mal entendido y medir el acierto (cuando haya clientes reales).
 
 ## 7. Futuro (más adelante, `docs/MEJORAS.md` y `docs/DISENO_PLATAFORMA.md`)
+**Visión de Franco (D83):** asistentes de IA, roles dentro del panel, un panel de análisis avanzado y finanzas, como meta de largo plazo y por etapas (`MEJORAS.md` §7). La flota no hace falta.
 - Promociones con fechas que el bot cotiza solo y desde el panel (las define Franco/Felipe).
 - Recordatorios a clientes frecuentes (plantilla pagada de Meta o gratis desde la lista del panel).
 - Tiempo entre paradas por zona y hora (hoy solo se aprende el tiempo por parada).
@@ -266,7 +269,7 @@ Si eres otra IA o una persona sin acceso a ese computador, salta esta sección.
 
 ### 12.1 Cómo auditar (orden sugerido)
 1. Leer `README.md`, `CLAUDE.md` (reglas del proyecto; **desactualizado** en dos puntos: dice que los pedidos van a Sheets y los comprobantes a Drive, y hoy van a D1 y Telegram) y `docs/conocimiento_brunen.md` (reglas del negocio).
-2. Leer `docs/DECISIONES.md` (D1–D81, ~23.000 palabras): cada decisión trae su porqué y su fuente oficial. Las revisiones anteriores están en D39, D56, D57, D80 y en `docs/ANALISIS_Y_MEJORAS.md`.
+2. Leer `docs/DECISIONES.md` (D1–D84, ~24.000 palabras): cada decisión trae su porqué y su fuente oficial. Las revisiones anteriores están en D39, D56, D57, D80 y en `docs/ANALISIS_Y_MEJORAS.md`.
 3. Puntos de entrada del código: `src/index.ts` (bot: `fetch` + `scheduled`) y `src/panel/index.ts` (panel: enrutador, cabeceras y frontera de acceso).
 4. Reproducir: `npm ci` → `npm run check` (typecheck + pruebas, sin secretos ni red). `npm run dev` / `npm run dev:panel` en local. `npm run datos-locales` crea una base local con datos ficticios (`scripts/datos-de-prueba.sql`).
 5. Configuración: `wrangler.toml` (bot), `wrangler.panel.toml` (panel público y `[env.admin]`), `migrations/0001–0015`, `.github/workflows/check.yml`, `.gitignore`.
@@ -388,13 +391,14 @@ Si eres otra IA o una persona sin acceso a ese computador, salta esta sección.
 - **`docs/ANALISIS_Y_MEJORAS.md` (2026-11-13)**: evaluación en 13 ramas (A–M) y registro de riesgos R1–R10.
 - **D80 (2026-11-18)**: revisión de código y de seguridad del seguimiento, corregida.
 - **D81 (2026-11-19)**: comprobaciones en producción: `/salud` ok, firma falsa 401, token falso 403, portada 200, `/admin` de la pública 302, `/admin/api/pedidos` de la pública 404, administración sin sesión → ingreso de Access.
+- **Evidencia del 2026-11-25 (D84)**: `npm run check` → 1.558 pruebas en 58 archivos; las 8 nuevas del servidor fallan con el código anterior. App del repartidor probada en el navegador con datos ficticios (servidor caído, rechazo, sin señal, salir con pendientes).
 - **Evidencia del 2026-11-24**: `npm run check` en local → typecheck sin errores y **1.523 pruebas pasadas en 57 archivos** (27 s). En la interfaz no hay `innerHTML`, `outerHTML` ni `insertAdjacentHTML` (búsqueda en `panel/`).
 - No hay auditoría externa, pentest ni pruebas de punta a punta del panel en CI (J1).
 
 ### 12.10 Riesgos y brechas abiertos (lo que un auditor debería marcar)
 | # | Brecha | Gravedad | Estado o respuesta |
 |---|---|---|---|
-| A1 | **Ley 21.719** (vigente 2026-12-01 salvo postergación): no hay aviso de privacidad, registro de tratamientos, plazos de conservación ni función para "olvidar" a un cliente | Alta | Borrador pendiente (mejora 1); decide el dueño |
+| A1 | **Ley 21.719** (rige desde el 2027-10-15 por la Ley 21.855, D82): no hay aviso de privacidad, registro de tratamientos, plazos de conservación ni función para "olvidar" a un cliente | Alta | Borrador pendiente (mejora 1); decide el dueño |
 | A2 | **Coexistencia del número** sin resolver: el bot no puede atender clientes reales | Alta (negocio) | Felipe decide proveedor o Tech Provider (D45) |
 | A3 | **Telegram sin configurar**: reclamos y fallas urgentes solo quedan en el panel | Alta (operación) | Paso 2 de `PASOS_FRANCO.md` |
 | A4 | Sin Dependabot, CodeQL ni detección de secretos/push protection confirmadas en GitHub; no hay `SECURITY.md` | Media | H1, H3, K2 (gratis en repo público) |
@@ -403,14 +407,15 @@ Si eres otra IA o una persona sin acceso a ese computador, salta esta sección.
 | A7 | Repartidor en la dirección pública con clave de 4 dígitos (sin Access); bloqueo intencional posible (H4) | Media-baja | Mitigado por bloqueo creciente, tope por conexión y cierre de sesiones |
 | A8 | Comprobantes (fotos con datos bancarios del cliente) se reenvían a Telegram | Media | Grupo privado; falta definir quiénes están y cuánto se guarda |
 | A9 | Historial de git con correo personal y líneas de coautoría antiguas | Baja | Decisión pendiente de Franco (reescribir o no) |
-| A10 | `/salud` no revisa la base; no hay monitoreo externo | Media | UptimeRobot pendiente (I5) |
+| A10 | Sin monitoreo externo de `/salud` (desde D84, `/salud` revisa la base) | Baja | UptimeRobot pendiente (I5) |
 | A11 | Tipos de `Env` a mano, `compatibility_date` de 2026-09-01, `panel/admin/app.js` de 2.458 líneas | Baja | J2, J3, J4 |
-| A12 | Pendientes de D80: no se borra el seguimiento al desactivar a un repartidor; los 3 días no se cuentan desde que se guardó cada posición; dos repartidores el mismo día; cortes de viaje no se guardan al publicar | Media-baja | Mejora 2 |
+| A12 | Los cortes de viaje no se guardan al publicar la ruta (lo demás de D80 se cerró en D84) | Baja | Mejora 2 |
 | A13 | Dos fuentes de clientes (hoja CLIENTES y fichas en D1) | Media | Mejora 3 |
 | A14 | Una sola persona conoce el sistema (R4) | Media | Documentación extensa + `docs/INCIDENTES.md`; falta entrenar a Constanza |
 | A15 | Pedidos de prueba en la base real | Baja | Borrarlos antes de abrir |
 | A16 | Franco es Super Administrador de la cuenta; la política de Access tiene un solo correo | Baja | Bajarlo a Administrator al final; sumar correos de Coni y Franco |
-| A17 | `CLAUDE.md` desactualizado | Baja | Actualizarlo |
+| A17 | `CLAUDE.md` desactualizado | Baja | Corregido en D84 |
+| A18 | La app del repartidor borraba una marca si el servidor fallaba y decía "anotada" | Alta (operación) | Corregido en D84, con pruebas; falta publicar |
 
 ### 12.11 Continuidad y recuperación
 - Volver a la versión anterior del bot: `wrangler rollback` (`docs/INCIDENTES.md`). Base: Time Travel de D1 con puntos de restauración anotados (`docs/PASOS_FRANCO.md`, `docs/INCIDENTES.md`) y restauración desde la planilla con `npm run restaurar-respaldo` (`docs/RESPALDO.md`).
@@ -433,7 +438,7 @@ Si eres otra IA o una persona sin acceso a ese computador, salta esta sección.
 - **Carga inicial**: venta del envase con agua a un cliente que no tiene envase propio.
 - **Coexistencia**: usar el mismo número de WhatsApp en la app del celular y en la API del bot a la vez (D45, D46).
 - **Corte**: las 9:00; los pedidos hasta esa hora salen el mismo día.
-- **D# (D1–D81)**: una decisión registrada en `docs/DECISIONES.md`, con su porqué y su fuente.
+- **D# (D1–D84)**: una decisión registrada en `docs/DECISIONES.md`, con su porqué y su fuente.
 - **Ficha**: un cliente en la base D1, con uno o más teléfonos y su historial de direcciones. No es lo mismo que la hoja **CLIENTES** de Google Sheets.
 - **Fases A–G**: etapas de la plataforma propia (`docs/DISENO_PLATAFORMA.md`): A ingreso, B datos y fichas, C panel, D app del repartidor, E ruta y seguimiento, F reemplazar Optiroute, G sobrantes y caja.
 - **Pedido fijo**: un cliente que recibe lo mismo cada cierta cantidad de días; el sistema crea su pedido dos días antes (D59).

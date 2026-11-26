@@ -3,6 +3,7 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Próxima sesión
+ACTUALIZACIÓN 2026-11-25 (D82–D84): la Ley 21.719 rige desde el 15-oct-2027 (D82). Franco respondió: los envases son de Brunen, la carga inicial es venta, la contabilidad la llevan Felipe y Constanza, y la visión (asistentes de IA, roles, análisis, finanzas) es la meta de largo plazo (D83, plan en MEJORAS.md §7). Corregida la cola del repartidor, que podía perder marcas, y cerrado lo pendiente de D80 salvo los cortes de viaje; `/salud` revisa la base (D84). Commits subidos con permiso de Franco; **falta publicar** el panel y el bot (pedir permiso).
 ACTUALIZACIÓN 2026-11-17: lista de trabajo ordenada (ruta, bot, panel) en [MEJORAS.md](MEJORAS.md).
 ACTUALIZACIÓN 2026-11-14 (noche, publicado con permiso de Franco): migraciones `0011` a `0013` aplicadas en la base real (punto de restauración `000003ff-00000000-00005123-4d895ce639e77a77d07eb70abd7c7767`) y bot publicado (versión `f20a9da0`) con las mejoras del intérprete y el respaldo en Google Sheets. El panel sigue sin publicar: espera Zero Trust (tarjeta del dueño) y `PANEL_SECRETO`. En GitHub, la búsqueda de claves y el bloqueo al subir ya estaban activos; se activaron los avisos de dependencias vulnerables (0 abiertos). Guía de incidentes: [INCIDENTES.md](INCIDENTES.md).
 ACTUALIZACIÓN 2026-11-14 (D66): respaldo en Google Sheets (pedidos cada 30 minutos, fichas cada noche), Excel desde el panel y `npm run restaurar-respaldo`. Ver [RESPALDO.md](RESPALDO.md).
@@ -46,7 +47,7 @@ Cuando Franco apruebe el diseño, lo primero que se construye:
 - En el bot: mostrar "Entrega en: <dirección>" dentro del mismo mensaje cuando se reutiliza la dirección de un pedido anterior (hoy no se muestra y un cliente que se mudó no se entera).
 - Si confirma el precio: carga inicial de 10 L en `src/precios.ts`, con despliegue.
 
-Antes de abrir a clientes reales: aviso de privacidad (la ley rige desde el 2026-12-01 salvo postergación), limpiar los pedidos de prueba de la base real (con el visto bueno de Franco), monitoreo de `/salud`, quién hace el respaldo semanal (D35), bajar el CPU bajo el límite del plan gratis y la guía `docs/GUIA_PANEL.md` revisada con la operadora.
+Antes de abrir a clientes reales: aviso de privacidad (la ley rige desde el 15-oct-2027: la Ley 21.855 la movió al 15-oct-2027, D82), limpiar los pedidos de prueba de la base real (con el visto bueno de Franco), monitoreo de `/salud`, quién hace el respaldo semanal (D35), bajar el CPU bajo el límite del plan gratis y la guía `docs/GUIA_PANEL.md` revisada con la operadora.
 
 ## Decide Franco
 Franco aceptó las recomendaciones el 2026-10-28 y delegó la del acceso al panel (D34); quedan abiertas las dos que dependen de Constanza.
@@ -91,6 +92,7 @@ Respondió el cuestionario el 2026-10-29 (D36). Marcadas las que quedaron resuel
 
 ## Técnicos
 - [ ] **La tabla de pasos para publicar y probar todo está en [PASOS_FRANCO.md](PASOS_FRANCO.md).**
+- [ ] **Análisis del Prompt Maestro BRUNEN ERP 2.7 (2026-11-25), con un defecto por corregir en la app del repartidor: [ANALISIS_PROMPT_MAESTRO.md](ANALISIS_PROMPT_MAESTRO.md).**
 - [ ] **Resumen completo del proyecto (pasado, presente y futuro), listo para pegar en otra conversación: [PROMPT_PROYECTO.md](PROMPT_PROYECTO.md).**
 - [ ] **Antes de publicar lo del 2026-11-18 (D70–D80):** aplicar las migraciones `0014_dias_sin_reparto.sql` y `0015_seguimiento.sql` en la D1 real (`wrangler d1 migrations apply brunen-chatbot --remote`, con permiso de Franco y anotando el punto de restauración), y después publicar el bot y el panel. Si el panel se publica antes, carga igual (las lecturas de días sin reparto no lanzan), pero "Días sin reparto" no se puede usar hasta aplicarla.
 - [ ] Cuando la hoja PRECIOS cambie, igualar `TABLA_PRECIOS` (`src/precios.ts`): el precio sugerido del panel sale de ahí (D71) y el vigía avisa una vez si son distintos.
@@ -132,7 +134,7 @@ Datos de Meta tomados de fuentes secundarias el 2026-10-28: confirmar todo en la
 - [ ] Verificación de empresa en Meta y aprobación del nombre visible. Sin verificar, el límite es de unos 250 contactos nuevos por día iniciados por la empresa (los clientes que escriben primero no cuentan); con verificación sube. Puede tardar de días a semanas.
 - [ ] Mensajes que inicia la empresa fuera de las 24 horas (por ejemplo, avisar la hora aproximada a los clientes con `Aviso_Hora`) exigen plantillas aprobadas por Meta y pueden cobrarse: decidir si se hacen.
 - [ ] Monitoreo: cuenta gratuita de UptimeRobot (o similar) apuntando a `/salud`, con aviso por correo.
-- [ ] Datos personales: la Ley 21.719 (vigente desde el 1-dic-2026 mientras no se publique la postergación que el Senado aprobó en primer trámite; D45) pide informar al cliente qué datos se guardan y para qué. Redactar un aviso breve de privacidad (qué se guarda, cuánto tiempo, que parte del texto pasa por Groq en EE. UU. con retención cero) y decidir cuándo se le muestra al cliente. El panel muestra datos personales: acceso solo para personas autorizadas.
+- [ ] Datos personales: la Ley 21.719 (rige desde el 15-oct-2027; la Ley 21.855 la movió al 15-oct-2027, D82) pide informar al cliente qué datos se guardan y para qué. Redactar un aviso breve de privacidad (qué se guarda, cuánto tiempo, que parte del texto pasa por Groq en EE. UU. con retención cero) y decidir cuándo se le muestra al cliente. El panel muestra datos personales: acceso solo para personas autorizadas.
 - [ ] Planilla real: copiar la de desarrollo, correr `npm run preparar-planilla` con la clave de esa planilla, compartirla con la cuenta de servicio, cambiar `GOOGLE_SHEET_ID` y revisar los permisos de quién puede editarla.
 - [ ] Copias de seguridad según D35 (los pedidos ya no están en la planilla) y quién tiene acceso a Cloudflare, Meta, Groq y Telegram.
 - [ ] Plan B si el bot o el panel se caen: cómo responde una persona a los clientes y desde dónde. Con coexistencia sigue la app de WhatsApp Business de siempre; con un número solo para la API habría que verificar qué bandeja de Meta permite responder a mano. Definir cuándo se usa `BOT_ACTIVO = NO` y qué se le avisa al cliente. Pesa en la decisión 7 del dueño (número).
