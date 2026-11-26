@@ -743,10 +743,10 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Avance:** "1 de 6 listas" va primero en las cifras; "cargas" pasa a llamarse "viajes", como en los encabezados.
 - **Línea de sincronización** fija: "Al día", "Enviando…", "N marcas por enviar" o "Sin conexión", con la hora de la última sincronización. Nunca dice "al día" si queda algo sin confirmar por el servidor.
 - La copia sin señal pasa a `brunen-v3`.
-- Verificado en el navegador a 375 px con datos ficticios: la siguiente avanza al marcar una entrega sin señal, la línea muestra la marca por enviar y vuelve a "Al día" con la señal, e "Ir a la parada" deja la tarjeta bajo la barra fija (había quedado tapada; se corrigió con un margen). Sin publicar.
+- Verificado en el navegador a 375 px con datos ficticios: la siguiente avanza al marcar una entrega sin señal, la línea muestra la marca por enviar y vuelve a "Al día" con la señal, e "Ir a la parada" deja la tarjeta bajo la barra fija (había quedado tapada; se corrigió con un margen). Publicado el 2026-11-26 (ver D97).
 
 ### D91 · 2026-11-26 · Una observación al marcar Entregado
-**Lo último de la lista de experiencias móviles que no necesita decisiones.** Al marcar Entregado, el repartidor puede escribir una observación opcional ("dejé en conserjería"). Va al historial del pedido ("Retiró 3 vacíos. Nota: ..."), en una línea y con un tope de 200 caracteres; una que no es texto se ignora. Como la escribe con sus palabras y puede nombrar a alguien, al borrar los datos de un cliente (D87) se borra junto con el detalle de sus No se pudo. Verificado con pruebas y de punta a punta en local. Sin publicar.
+**Lo último de la lista de experiencias móviles que no necesita decisiones.** Al marcar Entregado, el repartidor puede escribir una observación opcional ("dejé en conserjería"). Va al historial del pedido ("Retiró 3 vacíos. Nota: ..."), en una línea y con un tope de 200 caracteres; una que no es texto se ignora. Como la escribe con sus palabras y puede nombrar a alguien, al borrar los datos de un cliente (D87) se borra junto con el detalle de sus No se pudo. Verificado con pruebas y de punta a punta en local. Publicado el 2026-11-26 (ver D97).
 
 ### D92 · 2026-11-26 · El repartidor y las próximas entregas en Hoy
 **De [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md), sin decisiones pendientes:** la pantalla Hoy del panel (la que abre la operadora en el iPhone) muestra, mientras quedan entregas, dónde se vio al repartidor y lo que viene, sin ir a Reparto.
@@ -754,7 +754,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Próximas entregas,** solo con la ruta publicada (sin ella no hay orden): "Siguiente: Rosa (Ñuñoa) · 14:45–14:55 aprox." y "Después: …, … y N más". Es la misma ventana aproximada que ya mostraba Reparto (D80), nunca una hora exacta.
 - Tocar cualquiera de las dos abre Reparto en la tarjeta de esa parada. Esa tarjeta quedaba bajo la barra de pestañas; se corrigió con un margen.
 - Sin cambios en el servidor: usa lo que ya traía el reparto de hoy. Las alertas "sin señal" y "ruta no iniciada" siguen esperando los umbrales que decida Franco.
-- Verificado en el navegador a 375 px con datos ficticios: en vivo, señal vieja, sin ubicación y ruta sin publicar. Sin publicar.
+- Verificado en el navegador a 375 px con datos ficticios: en vivo, señal vieja, sin ubicación y ruta sin publicar. Publicado el 2026-11-26 (ver D97).
 
 ### D93 · 2026-11-26 · Lo guardado en el teléfono del repartidor vence, y una marca vieja no cae en el pedido de hoy
 **De [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md) ("que lo guardado en el teléfono venza por tiempo; qué pasa si la ruta se republica con marcas pendientes"). Al revisarlo apareció un error de D84.**
@@ -762,7 +762,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Vence en el teléfono:** la ruta guardada de otro día (trae nombres, direcciones y teléfonos) se borra al abrir la app o al recargar la ruta; sin señal solo servía la de hoy. Las posiciones de más de 6 horas también, porque el servidor ya no las acepta.
 - **Las marcas no vencen solas:** se pierde menos si el servidor decide y el rechazo queda a la vista, que si el teléfono las borra en silencio.
 - **Ruta republicada con marcas pendientes:** no hace falta nada nuevo. Cada marca va por pedido y con la fecha de su ruta, no por el orden: si cambió el orden, se anota igual; si el pedido se movió de día o se canceló, el servidor la rechaza con el motivo y queda a la vista.
-- Verificado: una prueba nueva en rojo y después en verde (la marca vieja de un pedido reagendado para hoy ya no lo toca), y en el navegador con almacenamiento sembrado (se borran la ruta de otro día y la posición de 7 horas; quedan la de hoy y la reciente). Sin migraciones. Sin publicar.
+- Verificado: una prueba nueva en rojo y después en verde (la marca vieja de un pedido reagendado para hoy ya no lo toca), y en el navegador con almacenamiento sembrado (se borran la ruta de otro día y la posición de 7 horas; quedan la de hoy y la reciente). Sin migraciones. Publicado el 2026-11-26 (ver D97).
 
 ### D94 · 2026-11-26 · Versiones de la ruta publicada y el acuse del repartidor
 **De [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md) ("versiones de la ruta y que el repartidor confirme los cambios"), sin decisiones pendientes.** Si la operadora vuelve a publicar la ruta a mitad del día, antes nada le decía al repartidor que el orden cambió.
@@ -782,7 +782,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Error corregido (de D78):** un cliente con un pedido en curso que escribía "mándame 2 de 20, ¿a qué hora llegan?" recibía el estado del pedido anterior y el nuevo se perdía. Ahora es un pedido nuevo si, fuera de la frase que pregunta por la llegada, pide con un verbo y nombra bidones (ajustado en D97).
 - Sigue siendo una respuesta por mensaje del cliente. A un cliente bloqueado no se le ofrece anotar nada.
 - **Textos nuevos (borradores para que Felipe los apruebe):** la cotización, la oferta, el horario corto y las formas de pago (`src/textos.ts`).
-- Verificado: 10 pruebas nuevas, primero en rojo (cotización con "sí", mayorista, dos tamaños, sin ficha, empresa y hoja caída, un tamaño, pedido con pregunta de horario y de pago, cliente con pedido en curso, oferta sin pedir, bloqueado). Sin publicar.
+- Verificado: 10 pruebas nuevas, primero en rojo (cotización con "sí", mayorista, dos tamaños, sin ficha, empresa y hoja caída, un tamaño, pedido con pregunta de horario y de pago, cliente con pedido en curso, oferta sin pedir, bloqueado). Publicado el 2026-11-26 (ver D97).
 
 ### D96 · 2026-11-26 · Medidor del bot con chats reales, sin que los datos salgan del computador
 **Mejora D de [PROPUESTA_SIGUIENTES_PASOS.md](PROPUESTA_SIGUIENTES_PASOS.md): el bot se mejoraba a ciegas, porque las 83 pruebas de mensajes son ficticias y el bot todavía no atiende clientes reales.** Los chats de la app de WhatsApp Business sí existen.
@@ -815,4 +815,8 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
   - sin la migración 0017, cada lectura de la ruta deja una línea en los registros (desaparece al aplicarla);
   - mientras el teléfono tenga la app anterior, nunca confirma la versión y el panel dice que no ha abierto la ruta (se actualiza sola la próxima vez que abra la app con señal);
   - avisar cuando la ruta cambia sin volver a publicarse queda en `MEJORAS.md`.
-- Verificado: 1.607 pruebas; las nuevas fallaron primero. Sin publicar.
+- Verificado: 1.607 pruebas; las nuevas fallaron primero. Publicado el 2026-11-26 (ver D97).
+- **Publicado el 2026-11-26** con permiso de Franco ("Sí, publica todo"), junto con el arreglo de D87 y D90 a D96:
+  - migración `0017_rutas_publicadas` aplicada en la base real; punto de restauración previo `0000122f-00000000-0000512f-a7bccb9f313f5206c3cd89086a0b6acd`;
+  - administración `c72a7d8f`, pública `483501b2`, bot `948e4dbf` (al primer intento falló la conexión; el segundo salió bien);
+  - `npm run comprobar`: 9 de 9 bien. Además, `/api/repartidor/ruta/vista` sin sesión responde 401 y la app publicada trae el aviso de cambio de ruta.

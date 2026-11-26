@@ -1,6 +1,6 @@
 # Lo que falta hacer para usar todo (actualizado 2026-11-26)
 
-**Las preguntas y acciones pendientes, numeradas para responderlas una por una, están en [PREGUNTAS_ABIERTAS.md](PREGUNTAS_ABIERTAS.md).** Sin publicar: D87 (arreglo) y D90 a D96; D94 necesita antes la migración 0017 en la base real.
+**Las preguntas y acciones pendientes, numeradas para responderlas una por una, están en [PREGUNTAS_ABIERTAS.md](PREGUNTAS_ABIERTAS.md).** **Publicado el 2026-11-26:** el arreglo de D87 y D90 a D97, con la migración 0017 en la base real (administración `c72a7d8f`, pública `483501b2`, bot `948e4dbf`; `npm run comprobar` 9 de 9).
 
 Los que dicen "Claude" los hago yo cuando me des permiso; los demás son tuyos (o de Felipe), porque piden tu tarjeta, tus claves o el teléfono del repartidor.
 
