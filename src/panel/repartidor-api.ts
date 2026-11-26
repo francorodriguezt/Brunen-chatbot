@@ -51,14 +51,19 @@ export const DIAS_PARA_MARCAS_ATRASADAS = 3;
 const ATRASO_MINIMO_S = 120;
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
-/** El día y la hora de una marca del repartidor (D84). Lo que no sirve se ignora: entonces vale hoy, a esta hora. */
+const MARCA_FUERA_DE_PLAZO = `Esa marca es de una ruta de hace más de ${DIAS_PARA_MARCAS_ATRASADAS} días: ya no se anota desde la app. Avísale a la oficina.`;
+
+/**
+ * El día y la hora de una marca del repartidor (D84). Sin la fecha de su ruta (la app anterior) o con una que no existe,
+ * vale hoy, a esta hora. Con una fecha real fuera de plazo devuelve null y la marca se rechaza (D93): si se anotara para
+ * hoy, una marca vieja caería en un pedido que justo se reagendó para hoy.
+ */
 export function opcionesDeMarca(cuerpo: Record<string, unknown>, ahoraSegundos: number, nombre: string) {
   const hoy = fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha;
   const pedida = cuerpo.fecha;
-  const fecha =
-    typeof pedida === 'string' && FECHA.test(pedida) && sumarDias(pedida, 0) === pedida && pedida <= hoy && pedida >= sumarDias(hoy, -DIAS_PARA_MARCAS_ATRASADAS)
-      ? pedida
-      : hoy;
+  const conFecha = typeof pedida === 'string' && FECHA.test(pedida) && sumarDias(pedida, 0) === pedida;
+  if (conFecha && (pedida > hoy || pedida < sumarDias(hoy, -DIAS_PARA_MARCAS_ATRASADAS))) return null;
+  const fecha = conFecha ? pedida : hoy;
   const marcado = cuerpo.marcadoEn;
   const conAtraso =
     typeof marcado === 'number' &&
@@ -224,6 +229,7 @@ export async function manejarRepartidor(request: Request, url: URL, ctx: Context
 
   const id = accion[1] as string;
   const opciones = opcionesDeMarca(cuerpo, ctx.ahoraSegundos, ctx.nombre);
+  if (!opciones) return error(409, MARCA_FUERA_DE_PLAZO);
   const resultado =
     accion[2] === 'entregado'
       ? await ctx.entregas.entregar(id, { vacios: cuerpo.vacios as number, cobrado: cuerpo.cobrado as boolean, ...(typeof cuerpo.observacion === 'string' ? { observacion: cuerpo.observacion } : {}) }, opciones)
