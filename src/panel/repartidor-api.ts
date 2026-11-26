@@ -2,15 +2,19 @@
  * API del repartidor (fase D, D61). Solo para un repartidor con su sesión (RUT y clave): `index.ts` lo comprueba antes.
  *
  * - GET  /api/repartidor/ruta                         las paradas de hoy, en el orden del reparto y por carga.
- * - POST /api/repartidor/pedidos/:id/entregado        { vacios, cobrado }
- * - POST /api/repartidor/pedidos/:id/no-se-pudo       { motivo, detalle }
+ * - POST /api/repartidor/pedidos/:id/entregado        { vacios, cobrado, fecha?, marcadoEn? }
+ * - POST /api/repartidor/pedidos/:id/no-se-pudo       { motivo, detalle, fecha?, marcadoEn? }
  *
  * Lo que ve es lo que hoy se le escribe a mano por WhatsApp (nombre, dirección, teléfono, pedido, forma de pago y lo que
  * hay que cobrar en efectivo, notas para el reparto), y nada más: ni las observaciones internas ni lo que escribió el
- * cliente. "Hoy" es la fecha de Santiago: no puede ver ni marcar pedidos de otros días.
+ * cliente. "Hoy" es la fecha de Santiago: solo ve la ruta de hoy.
+ *
+ * Una marca hecha sin señal puede llegar tarde (D84): trae la fecha de su ruta y la hora del teléfono. Se acepta para
+ * la ruta de ese día si es de hoy o de hasta 3 días atrás (un sábado sin señal que llega el lunes), nunca de un día
+ * futuro; y se anota con la hora del teléfono solo si llegó con atraso. Sin esos datos, vale hoy, como antes.
  */
 
-import { fechaHoraLocal } from '../despacho';
+import { fechaHoraLocal, sumarDias } from '../despacho';
 import { MOTIVOS_NO_ENTREGA, type EstadoDeEntrega, type RepositorioEntregas } from '../entregas';
 import { COORDENADAS_DE_DEPOSITO, depositoQueDesviaMenos, enlacesDeMaps } from '../navegacion';
 import type { TipoBidon } from '../precios';
@@ -36,10 +40,33 @@ export interface ContextoRepartidor {
 
 const MENSAJES_DE_ERROR = {
   no_existe: [404, 'Ese pedido ya no existe.'],
-  no_es_de_hoy: [409, 'Ese pedido no es de la ruta de hoy.'],
+  no_es_de_hoy: [409, 'Ese pedido no es de la ruta de ese día: puede que lo hayan cambiado de fecha.'],
   no_disponible: [409, 'Ese pedido ya no está en la ruta: puede que lo hayan cambiado o cancelado.'],
   datos_invalidos: [422, 'Revisa lo que marcaste.'],
 } as const;
+
+/** Hasta cuántos días atrás vale una marca que llegó tarde (D84). */
+export const DIAS_PARA_MARCAS_ATRASADAS = 3;
+/** Una marca que llega antes de esto se anota con la hora del servidor; después, con la del teléfono. */
+const ATRASO_MINIMO_S = 120;
+const FECHA = /^\d{4}-\d{2}-\d{2}$/;
+
+/** El día y la hora de una marca del repartidor (D84). Lo que no sirve se ignora: entonces vale hoy, a esta hora. */
+export function opcionesDeMarca(cuerpo: Record<string, unknown>, ahoraSegundos: number, nombre: string) {
+  const hoy = fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha;
+  const pedida = cuerpo.fecha;
+  const fecha =
+    typeof pedida === 'string' && FECHA.test(pedida) && sumarDias(pedida, 0) === pedida && pedida <= hoy && pedida >= sumarDias(hoy, -DIAS_PARA_MARCAS_ATRASADAS)
+      ? pedida
+      : hoy;
+  const marcado = cuerpo.marcadoEn;
+  const conAtraso =
+    typeof marcado === 'number' &&
+    Number.isInteger(marcado) &&
+    marcado <= ahoraSegundos - ATRASO_MINIMO_S &&
+    marcado >= ahoraSegundos - (DIAS_PARA_MARCAS_ATRASADAS + 1) * 86400;
+  return { fecha, quien: `Repartidor: ${nombre}`, ahora: ahoraSegundos, ...(conAtraso ? { hecho: marcado } : {}) };
+}
 
 function estadoDeParada(entrega: EstadoDeEntrega | undefined, estadoPedido: string): 'pendiente' | 'entregado' | 'no_se_pudo' {
   if (estadoPedido === 'Entregado') return 'entregado';
@@ -196,7 +223,7 @@ export async function manejarRepartidor(request: Request, url: URL, ctx: Context
   if (!accion) return (await manejarSeguimiento(ruta, cuerpo, ctx)) ?? error(404, 'No encontrado.');
 
   const id = accion[1] as string;
-  const opciones = { fecha: fechaHoraLocal(new Date(ctx.ahoraSegundos * 1000)).fecha, quien: `Repartidor: ${ctx.nombre}`, ahora: ctx.ahoraSegundos };
+  const opciones = opcionesDeMarca(cuerpo, ctx.ahoraSegundos, ctx.nombre);
   const resultado =
     accion[2] === 'entregado'
       ? await ctx.entregas.entregar(id, { vacios: cuerpo.vacios as number, cobrado: cuerpo.cobrado as boolean }, opciones)

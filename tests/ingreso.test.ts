@@ -89,7 +89,7 @@ async function conAdministradora(env: EntornoPanel, correo = CORREO, rut = RUT_A
 }
 
 describe('lo público: la portada y los archivos de la aplicación', () => {
-  it.each([['/'], ['/portada.js'], ['/ingreso.js'], ['/estilos.css'], ['/manifest.webmanifest'], ['/sw.js'], ['/repartidor/'], ['/repartidor/app.js'], ['/iconos/icono-192.png']])(
+  it.each([['/'], ['/portada.js'], ['/ingreso.js'], ['/estilos.css'], ['/manifest.webmanifest'], ['/sw.js'], ['/repartidor/'], ['/repartidor/app.js'], ['/repartidor/cola.js'], ['/iconos/icono-192.png']])(
     '%s se sirve sin sesión',
     async (ruta) => {
       const { env, archivos } = await entorno();

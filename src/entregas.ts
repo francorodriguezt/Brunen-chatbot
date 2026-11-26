@@ -40,6 +40,19 @@ interface Opciones {
   /** Quién lo marcó, para el historial del pedido. */
   quien: string;
   ahora: number;
+  /**
+   * Cuándo lo marcó en su teléfono, si la marca llegó con atraso (sin señal, D84). Es la hora de la entrega o del
+   * "No se pudo"; `ahora` sigue siendo la del registro. Por defecto, `ahora`.
+   */
+  hecho?: number;
+}
+
+/** " Lo marcó sin señal el 2026-11-13 a las 09:00." cuando la marca llegó con atraso (D84). */
+function textoDeAtraso(o: Opciones): string {
+  if (o.hecho === undefined || o.hecho >= o.ahora) return '';
+  const local = fechaHoraLocal(new Date(o.hecho * 1000));
+  const dos = (n: number) => String(n).padStart(2, '0');
+  return ` Lo marcó sin señal el ${local.fecha} a las ${dos(local.hora)}:${dos(local.minuto)}.`;
 }
 
 const ESTADOS_EN_RUTA: ReadonlySet<EstadoDePedido> = new Set<EstadoDePedido>(['Confirmado', 'En_Ruta']);
@@ -88,7 +101,7 @@ export class RepositorioEntregas {
     await this.cambios(
       `UPDATE pedidos SET
          vacios_retirados = ?2,
-         entregado_en = COALESCE(entregado_en, ?3),
+         entregado_en = COALESCE(entregado_en, ?5),
          estado_pago = CASE WHEN ?4 = 1 THEN 'pagado' WHEN cobrado_en_entrega IS NOT NULL THEN 'pendiente' ELSE estado_pago END,
          cobrado_en_entrega = CASE WHEN ?4 = 1 THEN total ELSE NULL END,
          no_entregado_en = NULL,
@@ -99,9 +112,11 @@ export class RepositorioEntregas {
       datos.vacios,
       o.ahora,
       datos.cobrado ? 1 : 0,
+      o.hecho ?? o.ahora,
     );
     const vacios = `Retiró ${datos.vacios} ${datos.vacios === 1 ? 'vacío' : 'vacíos'}`;
-    await this.historial(id, o, 'entrega', datos.cobrado ? `${vacios}; cobró${pedido.total !== null ? ` $${pedido.total.toLocaleString('es-CL')}` : ''}.` : `${vacios}.`);
+    const detalle = datos.cobrado ? `${vacios}; cobró${pedido.total !== null ? ` $${pedido.total.toLocaleString('es-CL')}` : ''}.` : `${vacios}.`;
+    await this.historial(id, o, 'entrega', detalle + textoDeAtraso(o));
     return { ok: true };
   }
 
@@ -114,9 +129,10 @@ export class RepositorioEntregas {
     if (!('pedido' in encontrado)) return { ok: false, error: encontrado.error };
     const { pedido } = encontrado;
 
-    await this.cambios('UPDATE pedidos SET no_entregado_en = ?2, no_entregado_motivo = ?3, actualizado_en = ?2 WHERE id = ?1', id, o.ahora, motivo);
+    await this.cambios('UPDATE pedidos SET no_entregado_en = ?4, no_entregado_motivo = ?3, actualizado_en = ?2 WHERE id = ?1', id, o.ahora, motivo, o.hecho ?? o.ahora);
     const texto = `${MOTIVOS_NO_ENTREGA[motivo]}${detalle ? ` (${detalle})` : ''}`;
-    await this.historial(id, o, 'no_entregado', texto);
+    const atraso = textoDeAtraso(o);
+    await this.historial(id, o, 'no_entregado', atraso ? `${texto}.${atraso}` : texto);
     const resumen = `No se pudo entregar: ${texto}. Reagenda el pedido o llama al cliente.`;
     const origen = `no-entregado:${id}:${o.fecha}`;
     const nuevo = await this.repositorio.guardarAviso({ tipo: 'escalamiento', telefono: pedido.telefono, nombre: pedido.nombre, resumen, motivos: [], idPedido: id }, origen, o.ahora);

@@ -7,8 +7,8 @@
  * Con señal siempre se usa la versión del servidor; la copia guardada es solo para cuando la red falla.
  */
 
-const COPIA = 'brunen-v1';
-const BASE = ['/', '/estilos.css', '/portada.js', '/ingreso.js', '/repartidor/', '/repartidor/app.js', '/manifest.webmanifest', '/iconos/icono-192.png'];
+const COPIA = 'brunen-v2'; // subir el número al agregar un archivo a BASE: así el teléfono lo guarda al actualizarse
+const BASE = ['/', '/estilos.css', '/portada.js', '/ingreso.js', '/repartidor/', '/repartidor/app.js', '/repartidor/cola.js', '/manifest.webmanifest', '/iconos/icono-192.png'];
 
 self.addEventListener('install', (evento) => {
   evento.waitUntil(

@@ -133,6 +133,8 @@ a { color: var(--acento); }
 .cifras li { background: var(--neutro-suave); border-radius: 10px; padding: 0.3rem 0.7rem; font-size: 0.92rem; }
 .cifras b { font-size: 1.1rem; }
 .revision .boton { margin-left: 0.3rem; }
+/* Una marca del repartidor que el servidor no aceptó (D84). */
+.no-anotada { margin: 0.4rem 0 0; }
 .parada .tarjeta-cabecera { justify-content: flex-start; flex-wrap: nowrap; align-items: flex-start; }
 .parada .insignia { margin-left: auto; white-space: nowrap; }
 .orden { flex: none; display: inline-grid; place-items: center; min-width: 1.9rem; height: 1.9rem; padding: 0 0.3rem; border-radius: 999px; background: var(--acento); color: var(--acento-texto); font-weight: 700; font-size: 0.9rem; }
