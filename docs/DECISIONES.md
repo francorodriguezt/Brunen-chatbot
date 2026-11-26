@@ -736,3 +736,11 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - Quedó en [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md): cada requisito comparado con lo que hay hoy, lo que falta, su tamaño y si alguien tiene que decidir. Las maquetas están en `docs/img/maquetas/`.
 - La especificación coincide con las decisiones vigentes (un backend, dos experiencias, permisos en el servidor, sin frameworks nuevos, costo cero). Choca en tres puntos que se dejan anotados: la entrega parcial (fuera hasta aprobarla, igual que hoy), mostrarle precios al repartidor (hoy ve solo lo que cobra) y una ruta por repartidor (hoy hay uno).
 - Las maquetas traen datos inventados que no se copian (un bidón de 6 L que no existe, precios y rutas de ejemplo) y funciones que no existen todavía (escáner, inventario, finanzas, versiones de ruta).
+
+### D90 · 2026-11-26 · App del repartidor: la siguiente parada, el avance y la sincronización a la vista
+**Lo primero de [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md) que no necesita decisiones.**
+- **Siguiente parada:** arriba, destacada, con Navegar e "Ir a la parada"; su tarjeta dice "Siguiente" y tiene un borde azul. Es la primera pendiente en el orden de la ruta publicada: no se reordena nada. Cuando no queda ninguna, dice "Todas las paradas están listas".
+- **Avance:** "1 de 6 listas" va primero en las cifras; "cargas" pasa a llamarse "viajes", como en los encabezados.
+- **Línea de sincronización** fija: "Al día", "Enviando…", "N marcas por enviar" o "Sin conexión", con la hora de la última sincronización. Nunca dice "al día" si queda algo sin confirmar por el servidor.
+- La copia sin señal pasa a `brunen-v3`.
+- Verificado en el navegador a 375 px con datos ficticios: la siguiente avanza al marcar una entrega sin señal, la línea muestra la marca por enviar y vuelve a "Al día" con la señal, e "Ir a la parada" deja la tarjeta bajo la barra fija (había quedado tapada; se corrigió con un margen). Sin publicar.
