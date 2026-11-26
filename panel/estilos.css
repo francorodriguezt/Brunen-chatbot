@@ -62,6 +62,8 @@ body {
 .marca span { color: var(--acento); font-weight: 600; }
 .barra-derecha { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
 .usuario { color: var(--suave); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 14rem; }
+/* De cuándo son los datos de la vista (D88). En el teléfono se ve igual, más chico. */
+.actualizado { color: var(--suave); font-size: 0.8rem; white-space: nowrap; }
 
 .pestanas { display: flex; gap: 0.25rem; padding-top: 0.25rem; }
 .pestanas button {
@@ -188,6 +190,7 @@ legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.3rem; }
   .campos { grid-template-columns: 1fr; }
   .linea-editable { grid-template-columns: 1fr 1fr; }
   .usuario { display: none; }
+  .actualizado-palabra { display: none; }
   .acciones .boton { flex: 1 1 8rem; }
 }
 
