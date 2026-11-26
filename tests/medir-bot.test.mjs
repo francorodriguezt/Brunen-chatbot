@@ -35,14 +35,27 @@ describe('leer un chat exportado de WhatsApp (D96)', () => {
 });
 
 describe('quién es el negocio y qué escribió el cliente (D96)', () => {
+  it('lo que responde a una pregunta por sus datos se marca: no se mide ni se muestra (D97)', () => {
+    const chat = leerChat(`26/11/26, 09:00 - Ana Prueba: quiero 2 de 20
+26/11/26, 09:01 - Brunen: ¿Me das tu nombre y tu dirección con comuna?
+26/11/26, 09:05 - Ana Prueba: juan perez los aromos 1234 ñuñoa
+26/11/26, 09:30 - Ana Prueba: gracias`);
+    expect(agrupar(chat, new Set(['Brunen'])).map((g) => [g.texto, g.respondeADatos])).toEqual([
+      ['quiero 2 de 20', false],
+      ['juan perez los aromos 1234 ñuñoa', true],
+      ['gracias', false],
+    ]);
+  });
+
   it('con dos o más chats, el negocio es quien aparece en todos', () => {
     expect(detectarNegocio([leerChat(ANDROID), leerChat(IOS)])).toEqual(['Brunen']);
     expect(detectarNegocio([leerChat(ANDROID)])).toEqual([]);
   });
 
-  it('junta los mensajes seguidos del cliente (hasta 2 minutos entre uno y otro), como hace el bot', () => {
+  it('junta los mensajes seguidos del cliente (hasta 1 minuto entre uno y otro), como hace el bot', () => {
     const grupos = agrupar(leerChat(ANDROID), new Set(['Brunen']));
-    expect(grupos).toEqual(['Hola!\nquiero 3 de 20 para mañana', 'mi dirección es Calle Falsa 1234 depto 502\ny mi fono +56 9 1234 5678', 'oiga el agua venia rara']);
+    expect(grupos.every((g) => !g.respondeADatos)).toBe(true);
+    expect(grupos.map((g) => g.texto)).toEqual(['Hola!\nquiero 3 de 20 para mañana', 'mi dirección es Calle Falsa 1234 depto 502\ny mi fono +56 9 1234 5678', 'oiga el agua venia rara']);
   });
 });
 
@@ -54,7 +67,14 @@ describe('ocultar lo que identifica a alguien (D96)', () => {
     );
     expect(ocultar('soy Ana, rut 12.345.678-9, beto@correo.cl https://maps.app.goo.gl/abc', nombres)).toBe('soy [NOMBRE], rut [RUT], [CORREO] [ENLACE]');
     expect(ocultar('Pasaje Los Aromos 45, Ñuñoa', nombres)).toBe('[DIRECCIÓN], Ñuñoa');
-    // Lo que sirve para probar el bot queda: cantidades, tamaños, comunas y fechas.
+    // Escritas en minúscula, con avenida, pasaje o casa, y el nombre que dice el mismo mensaje (D97).
+    expect(ocultar('soy juan perez, los aromos 1234 depto 52, ñuñoa', nombres)).toBe('soy [NOMBRE], [DIRECCIÓN] depto [N], ñuñoa');
+    expect(ocultar('av. grecia 2001 casa 4', nombres)).toBe('[DIRECCIÓN] casa [N]');
+    expect(ocultar('pasaje el roble #45', nombres)).toBe('[DIRECCIÓN]');
+    expect(ocultar('calle 5 de abril 345', nombres)).toContain('[DIRECCIÓN]');
+    expect(ocultar('me llamo Rosa Muñoz', nombres)).toBe('me llamo [NOMBRE]');
+    // Lo que sirve para probar el bot queda: cantidades, tamaños, comunas, fechas y horas.
+    expect(ocultar('llegan a las 12? quiero 40 bidones, 2 de 20 para la casa 3 de 12', nombres)).toBe('llegan a las 12? quiero 40 bidones, 2 de 20 para la casa 3 de 12');
     expect(ocultar('quiero 3 de 20 para el Viernes 28, a Las Condes', nombres)).toBe('quiero 3 de 20 para el Viernes 28, a Las Condes');
   });
 });
@@ -62,7 +82,7 @@ describe('ocultar lo que identifica a alguien (D96)', () => {
 describe('medir cuánto entiende el bot (D96)', () => {
   it('cuenta por intención y deja los no entendidos ocultos, para revisarlos', () => {
     const negocio = new Set(['Brunen']);
-    const grupos = [...agrupar(leerChat(ANDROID), negocio), ...agrupar(leerChat(IOS), negocio)];
+    const grupos = [...agrupar(leerChat(ANDROID), negocio), ...agrupar(leerChat(IOS), negocio), { texto: 'juan perez los aromos 1234', respondeADatos: true }];
     const medicion = medir(grupos, interpretar, ['Ana Prueba', 'Beto Ejemplo']);
     expect(medicion.total).toBe(5);
     expect(medicion.porIntencion.get('pedido')).toBe(1);
@@ -71,6 +91,9 @@ describe('medir cuánto entiende el bot (D96)', () => {
     expect(medicion.revisar[0]).toBe('mi dirección es [DIRECCIÓN] depto [N]\ny mi fono [TELÉFONO]');
     const texto = informe(medicion);
     expect(texto).toContain('Mensajes del cliente: 5');
+    expect(medicion.respuestasADatos).toBe(1);
+    expect(texto).toContain('Respuestas a una pregunta por sus datos (no se miden ni se muestran): 1');
+    expect(texto).not.toContain('aromos');
     expect(texto).not.toContain('1234');
     expect(texto).not.toContain('Ana');
   });

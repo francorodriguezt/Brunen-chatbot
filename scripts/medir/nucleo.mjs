@@ -58,24 +58,34 @@ export function detectarNegocio(chats) {
   return [...primero].filter((autor) => resto.every((s) => s.has(autor))).sort();
 }
 
-/** Los mensajes seguidos de cada cliente, juntos (hasta 2 minutos entre uno y otro, sin respuesta en medio). */
+/** Un mensaje del negocio que pide los datos del cliente: lo que conteste son su nombre y su dirección. */
+const PIDE_DATOS = /direcci[oó]n|nombre|tus datos|sus datos|depto|departamento|comuna|n[uú]mero de casa|ubicaci[oó]n/i;
+
+/**
+ * Los mensajes seguidos de cada cliente, juntos: hasta 1 minuto entre uno y otro y sin respuesta en medio (el bot espera
+ * 7 segundos, y los chats exportados solo dicen el minuto). `respondeADatos`: el negocio le acababa de pedir sus datos;
+ * el bot lo entiende por el contexto (D37), así que no se mide ni se muestra (D97).
+ */
 export function agrupar(mensajes, negocio) {
   const grupos = [];
   let ultimo = null;
+  let pidioDatos = false;
   for (const m of mensajes) {
     if (negocio.has(m.autor)) {
       ultimo = null;
+      pidioDatos = PIDE_DATOS.test(m.texto);
       continue;
     }
-    if (ultimo && ultimo.autor === m.autor && m.minuto - ultimo.minuto <= 2) {
+    if (ultimo && ultimo.autor === m.autor && m.minuto - ultimo.minuto <= 1) {
       ultimo.texto += `\n${m.texto}`;
       ultimo.minuto = m.minuto;
     } else {
-      ultimo = { autor: m.autor, minuto: m.minuto, texto: m.texto };
+      ultimo = { autor: m.autor, minuto: m.minuto, texto: m.texto, respondeADatos: pidioDatos };
+      pidioDatos = false;
       grupos.push(ultimo);
     }
   }
-  return grupos.map((g) => g.texto);
+  return grupos.map(({ texto, respondeADatos }) => ({ texto, respondeADatos }));
 }
 
 const escapar = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -85,27 +95,43 @@ const NO_SON_CALLE = new Set(
     'lunes martes miercoles miércoles jueves viernes sabado sábado domingo enero febrero marzo abril mayo junio julio agosto ' +
     'septiembre setiembre octubre noviembre diciembre hola buenas buenos gracias brunen hoy mañana manana para quiero necesito ' +
     'dame mandame mándame son serian serían seria sería somos solo sólo ok si sí ya y me mi te un una unos unas dos tres cuatro ' +
-    'cinco seis siete ocho nueve diez porfa porfavor favor el la los las de del'
+    'cinco seis siete ocho nueve diez porfa porfavor favor el la los las de del a al tipo como'
   ).split(' '),
 );
-const CONECTORES = String.raw`(?:de|del|la|las|el|los|av\.?|avda\.?|psje\.?|pje\.?)`;
-const DIRECCION = new RegExp(
-  String.raw`(?<![\p{L}\d])((?:(?:\p{Lu}\p{Ll}+|${CONECTORES})\s+){1,5})#?\s?(\d{1,5})(?![\p{L}\d])(?!\s*(?:de\b|x\b|bid|vid|botell|garraf|lts?\b|litros?\b|l\b))`,
-  'gu',
-);
+// Lo que suele ir antes de la calle y no es parte de ella: queda a la vista.
+const ANTES_DE_LA_CALLE = new Set(['mi', 'mí', 'direccion', 'dirección', 'es', 'en', 'vivo', 'queda', 'esta', 'está', 'al', 'para']);
+// Palabras (con mayúscula o no) y un número de 2 a 5 cifras que no es de bidones, de horas ni de minutos.
+const DIRECCION =
+  /(?<![\p{L}\d.#])((?:\p{L}[\p{L}.]*\s+){1,4})#?\s?(\d{2,5})(?![\p{L}\d:])(?!\s*(?:de\b|x\b|bid|vid|botell|garraf|lts?\b|litros?\b|l\b|hrs?\b|horas?\b|am\b|pm\b|min))/giu;
 
-/** Oculta lo que identifica a alguien: enlaces, correos, RUT, teléfonos, direcciones, números de depto y los nombres de los autores. */
+function direccion(todo, palabras, numero) {
+  const lista = palabras.trim().split(/\s+/);
+  const n = Number(numero);
+  const ultima = (lista.at(-1) ?? '').toLowerCase();
+  if (ultima === 'de' || ultima === 'x') return todo; // "3 de 20"
+  if ((ultima === 'las' || ultima === 'la' || ultima === 'a') && n <= 24) return todo; // "a las 12"
+  const propias = lista.filter((p) => !NO_SON_CALLE.has(p.toLowerCase().replace(/\.$/, '')));
+  if (n < 100 && propias.length === 0) return todo; // "el viernes 28"
+  let i = 0;
+  while (i < lista.length - 1 && ANTES_DE_LA_CALLE.has(lista[i].toLowerCase())) i++;
+  const antes = lista.slice(0, i).join(' ');
+  return antes ? `${antes} [DIRECCIÓN]` : '[DIRECCIÓN]';
+}
+
+/**
+ * Oculta lo que identifica a alguien: enlaces, correos, RUT, teléfonos, el nombre que dice el mensaje ("soy", "me
+ * llamo"), números de depto o casa, direcciones (con mayúscula o no) y los nombres de los autores del chat (D96, D97).
+ */
 export function ocultar(texto, nombres = []) {
   let t = texto
     .replace(/https?:\/\/\S+|www\.\S+/gi, '[ENLACE]')
     .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[CORREO]')
     .replace(/\b\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]\b/g, '[RUT]')
-    .replace(/\+?\d(?:[\s.-]?\d){7,}/g, '[TELÉFONO]');
-  t = t.replace(DIRECCION, (todo, palabras) => {
-    const conMayuscula = palabras.trim().split(/\s+/).filter((p) => /^\p{Lu}/u.test(p));
-    return conMayuscula.some((p) => !NO_SON_CALLE.has(p.toLowerCase())) ? '[DIRECCIÓN]' : todo;
-  });
-  t = t.replace(/\b(depto|dpto|dto|departamento|depa|block|torre|oficina)\.?\s*#?\s*\d+[a-z]?\b/gi, '$1 [N]');
+    .replace(/\+?\d(?:[\s.-]?\d){7,}/g, '[TELÉFONO]')
+    .replace(/(?<!\p{L})(soy|me llamo|mi nombre es|a nombre de|habla)\s+(\p{L}+(?:\s+\p{L}+){0,2})/giu, '$1 [NOMBRE]')
+    // Antes que la dirección, para que su número no se lea como calle; "casa 3 de 12" es un pedido y queda.
+    .replace(/(?<!\p{L})(depto|dpto|dto|departamento|depa|casa|block|torre|oficina)\.?\s*#?\s*\d+[a-z]?(?![\p{L}\d])(?!\s*(?:de|x)\b)/giu, '$1 [N]')
+    .replace(DIRECCION, direccion);
   const palabras = [...new Set(nombres.flatMap((n) => n.split(/\s+/)).filter((p) => p.length >= 3))];
   for (const p of palabras) t = t.replace(new RegExp(String.raw`(?<![\p{L}\d])${escapar(p)}(?![\p{L}\d])`, 'giu'), '[NOMBRE]');
   return t;
@@ -115,18 +141,23 @@ export function ocultar(texto, nombres = []) {
 export function medir(grupos, interpretar, nombres = []) {
   const porIntencion = new Map();
   const revisar = [];
-  for (const grupo of grupos) {
-    const { intencion } = interpretar(grupo);
+  let respuestasADatos = 0;
+  for (const { texto, respondeADatos } of grupos) {
+    if (respondeADatos) {
+      respuestasADatos += 1;
+      continue;
+    }
+    const { intencion } = interpretar(texto);
     porIntencion.set(intencion, (porIntencion.get(intencion) ?? 0) + 1);
-    if (intencion === 'desconocido') revisar.push(ocultar(grupo, nombres));
+    if (intencion === 'desconocido') revisar.push(ocultar(texto, nombres));
   }
-  return { total: grupos.length, porIntencion, revisar };
+  return { total: grupos.length - respuestasADatos, porIntencion, revisar, respuestasADatos };
 }
 
 const porcentaje = (n, total) => (total > 0 ? `${Math.round((n / total) * 100)} %` : '0 %');
 
 /** El informe en Markdown: totales, por intención y los no entendidos (sin datos personales, a revisar igual). */
-export function informe({ total, porIntencion, revisar }) {
+export function informe({ total, porIntencion, revisar, respuestasADatos = 0 }) {
   const desconocidos = porIntencion.get('desconocido') ?? 0;
   const filas = [...porIntencion].sort((a, b) => b[1] - a[1]).map(([intencion, n]) => `| ${intencion} | ${n} | ${porcentaje(n, total)} |`);
   return [
@@ -134,6 +165,7 @@ export function informe({ total, porIntencion, revisar }) {
     '',
     `Mensajes del cliente: ${total} (los seguidos cuentan como uno, como en el bot).`,
     `Entendidos por las reglas: ${total - desconocidos} (${porcentaje(total - desconocidos, total)}). En producción, los no entendidos pasan además por la IA de respaldo antes de ir a una persona.`,
+    `Respuestas a una pregunta por sus datos (no se miden ni se muestran): ${respuestasADatos}. El bot las entiende por el contexto.`,
     '',
     '| Intención | Mensajes | % |',
     '|---|---|---|',
@@ -141,7 +173,7 @@ export function informe({ total, porIntencion, revisar }) {
     '',
     '## No entendidos',
     '',
-    'Se ocultaron teléfonos, correos, RUT, enlaces, direcciones, números de departamento y los nombres de los autores. **Revísalos antes de compartirlos:** un nombre o una dirección escritos de otra forma pueden quedar a la vista.',
+    'Se intentó ocultar teléfonos, correos, RUT, enlaces, nombres, direcciones y números de depto o casa. **Revísalos antes de compartirlos:** un nombre o una dirección escritos de otra forma pueden quedar a la vista.',
     '',
     ...revisar.map((texto, i) => `${i + 1}. ${texto.replace(/\n/g, ' / ')}`),
     '',
