@@ -74,6 +74,9 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] `npm run comprobar` después de cada publicación. (D85)
 - [x] Borrar los datos de un cliente que lo pide, desde su ficha. (D87)
 
+## 8. Experiencias móviles (D89, 2026-11-26)
+La especificación de la app del repartidor y del panel en iPhone, comparada con lo que hay: [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md). Lo primero, sin decisiones: siguiente parada destacada, el avance "8 de 12", una línea fija de sincronización y observaciones al entregar.
+
 ## 7. Hacia la visión de Franco (D83, 2026-11-25)
 Meta de largo plazo: asistentes de IA, roles dentro del panel, un panel de análisis avanzado y finanzas. Cada paso sirve solo, cuesta USD 0 al mes y se mide antes de seguir. La flota no hace falta (un repartidor): basta con no impedirla.
 
