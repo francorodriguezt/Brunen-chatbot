@@ -167,7 +167,7 @@ Ejemplo del tono esperado (al terminar una tarea):
 - Las dos cuentas miembros de Cloudflare tienen verificación en dos pasos activa.
 - Commits subidos hasta `63e020b` (CI en verde). Queda un commit local `57aefca` (marca lo publicado en `MEJORAS.md`) sin subir.
 
-**2026-11-25 — Prompt Maestro 2.7, respuestas de Franco y arreglo de la cola (D82–D84).** Se analizó un paquete externo ("BRUNEN ERP Prompt Maestro 2.7"; informe en `docs/ANALISIS_PROMPT_MAESTRO.md`). D82: la Ley 21.719 rige desde el 15-oct-2027 (Ley 21.855). D83: Franco decide el proyecto; envases de Brunen; carga inicial es venta; contabilidad y día a día del sistema con Felipe y Constanza; la visión (asistentes de IA, roles, análisis, finanzas) es la meta de largo plazo, por etapas (`MEJORAS.md` §7). D84: la app del repartidor perdía una marca si el servidor fallaba y decía "anotada"; ahora reintenta, muestra los rechazos, pregunta antes de salir y acepta marcas atrasadas (hasta 3 días) con la hora del teléfono; se cerró lo pendiente de D80 salvo los cortes de viaje; `/salud` revisa la base. Todo subido a GitHub con permiso de Franco; falta publicar.
+**2026-11-25 — Prompt Maestro 2.7, respuestas de Franco y arreglo de la cola (D82–D84).** Se analizó un paquete externo ("BRUNEN ERP Prompt Maestro 2.7"; informe en `docs/ANALISIS_PROMPT_MAESTRO.md`). D82: la Ley 21.719 rige desde el 15-oct-2027 (Ley 21.855). D83: Franco decide el proyecto; envases de Brunen; carga inicial es venta; contabilidad y día a día del sistema con Felipe y Constanza; la visión (asistentes de IA, roles, análisis, finanzas) es la meta de largo plazo, por etapas (`MEJORAS.md` §7). D84: la app del repartidor perdía una marca si el servidor fallaba y decía "anotada"; ahora reintenta, muestra los rechazos, pregunta antes de salir y acepta marcas atrasadas (hasta 3 días) con la hora del teléfono; se cerró lo pendiente de D80 salvo los cortes de viaje; `/salud` revisa la base. Subido a GitHub y publicado con permiso de Franco (bot `d06e1e4d`). D85: `npm run comprobar` (9 comprobaciones después de cada publicación) y borrador del aviso de privacidad (`docs/AVISO_PRIVACIDAD.md`).
 
 ---
 
@@ -415,7 +415,7 @@ Si eres otra IA o una persona sin acceso a ese computador, salta esta sección.
 | A15 | Pedidos de prueba en la base real | Baja | Borrarlos antes de abrir |
 | A16 | Franco es Super Administrador de la cuenta; la política de Access tiene un solo correo | Baja | Bajarlo a Administrator al final; sumar correos de Coni y Franco |
 | A17 | `CLAUDE.md` desactualizado | Baja | Corregido en D84 |
-| A18 | La app del repartidor borraba una marca si el servidor fallaba y decía "anotada" | Alta (operación) | Corregido en D84, con pruebas; falta publicar |
+| A18 | La app del repartidor borraba una marca si el servidor fallaba y decía "anotada" | Alta (operación) | Corregido y publicado en D84, con pruebas |
 
 ### 12.11 Continuidad y recuperación
 - Volver a la versión anterior del bot: `wrangler rollback` (`docs/INCIDENTES.md`). Base: Time Travel de D1 con puntos de restauración anotados (`docs/PASOS_FRANCO.md`, `docs/INCIDENTES.md`) y restauración desde la planilla con `npm run restaurar-respaldo` (`docs/RESPALDO.md`).

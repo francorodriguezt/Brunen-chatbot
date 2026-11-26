@@ -14,7 +14,7 @@ Recomendación: **no pegarlo entero como instrucción**. Tomar sus reglas, resum
 
 ## 2. Dos cosas que hay que corregir ya
 
-> **Las dos quedaron corregidas el 2026-11-25** (D82 y D84), con pruebas. Falta publicar el arreglo de la app.
+> **Las dos quedaron corregidas el 2026-11-25** (D82 y D84), con pruebas, y publicadas el mismo día.
 
 ### 2.1 La app del repartidor puede perder una entrega y decir que la anotó
 
@@ -111,7 +111,7 @@ Para el celular no generaría imágenes nuevas: capturaría la app real con dato
 
 ## 8. Orden que propongo
 
-1. ~~**Arreglar la cola del repartidor** (2.1), con pruebas~~. Hecho (D84); falta publicar con permiso.
+1. ~~**Arreglar la cola del repartidor** (2.1), con pruebas~~. Hecho y publicado (D84).
 2. ~~**Corregir la fecha legal** en los documentos (2.2)~~. Hecho (D82).
 3. **Salir a la operación real:** cuenta del panel, repartidor probando en su teléfono, un día de prueba, número de WhatsApp. Sin uso real no se sabe qué falta.
 4. **Congelar los viajes al publicar** y cerrar lo demás de D80.
