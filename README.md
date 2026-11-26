@@ -13,14 +13,14 @@ Brunen vende por WhatsApp el 100 % de sus pedidos: una persona recibe cada mensa
 | Etapa | Qué incluye | Estado |
 |---|---|---|
 | 0 | Precios, despacho, firma del webhook y pruebas | Lista |
-| 1 | Worker desplegado y conectado a la API de WhatsApp de Meta (modo prueba) | Lista |
-| 2 | Deduplicación por mensaje en la base D1, registro en Google Sheets y feriados | Lista |
+| 1 | Worker desplegado y conectado a la API de WhatsApp de Meta | Lista |
+| 2 | Deduplicación por mensaje en la base D1 y feriados | Lista |
 | 3 | Intérprete de mensajes: reglas y respaldo con IA (Groq) | Lista |
-| 4 | Flujo de pedido: cliente, precio, fecha, memoria de la conversación, registro en D1 | Encendido en producción solo para números de prueba y probado de punta a punta; falta abrirlo a clientes reales |
-| 5 | Bandeja de pedidos y avisos para la operadora; Telegram solo para lo muy urgente | La bandeja está en el panel, todavía sin desplegar; el envío de avisos por Telegram está listo, falta crear el bot |
-| 6 | Comprobantes, audio y lista del día para el repartidor | La lista del día está en el panel (pestaña Reparto); falta guardar los comprobantes |
-| 7 | Producción y piloto con clientes | Pendiente |
-| P | Panel de administración: pedidos, avisos, reparto del día, clientes por ubicación, mapa y estadísticas | Bandeja de pedidos y avisos, reparto del día, pedidos anotados a mano y búsqueda: listos y probados en local; el acceso será Cloudflare Access; falta activarlo y desplegar |
+| 4 | Flujo de pedido: cliente, precio, fecha, memoria de la conversación, registro en D1 | En producción solo para números de prueba; falta conectar el número de la empresa para abrirlo a clientes |
+| 5 | Panel de administración y avisos urgentes por Telegram | Panel publicado detrás de Cloudflare Access; el envío a Telegram está listo, falta crear el bot |
+| 6 | Comprobantes, audio y lista del día para el repartidor | Audios transcritos y lista del día en el panel; los comprobantes van a Telegram |
+| 7 | Producción y piloto con clientes | Pendiente: número de la empresa, aviso de privacidad aprobado y un día de prueba |
+| P | Plataforma de reparto propia: ruta optimizada con viajes y recargas, app del repartidor que funciona sin señal, seguimiento con consentimiento y hora de llegada | Publicada; falta probarla en un día real |
 
 Hoy el bot atiende solo a los números de prueba: anota el pedido de punta a punta, responde una sola vez y, si es un cliente nuevo, le pide el nombre, la dirección y, si es departamento, el edificio. Cómo conversa con los clientes está en [docs/CONVERSACIONES.md](docs/CONVERSACIONES.md) y el detalle y los criterios de cada etapa en [docs/ETAPAS.md](docs/ETAPAS.md).
 
@@ -56,10 +56,12 @@ Los pedidos por confirmar y el reparto del día, con datos de demostración (tod
 - Las 45 decisiones, con su motivo y su fuente, están en [docs/DECISIONES.md](docs/DECISIONES.md).
 
 ## Calidad
-- Más de 1.000 pruebas automáticas con Vitest: los casos de precios del negocio, mensajes de ejemplo para el intérprete, conversaciones completas de punta a punta y la seguridad del panel (tokens falsificados, vencidos o de otra aplicación).
+- Más de 1.500 pruebas automáticas con Vitest: los casos de precios del negocio, mensajes de ejemplo para el intérprete, conversaciones completas de punta a punta y la seguridad del panel (tokens falsificados, vencidos o de otra aplicación).
 - Las pruebas de la base de datos corren el SQL de verdad sobre SQLite con las migraciones reales, no sobre un doble.
 - TypeScript en modo estricto y CI en GitHub Actions (`npm run check` en cada push).
 - Scripts para validar la configuración y simular un mensaje firmado como Meta, sin depender de Meta.
+- `npm run comprobar` revisa en producción, después de cada publicación, que todo responda como debe (sin cambiar nada).
+- Cómo avisar de una falla de seguridad: [SECURITY.md](SECURITY.md).
 
 ## Estructura
 | Carpeta | Contenido |
