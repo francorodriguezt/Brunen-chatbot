@@ -23,7 +23,7 @@ import type { EstadoConversacion } from './conversacion';
 import type { DatosDelCliente } from './datos';
 import { fechaHoraLocal } from './despacho';
 import type { PropuestaEntrega } from './entrega';
-import { accionDePedido, type AccionSugerida, type Intencion, type Interpretacion, type ItemInterpretado } from './interprete';
+import { accionDePedido, diceCuantos, type AccionSugerida, type Intencion, type Interpretacion, type ItemInterpretado } from './interprete';
 import { generarIdPedido, type CompletarPedido, type DatosPrevios, type LineaPedido, type PedidoARegistrar } from './pedidos';
 import { cotizarPedido, ErrorPrecio, type Cotizacion, type TipoBidon } from './precios';
 import type { TablaPrecios } from './preciosHoja';
@@ -112,14 +112,46 @@ function escalar(e: EntradaMotor, tipo: TipoAlerta, resumen: string, respuesta: 
   return { intencion: e.interpretacion.intencion, respuesta, memoria, alerta: alerta(e, tipo, resumen) };
 }
 
+/**
+ * Lo que costaría lo que preguntó, solo si el precio es seguro (D95): la hoja PRECIOS al día, la ficha leída y sin
+ * avisos, ningún caso que revise una persona (empresa, cantidad inusual). Si no, null y se muestra la tabla.
+ */
+function cotizarPregunta(e: EntradaMotor, items: readonly ItemCompleto[]): Cotizacion | null {
+  if (e.precios.origen !== 'hoja' || e.cliente.estado === 'no_disponible') return null;
+  const cliente = e.cliente.estado === 'encontrado' ? e.cliente.cliente : null;
+  if (cliente && cliente.avisos.length > 0) return null;
+  if (items.some((item) => item.cantidad > POLITICAS.cantidadInusual)) return null;
+  try {
+    const cotizacion = cotizarPedido([...items], { tipo: cliente?.tipo ?? 'normal', precioEspecial20L: cliente?.precioEspecial20L ?? null }, e.precios.tabla);
+    return cotizacion.requiereRevision || cotizacion.lineas.some((l) => l.subtotal === null) ? null : cotizacion;
+  } catch (error) {
+    if (error instanceof ErrorPrecio) return null;
+    throw error;
+  }
+}
+
 function responderPregunta(e: EntradaMotor): Decision {
-  const { tipo_pregunta: tipo, comuna_mencionada: comuna } = e.interpretacion;
-  const informar = (respuesta: string): Decision => ({ intencion: 'pregunta', respuesta, memoria: MANTENER });
+  const { tipo_pregunta: tipo, comuna_mencionada: comuna, fecha_texto: fecha, items } = e.interpretacion;
+  const bloqueado = e.cliente.estado === 'encontrado' && e.cliente.cliente.estado === 'bloqueado';
+  // Si nombró bidones con tamaño y cantidad, después de contestar se le ofrece anotarlos: un "sí" basta (D95).
+  const completos = items.length > 0 && !accionDePedido(items) && !bloqueado && diceCuantos(e.texto) ? (items as ItemCompleto[]) : null;
+  const informar = (respuesta: string, yaOfrece = false): Decision =>
+    completos
+      ? {
+          intencion: 'pregunta',
+          respuesta: yaOfrece ? respuesta : `${respuesta}\n${textos.ofrecerAnotar(completos)}`,
+          memoria: { accion: 'guardar', estado: { espera: 'cotizacion', items: completos, ...(fecha && { fecha_texto: fecha }), ...(comuna && { comuna_mencionada: comuna }) } },
+        }
+      : { intencion: 'pregunta', respuesta, memoria: MANTENER };
   if (tipo === 'precio') {
     // Con la hoja de precios dañada no se le dice un valor que podría no ser el vigente.
-    return e.precios.origen === 'hoja'
-      ? informar(textos.precios(e.precios.tabla))
-      : escalar(e, 'error', `Preguntó por precios y la hoja PRECIOS no es confiable: ${e.precios.problemas[0] ?? 'sin detalle'}`);
+    if (e.precios.origen !== 'hoja') return escalar(e, 'error', `Preguntó por precios y la hoja PRECIOS no es confiable: ${e.precios.problemas[0] ?? 'sin detalle'}`);
+    const cotizacion = completos ? cotizarPregunta(e, completos) : null;
+    if (cotizacion) return informar(textos.cotizacion(cotizacion.lineas, cotizacion.total, e.cliente.estado === 'nuevo'), true);
+    // "¿Cuánto sale el de 12?": solo los tamaños que nombró.
+    const tipos = new Set<string>(items.map((item) => item.tipo));
+    const suyos = e.precios.tabla.filter((t) => tipos.has(t.tipo));
+    return informar(textos.precios(suyos.length > 0 ? suyos : e.precios.tabla));
   }
   if (tipo === 'zona') return informar(textos.zona(comuna));
   if (tipo === 'horario') return informar(textos.horarios());
@@ -242,6 +274,12 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
     notas.push(`Pidió "${e.entrega.pedida}"${e.entrega.motivoAjuste ? ` (${motivoDeAjuste(e.entrega)}): se propuso otra fecha` : ''}.`);
   }
 
+  // Lo que además preguntó (D95): se le contesta en la misma respuesta y queda en el aviso por si hace falta más.
+  const pregunta = e.interpretacion.intencion === 'pedido' ? e.interpretacion.tipo_pregunta : undefined;
+  const extra = pregunta === 'horario' ? textos.horarioDelReparto() : pregunta === 'pago' ? textos.comoPagar() : undefined;
+  if (pregunta === 'horario') motivos.push('También preguntó por el horario: respóndele si hace falta.');
+  if (pregunta === 'pago') motivos.push('También preguntó cómo pagar: envíale los datos de transferencia si los pide.');
+
   if (repite) notas.push('Pidió repetir su último pedido.');
   if (previo) {
     notas.push(`Cliente sin ficha en CLIENTES, conocido por su pedido ${previo.idPedido}: se usaron sus datos.`);
@@ -279,11 +317,11 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
     respuesta = textos.fueraDeZona(comuna);
   } else if (!cliente && !previo) {
     avisoTipo = 'cliente_nuevo';
-    respuesta = textos.pedirDatos(lineas);
+    respuesta = extra ? `${textos.pedirDatos(lineas)}\n${extra}` : textos.pedirDatos(lineas);
     // El pedido ya queda anotado; lo que conteste el cliente lo completa (D37).
     memoria = { accion: 'guardar', estado: { espera: 'datos', items: [], id_pedido: idPedido, intentos: 0 } };
   } else {
-    respuesta = textos.pedidoAnotado({ lineas, total: precioSeguro && cotizacion ? cotizacion.total : null, entrega: e.entrega, fechaSegura, direccion: pedido.direccion, comuna: pedido.comuna });
+    respuesta = textos.pedidoAnotado({ lineas, total: precioSeguro && cotizacion ? cotizacion.total : null, entrega: e.entrega, fechaSegura, direccion: pedido.direccion, comuna: pedido.comuna, extra });
   }
 
   return {

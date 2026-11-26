@@ -57,8 +57,8 @@ export function responderEnContexto(texto: string, estado: EstadoConversacion): 
     return diceQueNoHayEdificio(texto) ? { tipo: 'sin_edificio' } : null;
   }
 
-  // Se le ofreció lo de siempre (D69): un "sí" lo anota tal cual. Se mira antes de quitar el relleno, que borra el "si".
-  if (estado.espera === 'lo_de_siempre' && ACEPTA.test(preparar(texto).replace(/[?/!.]/g, ' ').replace(/\s+/g, ' ').trim())) {
+  // Se le ofreció lo de siempre (D69) o lo que cotizó (D95): un "sí" lo anota tal cual. Se mira antes de quitar el relleno, que borra el "si".
+  if ((estado.espera === 'lo_de_siempre' || estado.espera === 'cotizacion') && ACEPTA.test(preparar(texto).replace(/[?/!.]/g, ' ').replace(/\s+/g, ' ').trim())) {
     const items = validarItems(estado.items);
     return items && items.length > 0 ? { tipo: 'interpretacion', interpretacion: comoPedido(estado, items) } : null;
   }

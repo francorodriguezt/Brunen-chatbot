@@ -113,6 +113,15 @@ export function extraerItems(texto: string): ItemInterpretado[] {
   return [...porTipo.values()];
 }
 
+/**
+ * Si el mensaje dice con un número cuántos bidones quiere (D95): "3 de 20" o "2x20" sí; "el bidón de 20" no (es una
+ * pregunta por el precio de uno, aunque se lea como un bidón).
+ */
+export function diceCuantos(texto: string): boolean {
+  const t = preparar(texto);
+  return [CANTIDAD_Y_TIPO, TIPO_POR_CANTIDAD, TIPO_CON_UNIDAD_POR_CANTIDAD, CANTIDAD_POR_TIPO, TIPO_SUELTO_POR_CANTIDAD].some((patron) => new RegExp(patron.source).test(t));
+}
+
 const DIAS_SEMANA: Readonly<Record<string, string>> = {
   lunes: 'lunes',
   martes: 'martes',
@@ -458,7 +467,8 @@ export function interpretar(texto: string): Interpretacion {
     items.length > 0 ? verbo || pideEnvases || !DEVOLUCION.test(t) : verbo && (MENCIONA_PRODUCTO.test(t) || PEDIR_EXPLICITO.test(t));
   if (quierePedir) {
     const accion = accionDePedido(items);
-    return resultado('pedido', { ...(accion && { accion }), ...(pideEnvases && { pide_envase: true }) });
+    // Si además preguntó algo ("mándame 2 de 20, ¿a qué hora llegan?"), la pregunta va con el pedido (D95).
+    return resultado('pedido', { ...(accion && { accion }), ...(pideEnvases && { pide_envase: true }), ...(tipoPregunta && { tipo_pregunta: tipoPregunta }) });
   }
 
   // Envases vacíos para devolver (regla 5: se anotan para el repartidor). No es un pedido.
