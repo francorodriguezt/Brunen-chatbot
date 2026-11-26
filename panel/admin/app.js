@@ -1167,7 +1167,23 @@ function lineaDelRepartidor(seguimiento) {
   );
 }
 
-function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja = null, mensajes = {}, sinReparto = null, seguimiento = null }) {
+/**
+ * La versión de la ruta publicada (D94): a qué hora se publicó y, hoy, si la app del repartidor ya la tiene. Un cambio que
+ * no confirmó va destacado: puede estar siguiendo el orden anterior.
+ */
+function lineaDePublicacion(publicacion, fecha) {
+  if (!publicacion) return null;
+  const hora = (s) => formatoHora.format(new Date(s * 1000));
+  const cuando = `${publicacion.version > 1 ? 'Cambiada' : 'Publicada'} a las ${hora(publicacion.publicadaEn)}`;
+  if (fecha !== hoyEnSantiago()) return h('p', { clase: 'suave' }, `${cuando}.`);
+  if (publicacion.vistaVersion === null) return h('p', { clase: 'suave' }, `${cuando}. El repartidor todavía no abre la ruta en su app.`);
+  if (publicacion.vistaVersion < publicacion.version) {
+    return h('p', { clase: 'falta' }, `${cuando}: el repartidor todavía no confirma el cambio en su app. Avísale por WhatsApp.`);
+  }
+  return h('p', { clase: 'suave' }, `${cuando}. El repartidor la tiene desde las ${hora(publicacion.vistaEn)}.`);
+}
+
+function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja = null, mensajes = {}, sinReparto = null, seguimiento = null, publicacion = null }) {
   const resumen = $('resumen-reparto');
   const lista = $('lista-reparto');
   // Un día marcado sin reparto (D74): el bot ya no lo ofrece, pero lo que se anotó antes hay que moverlo.
@@ -1220,6 +1236,7 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja 
             : 'Ordenada por comuna. En «Ruta eficiente y mapa» puedes calcular el orden más corto y publicarlo para el repartidor.',
         )
       : null,
+    (reparto.publicada ? lineaDePublicacion(publicacion, reparto.fecha) : null) ?? '',
     sinConfirmar ?? '',
     lineaDelRepartidor(seguimiento) ?? '',
     cierreDelDia(caja) ?? '',
@@ -1654,6 +1671,17 @@ function filasDelRepartidor(repartoHoy, irAParada) {
     );
   } else if (seguimiento) {
     filas.push(filaDeHoy({ texto: 'Sin ubicación del repartidor hoy', detalle: 'Aparece cuando inicia la ruta en su app', tono: 'tranquila', alTocar: () => irAParada(null) }));
+  }
+  const publicacion = repartoHoy?.publicacion ?? null;
+  if (reparto.publicada && publicacion && publicacion.vistaVersion !== null && publicacion.vistaVersion < publicacion.version) {
+    filas.push(
+      filaDeHoy({
+        texto: `El repartidor no ha visto el cambio de ruta de las ${formatoHora.format(new Date(publicacion.publicadaEn * 1000))}`,
+        detalle: 'Avísale por WhatsApp para que revise su app',
+        tono: 'con-algo',
+        alTocar: () => irAParada(null),
+      }),
+    );
   }
   if (reparto.publicada) {
     const quien = (p) => `${p.nombre || p.direccion || 'Sin nombre'}${p.comuna ? ` (${p.comuna})` : ''}`;

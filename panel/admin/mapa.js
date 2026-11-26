@@ -141,8 +141,9 @@ export function crearRutaDelDia({ contenedor, api, h, boton, avisar, alPublicar 
     if (estado.ocupado) return;
     estado.ocupado = true;
     try {
-      await api('/api/ruta/publicar', { fecha: estado.fecha, orden: estado.orden });
-      avisar('Ruta publicada: el repartidor ya ve las paradas en este orden.');
+      const { version } = await api('/api/ruta/publicar', { fecha: estado.fecha, orden: estado.orden });
+      // D94: desde la segunda publicación del día, la app del repartidor le avisa del cambio hasta que lo confirme.
+      avisar(version > 1 ? 'Ruta cambiada: el repartidor verá un aviso en su app hasta que lo confirme.' : 'Ruta publicada: el repartidor ya ve las paradas en este orden.');
       estado.ocupado = false;
       await cargar();
       alPublicar?.();
