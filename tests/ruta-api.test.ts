@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { manejarRuta } from '../src/panel/ruta-api';
 import type { PedidoARegistrar } from '../src/pedidos';
 import { RepositorioPuntos } from '../src/puntos';
@@ -140,6 +140,54 @@ describe('publicar la ruta', () => {
     await llamar('/api/ruta/publicar', { fecha: FECHA, orden: ruta.plan.orden });
     const ordenadas = (await repositorio.pedidosDelDia(FECHA)).filter((p) => p.ordenRuta !== null).sort((a, b) => (a.ordenRuta ?? 0) - (b.ordenRuta ?? 0));
     expect(ordenadas[0]?.id).toBe('P261113-AAAAA');
+  });
+});
+
+describe('viajes guardados al publicar (D86)', () => {
+  async function conTresGrandes() {
+    const db = crearBaseSqlite();
+    const repositorio = new RepositorioD1(db, () => 1);
+    const puntos = new RepositorioPuntos(db);
+    await repositorio.guardarPedido(pedido('P261113-AAAAA', 'Calle Uno 1', 'Ñuñoa', 30), AHORA - 100);
+    await repositorio.guardarPedido(pedido('P261113-BBBBB', 'Calle Dos 2', 'Providencia', 30), AHORA - 90);
+    await repositorio.guardarPedido(pedido('P261113-CCCCC', 'Calle Tres 3', 'Las Condes', 30), AHORA - 80);
+    const ctx = { repositorio, puntos, ahoraSegundos: AHORA };
+    const llamar = (ruta: string, cuerpo?: unknown) => {
+      const url = new URL(`https://panel.example${ruta}`);
+      const init: RequestInit = cuerpo === undefined ? { method: 'GET' } : { method: 'POST', headers: { 'content-type': 'application/json', 'x-panel': '1' }, body: JSON.stringify(cuerpo) };
+      return manejarRuta(new Request(url, init), url, ctx);
+    };
+    return { db, repositorio, llamar };
+  }
+  const ORDEN = ['P261113-AAAAA', 'P261113-BBBBB', 'P261113-CCCCC'];
+
+  it('al publicar guarda los viajes; si después se cancela un pedido, el mapa y la lista siguen con los mismos viajes', async () => {
+    const { db, repositorio, llamar } = await conTresGrandes();
+    expect(((await llamar('/api/ruta/publicar', { fecha: FECHA, orden: ORDEN })) as Response).status).toBe(200);
+    expect(await repositorio.viajesPublicados(FECHA)).toEqual(new Map([['P261113-AAAAA', 1], ['P261113-BBBBB', 1], ['P261113-CCCCC', 2]]));
+    db.sql("UPDATE pedidos SET estado = 'Cancelado' WHERE id = 'P261113-AAAAA'");
+    const ruta = await leer(await llamar(`/api/ruta?fecha=${FECHA}`));
+    expect(ruta.sigueLaPublicada).toBe(true);
+    expect(ruta.plan.cargas.map((c) => c.paradas)).toEqual([['P261113-BBBBB'], ['P261113-CCCCC']]);
+    expect(ruta.paradas.map((p) => [p.idPedido, p.carga])).toEqual([['P261113-BBBBB', 1], ['P261113-CCCCC', 2]]);
+  });
+
+  it('publicar de nuevo reemplaza los viajes de ese día', async () => {
+    const { repositorio, llamar } = await conTresGrandes();
+    await llamar('/api/ruta/publicar', { fecha: FECHA, orden: ORDEN });
+    await llamar('/api/ruta/publicar', { fecha: FECHA, orden: ['P261113-CCCCC', 'P261113-AAAAA', 'P261113-BBBBB'] });
+    expect(await repositorio.viajesPublicados(FECHA)).toEqual(new Map([['P261113-CCCCC', 1], ['P261113-AAAAA', 1], ['P261113-BBBBB', 2]]));
+  });
+
+  it('sin la tabla (antes de aplicar la migración 0016) la ruta se publica igual y los viajes van por capacidad', async () => {
+    const { db, repositorio, llamar } = await conTresGrandes();
+    db.sql('DROP TABLE viajes_publicados');
+    const silencio = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(((await llamar('/api/ruta/publicar', { fecha: FECHA, orden: ORDEN })) as Response).status).toBe(200);
+    expect(await repositorio.viajesPublicados(FECHA)).toEqual(new Map());
+    const ruta = await leer(await llamar(`/api/ruta?fecha=${FECHA}`));
+    expect(ruta.plan.cargas.map((c) => c.paradas)).toEqual([['P261113-AAAAA', 'P261113-BBBBB'], ['P261113-CCCCC']]);
+    silencio.mockRestore();
   });
 });
 

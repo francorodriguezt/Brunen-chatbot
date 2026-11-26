@@ -12,6 +12,7 @@
 
 import { TIPOS_DE_AVISO_DE_PEDIDO, type Alerta, type TipoAlerta } from './alertas';
 import type { BaseDatos } from './almacen';
+import { sumarDias } from './despacho';
 import type { EntregaParaContar } from './estadisticas';
 import type { CompletarPedido, DatosPrevios, LineaPedido, PedidoARegistrar } from './pedidos';
 import type { ItemPedido, TipoBidon } from './precios';
@@ -496,6 +497,34 @@ export class RepositorioD1 {
       ...unicos,
     );
     return filas.filter((f) => f.orden_ruta !== null).length;
+  }
+
+  /**
+   * Guarda en qué viaje del furgón quedó cada parada al publicar la ruta de ese día (D86). Reemplaza lo de ese día y
+   * borra lo de hace más de 30 días. 30 filas por consulta (3 valores cada una: D1 admite 100).
+   */
+  async guardarViajesPublicados(fecha: string, viajes: ReadonlyMap<string, number>): Promise<void> {
+    await this.db.prepare('DELETE FROM viajes_publicados WHERE fecha = ?1 OR fecha < ?2').bind(fecha, sumarDias(fecha, -30)).run();
+    const filas = [...viajes];
+    for (let i = 0; i < filas.length; i += 30) {
+      const grupo = filas.slice(i, i + 30);
+      const valores = grupo.map((_, n) => `(?${n * 3 + 1}, ?${n * 3 + 2}, ?${n * 3 + 3})`).join(', ');
+      await this.db
+        .prepare(`INSERT OR REPLACE INTO viajes_publicados (pedido_id, fecha, viaje) VALUES ${valores}`)
+        .bind(...grupo.flatMap(([id, viaje]) => [id, fecha, viaje]))
+        .run();
+    }
+  }
+
+  /** Los viajes guardados al publicar la ruta de ese día (D86). Vacío si no hay, o si falta la migración 0016. */
+  async viajesPublicados(fecha: string): Promise<Map<string, number>> {
+    try {
+      const filas = await this.filas('SELECT pedido_id, viaje FROM viajes_publicados WHERE fecha = ?1', fecha);
+      return new Map(filas.map((f) => [String(f.pedido_id), Number(f.viaje)]));
+    } catch (falla) {
+      console.error('No se pudieron leer los viajes publicados:', falla instanceof Error ? falla.message : falla);
+      return new Map();
+    }
   }
 
   // ---- Lo que lee y cambia el panel ----

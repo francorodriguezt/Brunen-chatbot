@@ -4,7 +4,7 @@
  *
  * - GET  /api/ruta?fecha=YYYY-MM-DD[&modo=optima]  la ruta del día: la publicada si hay, o la que calcula el servidor.
  * - POST /api/ruta/evaluar   { fecha, orden }  kilómetros y cargas de un orden a mano, sin guardar nada.
- * - POST /api/ruta/publicar  { fecha, orden }  guarda el orden: es el que ve el repartidor.
+ * - POST /api/ruta/publicar  { fecha, orden }  guarda el orden y sus viajes (D86): es lo que ve el repartidor.
  * - POST /api/puntos         { direccion, comuna, lat, lng }  un pin puesto a mano.
  *
  * El plan cubre las paradas que faltan por entregar y tienen ubicación (un punto exacto o el centro de su comuna). Las
@@ -46,7 +46,7 @@ interface ParadaConUbicacion {
 /** Las paradas del día con su ubicación, separadas en las que faltan por entregar, las entregadas y las sin ubicar. */
 async function cargarDelDia(ctx: ContextoRuta, fecha: string) {
   const pedidos = await ctx.repositorio.pedidosDelDia(fecha);
-  const reparto = armarReparto(pedidos, fecha);
+  const reparto = armarReparto(pedidos, fecha, await ctx.repositorio.viajesPublicados(fecha));
   const conocidos = await ctx.puntos.deDirecciones(reparto.paradas.map((p) => ({ direccion: p.direccion, comuna: p.comuna })));
   const paradas: ParadaConUbicacion[] = [];
   const paraRuta: ParadaParaRuta[] = [];
@@ -117,7 +117,8 @@ export async function manejarRuta(request: Request, url: URL, ctx: ContextoRuta)
     let plan: PlanDeRuta | null = null;
     if (publicado && publicado.length === datos.paraRuta.length) {
       try {
-        plan = evaluarOrden(datos.paraRuta, publicado);
+        // El mapa dibuja los mismos viajes que ve el repartidor (D86).
+        plan = evaluarOrden(datos.paraRuta, publicado, CAPACIDAD_POR_VIAJE, new Map(datos.reparto.paradas.map((p) => [p.idPedido, p.carga])));
       } catch {
         plan = null; // el orden publicado ya no calza con las paradas: se calcula de nuevo
       }
@@ -163,6 +164,14 @@ export async function manejarRuta(request: Request, url: URL, ctx: ContextoRuta)
     const ids = [...datos.entregadas, ...plan.orden, ...datos.sinUbicar];
     if (ids.length > MAXIMO_DE_PARADAS_PUBLICADAS) return error(422, `La ruta tiene más de ${MAXIMO_DE_PARADAS_PUBLICADAS} paradas: el repartidor las verá por comuna.`);
     await ctx.repositorio.publicarOrdenDeRuta(fecha, ids);
+    // Se guardan los viajes tal como los verá el repartidor ahora (D86). Si falla (sin la migración 0016), la ruta queda
+    // publicada igual y los viajes se arman por capacidad, como antes.
+    try {
+      const publicado = armarReparto(await ctx.repositorio.pedidosDelDia(fecha), fecha);
+      await ctx.repositorio.guardarViajesPublicados(fecha, new Map(publicado.paradas.map((p) => [p.idPedido, p.carga])));
+    } catch (falla) {
+      console.error('No se pudieron guardar los viajes publicados:', falla instanceof Error ? falla.message : falla);
+    }
     return json({ ok: true, paradas: datos.entregadas.length + plan.orden.length + datos.sinUbicar.length });
   }
   return error(400, 'Solicitud no válida.');

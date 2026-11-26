@@ -104,14 +104,21 @@ export interface PlanDeRuta {
   minutos: number;
 }
 
-/** Calcula las cargas, los tramos y los kilómetros de un orden dado. Parte las cargas donde el furgón se queda sin bidones. */
-function planDe(paradas: readonly ParadaParaRuta[], capacidad: number): PlanDeRuta {
+/**
+ * Calcula las cargas, los tramos y los kilómetros de un orden dado. Parte las cargas donde el furgón se queda sin bidones,
+ * o, con `viajeDe` (el viaje de cada parada en la ruta publicada, D86), donde cambia el viaje, con ese mismo número.
+ */
+function planDe(paradas: readonly ParadaParaRuta[], capacidad: number, viajeDe?: ReadonlyMap<string, number>): PlanDeRuta {
   // Se llena el furgón en el orden de la ruta; cuando la siguiente parada no cabe, empieza otro viaje.
+  const conViajes = viajeDe !== undefined && paradas.every((p) => viajeDe.has(p.id));
   const viajes: ParadaParaRuta[][] = [];
+  const numeros: number[] = [];
   let enViaje = 0;
   for (const parada of paradas) {
-    if (viajes.length === 0 || enViaje + parada.bidones > capacidad) {
+    const numero = conViajes ? (viajeDe?.get(parada.id) ?? null) : null;
+    if (viajes.length === 0 || (numero !== null ? numero !== numeros[numeros.length - 1] : enViaje + parada.bidones > capacidad)) {
       viajes.push([]);
+      numeros.push(numero ?? viajes.length);
       enViaje = 0;
     }
     (viajes[viajes.length - 1] as ParadaParaRuta[]).push(parada);
@@ -119,7 +126,7 @@ function planDe(paradas: readonly ParadaParaRuta[], capacidad: number): PlanDeRu
   }
   const cargas: CargaDeRuta[] = viajes.map((viaje, i) => {
     const bidones = viaje.reduce((suma, p) => suma + p.bidones, 0);
-    return { numero: i + 1, paradas: viaje.map((p) => p.id), bidones, excedeFurgon: bidones > capacidad, recargaEn: null };
+    return { numero: numeros[i] ?? i + 1, paradas: viaje.map((p) => p.id), bidones, excedeFurgon: bidones > capacidad, recargaEn: null };
   });
 
   const tramos: TramoDeRuta[] = [];
@@ -150,13 +157,21 @@ function planDe(paradas: readonly ParadaParaRuta[], capacidad: number): PlanDeRu
   return { orden: paradas.map((p) => p.id), cargas, tramos, km, minutos };
 }
 
-/** El plan de las paradas en el orden que se le da, sin reordenar. Lanza un error si el orden no usa cada parada una vez. */
-export function evaluarOrden(paradas: readonly ParadaParaRuta[], orden: readonly string[], capacidad: number = CAPACIDAD_POR_VIAJE): PlanDeRuta {
+/**
+ * El plan de las paradas en el orden que se le da, sin reordenar. Lanza un error si el orden no usa cada parada una vez.
+ * `viajeDe`: el viaje de cada parada en la ruta publicada (D86), para dibujar los mismos viajes que ve el repartidor.
+ */
+export function evaluarOrden(
+  paradas: readonly ParadaParaRuta[],
+  orden: readonly string[],
+  capacidad: number = CAPACIDAD_POR_VIAJE,
+  viajeDe?: ReadonlyMap<string, number>,
+): PlanDeRuta {
   const porId = new Map(paradas.map((p) => [p.id, p]));
   if (orden.length !== paradas.length || new Set(orden).size !== orden.length || orden.some((id) => !porId.has(id))) {
     throw new Error('El orden no usa cada parada exactamente una vez');
   }
-  return planDe(orden.map((id) => porId.get(id) as ParadaParaRuta), capacidad);
+  return planDe(orden.map((id) => porId.get(id) as ParadaParaRuta), capacidad, viajeDe);
 }
 
 const MAXIMO_DE_PASADAS = 60;

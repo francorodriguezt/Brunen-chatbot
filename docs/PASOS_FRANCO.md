@@ -43,7 +43,7 @@ El bot hoy solo le contesta a los números de prueba (`NUMEROS_PERMITIDOS`). Par
 
 ## Mejoras que propongo (las hago yo)
 1. **Borrador del aviso de privacidad**: la ley rige desde el 15-oct-2027 (D82); conviene tenerlo antes de abrir a todos.
-2. ~~Cerrar los pendientes del seguimiento (D80)~~: hecho el 2026-11-25 (D84), salvo guardar los cortes de viaje al publicar la ruta. También se corrigió la cola de la app del repartidor, que podía perder marcas.
+2. ~~Cerrar los pendientes del seguimiento (D80)~~: hecho el 2026-11-25 (D84 y D86). También se corrigió la cola de la app del repartidor, que podía perder marcas. Para que los viajes guardados (D86) funcionen en producción falta aplicar la migración 0016 en la base real y publicar.
 3. **Que el bot lea las fichas de la base** en vez de la hoja CLIENTES: una sola fuente de clientes, la misma que ve el panel.
 4. ~~**Una comprobación automática después de publicar** (`npm run comprobar`)~~ Hecho (D85): revisa sola `/salud`, la firma falsa, que la pública no muestre la administración, etc., en vez de hacerlo a mano cada vez.
 
