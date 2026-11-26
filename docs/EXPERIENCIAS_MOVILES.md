@@ -52,7 +52,7 @@ La especificación coincide con lo que ya decidimos: un solo backend (los Worker
 |---|---|---|---|---|
 | **Hoy:** pedidos, por confirmar, en reparto, entregas, incidencias, repartidor y ubicación, próximas entregas | "Hoy" con tarjetas que abren su lista (D70), la hora de los datos (D88), y el repartidor con su última ubicación y las próximas entregas (D92) | Las alertas "sin señal" y "ruta no iniciada" | Chico | **Sí** (umbrales) |
 | **Pedidos y clientes:** buscar, historial, pago, sin cambiar el pasado | Sí (D53, D57); cada pedido guarda su dirección y su precio | — | — | — |
-| **Despacho:** viajes, ubicación con antigüedad, versiones de la ruta y acuse del repartidor | Ruta del día, viajes guardados (D86), ubicación con antigüedad | Versiones de la ruta publicada y que el repartidor confirme los cambios | Medio | No |
+| **Despacho:** viajes, ubicación con antigüedad, versiones de la ruta y acuse del repartidor | Ruta del día, viajes guardados (D86), ubicación con antigüedad, versiones de la ruta y el acuse del repartidor (D94) | — | — | — |
 | **Inventario y Finanzas** | No existen | La visión, por etapas | Grande | **Sí** |
 | **Alertas:** repartidor sin señal, ruta no iniciada, cobros por conciliar, errores | Avisos, el vigía y Telegram | "Repartidor sin señal hace más de N min" y "ruta no iniciada a las HH:MM" | Chico a medio | **Sí:** los umbrales |
 | **Navegación abajo:** Hoy, Pedidos, Inventario, Finanzas, Más | Pestañas arriba (Hoy, Pedidos, Clientes, Reparto, Avisos) | Barra abajo en el teléfono, solo con las secciones que existen | Medio | No |
@@ -69,7 +69,7 @@ La especificación coincide con lo que ya decidimos: un solo backend (los Worker
 
 1. **Chicos, sin decisiones** (app del repartidor): ~~siguiente parada destacada, el avance "8 de 12" y una línea fija de sincronización~~ (hechos, D90); ~~observaciones al entregar~~ (hecho, D91).
 2. **Panel en el teléfono:** ~~el repartidor y su última ubicación en Hoy~~ (hecho, D92), y las alertas "sin señal" y "ruta no iniciada" (con umbrales que decidas).
-3. **Versiones de la ruta**, con el acuse del repartidor.
+3. ~~**Versiones de la ruta**, con el acuse del repartidor~~ (hecho, D94).
 4. **Cobros** (propuesta 2): ahí entran el monto, el medio de pago, el pago parcial y "por verificar".
 5. **Libro de envases:** vacíos por formato y cierre con diferencias.
 6. **Navegación abajo** en el teléfono (app y panel), cuando haya más secciones.

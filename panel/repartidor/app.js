@@ -145,6 +145,55 @@ function pintarNoAnotadas() {
   );
 }
 
+// ---- Cambios de la ruta publicada (D94) ----
+
+let confirmandoVersion = false;
+
+/**
+ * Si la oficina volvió a publicar la ruta cuando la app ya tenía otra, se avisa hasta que el repartidor toque
+ * "Entendido". La primera versión del día que recibe la app se confirma sola: no hay cambio que avisar.
+ */
+function pintarCambioDeRuta() {
+  const caja = $('cambio-ruta');
+  const publicacion = ruta?.publicacion ?? null;
+  const cambio = Boolean(publicacion && publicacion.vista !== null && publicacion.vista < publicacion.version);
+  caja.hidden = !cambio;
+  if (!cambio) {
+    caja.replaceChildren();
+    if (publicacion && publicacion.vista === null && !sinConexion) void confirmarVersion(publicacion.version, true);
+    return;
+  }
+  caja.replaceChildren(
+    h('b', {}, `La oficina cambió la ruta a las ${hora(publicacion.publicadaEn)}.`),
+    ' Revisa el orden y la siguiente parada. ',
+    boton('Entendido', 'boton boton-chico boton-principal', () => void confirmarVersion(publicacion.version, false)),
+  );
+}
+
+async function confirmarVersion(version, enSilencio) {
+  if (confirmandoVersion) return;
+  confirmandoVersion = true;
+  try {
+    const { estado } = await pedir('/api/repartidor/ruta/vista', { version });
+    if (estado === 401) return pedirClave();
+    if (estado === 200) {
+      if (ruta?.publicacion?.version === version) ruta.publicacion.vista = version;
+      // También en la copia sin señal, para que el aviso no vuelva al abrir la app sin conexión.
+      const guardada = leer(CLAVE_RUTA);
+      if (guardada?.publicacion?.version === version) guardar(CLAVE_RUTA, { ...guardada, publicacion: { ...guardada.publicacion, vista: version } });
+    } else if (estado === 409 && !enSilencio) {
+      void cargarRuta(); // la oficina la cambió otra vez: se lee de nuevo
+      return;
+    }
+  } catch {
+    if (!enSilencio) avisar('Sin señal: toca Entendido de nuevo cuando vuelva.', true);
+    return;
+  } finally {
+    confirmandoVersion = false;
+  }
+  pintarCambioDeRuta();
+}
+
 /** "Entendido": el repartidor ya vio el rechazo; se quita del teléfono. */
 function olvidarMarca(op) {
   guardarCola(quitar(cola(), op));
@@ -179,6 +228,7 @@ function pintar() {
   pintarUbicacion();
   ajustarSeguimiento();
   pintarNoAnotadas();
+  pintarCambioDeRuta();
   pintarSincronizacion();
   const lista = $('paradas');
   const cifras = $('cifras-ruta');
@@ -755,6 +805,8 @@ async function iniciar() {
     anotarPrueba('vista', document.visibilityState === 'visible' ? 'Volviste a la app.' : 'Saliste de la app.');
     ajustarSeguimiento();
     if (document.visibilityState === 'visible') void enviarPosiciones();
+    // Al volver de Google Maps, la ruta se lee de nuevo si pasaron 2 minutos: así ve pronto un cambio de la oficina (D94).
+    if (document.visibilityState === 'visible' && Date.now() - (ultimaSincronizacion ?? 0) > 120_000) void vaciarCola();
   });
   setInterval(() => {
     if (colaDePosiciones().length > 0) void enviarPosiciones();
