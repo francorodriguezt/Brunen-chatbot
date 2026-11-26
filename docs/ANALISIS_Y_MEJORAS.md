@@ -71,7 +71,7 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 - **B1 (Must, hecho el 2026-11-14 de otra forma, D66: copia en Google Sheets cada 30 minutos, Excel desde el panel y script de restauración).** Los respaldos semanales eran manuales (D35). Time Travel guarda 7 días en el plan gratis (30 en el de pago). Se automatiza con una tarea programada del computador que exporte la base cada semana (gratis), o con R2 si se verifica que el plan gratis no exige tarjeta.
 - **B2 (Should).** Las pruebas usan SQLite, no D1. Un conjunto corto de pruebas en el runtime real (`@cloudflare/vitest-pool-workers`) para las consultas críticas evita sorpresas de diferencias entre ambos.
 - **B3 (Should).** Desde el 2026-09-01 D1 corta las consultas al pasar 100.000 escrituras al día. Cada índice cuenta como otra escritura. Conviene un aviso cuando el uso pase del 70 %.
-- **B4 (Must antes del 1-dic).** Definir cuánto tiempo se guardan pedidos y fichas (Ley 21.719).
+- **B4 (Must antes de abrir a todos; la ley rige desde el 15-oct-2027, D82).** Definir cuánto tiempo se guardan pedidos y fichas (Ley 21.719).
 
 ### C. Panel del administrador 🟡
 - Fuerte: bandeja clara, estados con color, historial, búsqueda, dos pestañas nuevas (Clientes, Reparto) y avance en vivo de las entregas.
@@ -108,7 +108,7 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 ### H. Seguridad y privacidad 🟡
 - Fuerte: RUT y clave con bloqueo creciente, Access para el administrador, cookies HttpOnly y SameSite, política de contenido, teléfonos enmascarados en los registros.
 - **H1 (Must).** Activar la detección de secretos y la protección al subir en el repositorio (gratis en repositorios públicos). Toma 5 minutos.
-- **H2 (Must antes del 1-dic).** Ley 21.719: aviso de privacidad, registro de qué datos se tratan, plazos de conservación y una función para olvidar a un cliente que lo pida. Hay un proyecto de ley que posterga la vigencia a diciembre de 2027; mientras no se apruebe, rige el 1 de diciembre de 2026.
+- **H2 (Must antes de abrir a todos; la ley rige desde el 15-oct-2027, D82).** Ley 21.719: aviso de privacidad, registro de qué datos se tratan, plazos de conservación y una función para olvidar a un cliente que lo pida. Hay un proyecto de ley que posterga la vigencia a diciembre de 2027; mientras no se apruebe, rige el 1 de diciembre de 2026.
 - **H3 (Should).** Dependabot y CodeQL en GitHub (gratis en público) y `npm audit` en cada subida.
 - **H4 (Could).** Con 5 intentos fallidos se bloquea la cuenta del repartidor: alguien puede bloquearlo a propósito. Una alternativa es bloquear por dispositivo.
 - **H5 (Could).** Documentar cómo cambiar `PANEL_SECRETO` (cambia todas las claves).
@@ -147,7 +147,7 @@ Calificación: 🟢 bien, 🟡 mejorable, 🔴 falta algo importante.
 | R3 | Pérdida de datos por una falla de la base | Baja | Alto | Respaldos automáticos (B1) y restauración probada |
 | R4 | Una sola persona conoce el sistema | Media | Alto | Documentación extensa y guía de incidentes (docs/INCIDENTES.md); falta entrenar a la operadora |
 | R5 | Cambios en precios o política de Meta | Media | Medio | Un mensaje por pedido; vigilar el uso |
-| R6 | Ley 21.719 | Media | Medio | H2, antes de diciembre o de la nueva fecha |
+| R6 | Ley 21.719 | Media | Medio | H2; la ley rige desde el 15-oct-2027 (D82) |
 | R7 | Se pasa del límite diario de escrituras de la base | Baja | Alto | Cargar el historial una sola vez; aviso de uso (B3) |
 | R8 | Los mapas gratuitos cortan el servicio | Media | Bajo | La lista de paradas y la ruta funcionan sin mapa |
 | R9 | Datos de clientes en servicios de terceros | Media | Alto | D32 y D62: las direcciones no salen; coordenadas aprendidas con el teléfono |

@@ -1,7 +1,7 @@
 # CLAUDE.md — Chatbot de WhatsApp para Brunen SpA
 
 ## Qué es
-Bot de WhatsApp (Cloud API de Meta) que recibe pedidos de bidones, calcula precio y fecha de entrega, registra en Google Sheets, guarda comprobantes en Drive y deriva a la operadora lo que no debe manejar. Lo construye Franco (estudiante, nivel intermedio, quiere aprender: explica el porqué de cada decisión en pocas líneas). El dueño es su hermano.
+Bot de WhatsApp (Cloud API de Meta) que recibe pedidos de bidones, calcula precio y fecha de entrega, registra en la base D1 (con respaldo en Google Sheets), manda los comprobantes a Telegram y deriva a la operadora lo que no debe manejar. Lo construye Franco (estudiante, nivel intermedio, quiere aprender: explica el porqué de cada decisión en pocas líneas). El dueño es su hermano.
 
 La fuente de verdad del negocio es `docs/conocimiento_brunen.md` (importado abajo). Si el código o una petición lo contradice, avisa antes de seguir. **Nunca inventes precios, horarios, comunas ni datos bancarios**: si falta un dato, márcalo PENDIENTE y que el código lo mande a revisión.
 
@@ -9,7 +9,8 @@ La fuente de verdad del negocio es `docs/conocimiento_brunen.md` (importado abaj
 
 ## Stack (costo objetivo: USD 0/mes)
 - Cloudflare Workers + TypeScript (plan gratuito). Entrada: `src/index.ts`.
-- Datos: Google Sheets (API). Archivos: Google Drive. Alertas internas: Telegram.
+- Datos: Cloudflare D1 (pedidos, avisos, clientes, reparto, cuentas). Google Sheets para CLIENTES, PRECIOS, CONFIGURACION, FERIADOS y el respaldo (D32, D33, D66). Comprobantes y alertas urgentes: Telegram (D68). Drive no se usa.
+- Panel: `brunen-admin` (administración, detrás de Cloudflare Access) y `brunen-panel` (portada y app del repartidor), en `src/panel/` y `panel/` (D51, D81).
 - Interpretación de mensajes: parser por reglas primero; LLM (Groq, plan gratuito) solo como respaldo. Al LLM se envía solo el texto del mensaje, nunca nombre ni dirección.
 - Pruebas: Vitest. Despliegue: `wrangler`.
 - Decisiones y su porqué: `docs/DECISIONES.md`. Plan por etapas: `docs/ETAPAS.md`.
@@ -30,7 +31,7 @@ La fuente de verdad del negocio es `docs/conocimiento_brunen.md` (importado abaj
 - **Webhook:** validar siempre `X-Hub-Signature-256`; responder 200 de inmediato y procesar con `ctx.waitUntil`; deduplicar por `wamid` (Meta reintenta).
 - **Zona horaria:** `America/Santiago` en todo cálculo de fechas. Feriados desde la hoja FERIADOS, nunca fijos en código.
 - **Pruebas:** toda función de cálculo lleva casos del documento de conocimiento (1–5 bidones de 20 L, 12 L, 10 L, cliente especial, mayorista, empresa, cliente nuevo, pedido mezclado, corte de las 9:00, sábado, domingo, feriado). Cada mensaje real mal interpretado se agrega (anonimizado) a `tests/mensajes.json`.
-- **Errores:** nunca dejan al cliente sin respuesta ni rompen el 200 al webhook; se registran (hoja ERRORES desde la Etapa 4).
+- **Errores:** nunca dejan al cliente sin respuesta ni rompen el 200 al webhook; se registran (registros de Workers y avisos del vigía; la hoja ERRORES solo con `REGISTRO_PLANILLA`, D44).
 - Código y comentarios en español, nombres consistentes en español. Commits en presente, un cambio lógico por commit.
 
 ## Seguridad y datos

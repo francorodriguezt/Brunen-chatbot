@@ -1,6 +1,6 @@
 # Conocimiento del proyecto — Chatbot Brunen SpA
 Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
-Última actualización: 2026-11-18
+Última actualización: 2026-11-25
 
 > Datos sensibles (cuenta bancaria, teléfono de la operadora, teléfonos de clientes) NO se guardan en este repo:
 > viven en la hoja CONFIGURACION / CLIENTES de la planilla. Aquí solo se indica dónde están.
@@ -53,6 +53,7 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 ## 5. Envases
 - Control manual de envases por devolver; no se cobra; se retiran al día siguiente.
 - El bot anota para el repartidor cuando el cliente tiene envases pendientes.
+- Los envases son de Brunen. Lo que se paga en una carga inicial es una venta, no una garantía que se devuelve (Franco, 2026-11-25, D83).
 
 ## 6. Horarios, cobertura y entregas
 - Despacho: lunes a viernes 10:00–18:00 · sábado 10:00–15:00 · domingos y festivos no.
@@ -68,6 +69,8 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 ## 8. Personas
 - Operadora: atención de 8:00 a 21:00 (teléfono en CONFIGURACION). Confirma pedidos y atiende reclamos, facturas y pagos a proveedores.
 - Dueño: hermano de Franco. Decide número, precios y condiciones.
+- Contabilidad y gastos: los lleva el dueño con la operadora (2026-11-25, D83).
+- El día a día del sistema (panel, avisos, contingencias) lo llevan el dueño y la operadora; Franco lo desarrolla y decide el proyecto (D83).
 
 ## 9. Reglas del bot
 1. Registra y calcula; no confirma. La operadora confirma.
@@ -133,7 +136,7 @@ Lo que el dueño quiere ver en el panel (2026-10-29): pedidos por confirmar (con
 - Con ~520 pedidos/mes y 1 mensaje por pedido: USD 0. Peor caso (50 pedidos diarios todos los días, ~1.300/mes): ~USD 6/mes.
 - Cloudflare Workers gratis: 100.000 solicitudes/día, 10 ms de CPU por invocación.
 - Groq gratis: no entrena ni retiene datos por defecto.
-- Ley 21.719 de datos personales: vigencia 1-dic-2026. El Senado aprobó en primer trámite (28-oct-2026) un proyecto que la posterga a 2027; mientras no sea ley, vale el 1-dic-2026 (D45).
+- Ley 21.719 de datos personales: rige desde el **15-oct-2027** (Ley 21.855, publicada el 2026-11-23; D82). Antes se esperaba el 1-dic-2026 (D45).
 
 ## 15. Turno de reparto (lo describió Franco el 2026-10-28; falta confirmarlo con el dueño y el repartidor)
 1. El repartidor llega a la planta.
