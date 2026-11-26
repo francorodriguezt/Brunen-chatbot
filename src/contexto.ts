@@ -27,6 +27,10 @@ const RELLENO = /\b(?:por favor|porfa|porfis|gracias|dale|ok|okey|si)\b/g;
 // "sí", "dale", "ya", "perfecto", "lo mismo", "sí, gracias"... para aceptar lo de siempre (D69).
 const ACEPTA =
   /^(?:si+|sip|sii|dale|ya|ok|okey|oka|bueno|perfecto|claro|eso|eso mismo|lo mismo|lo de siempre|de una|obvio|correcto|exacto|confirmo)(?: (?:si|dale|porfa|por favor|gracias|igual|nomas|no mas|lo mismo|lo de siempre|eso|perfecto|muchas gracias))*$/;
+// Después de una cotización (D95) "ok", "ya", "perfecto" o "bueno" suelen cerrar la charla, no pedir: solo un sí claro
+// la anota (D97). Con "lo de siempre" (D69) el cliente ya había dicho que quería pedir, y vale ACEPTA.
+const ACEPTA_COTIZACION =
+  /^(?:si+|sip|dale|confirmo|anotalo|anotamelo|anotelo|de una)(?: (?:si|dale|porfa|por favor|porfis|gracias|muchas gracias|anotalo|anotamelo|confirmo|po))*$/;
 const CANCELAR = /^(?:no|nada|nada mas|ya no|no gracias|no quiero|no necesito|mejor no|cancela|cancelar|cancelalo|olvidalo|olvida|dejalo|dejalo asi|no importa)$/;
 // "20", "de 20", "los de 20 litros", "quiero 12"...
 const SOLO_TIPO = /^(?:(?:los|las|el|la|del|es|son|seria|serian|quiero|necesito|bidones|bidon|botellones|botellon|de) )*(10|12|20)(?: (?:l|lt|lts|ltr|ltrs|litros|litro))?$/;
@@ -58,7 +62,8 @@ export function responderEnContexto(texto: string, estado: EstadoConversacion): 
   }
 
   // Se le ofreció lo de siempre (D69) o lo que cotizó (D95): un "sí" lo anota tal cual. Se mira antes de quitar el relleno, que borra el "si".
-  if ((estado.espera === 'lo_de_siempre' || estado.espera === 'cotizacion') && ACEPTA.test(preparar(texto).replace(/[?/!.]/g, ' ').replace(/\s+/g, ' ').trim())) {
+  const comoSi = preparar(texto).replace(/[?/!.]/g, ' ').replace(/\s+/g, ' ').trim();
+  if ((estado.espera === 'lo_de_siempre' && ACEPTA.test(comoSi)) || (estado.espera === 'cotizacion' && ACEPTA_COTIZACION.test(comoSi))) {
     const items = validarItems(estado.items);
     return items && items.length > 0 ? { tipo: 'interpretacion', interpretacion: comoPedido(estado, items) } : null;
   }

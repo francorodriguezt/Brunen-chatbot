@@ -113,6 +113,11 @@ export function extraerItems(texto: string): ItemInterpretado[] {
   return [...porTipo.values()];
 }
 
+/** Si el mensaje tiene un verbo de pedir ("quiero", "mándame"...). */
+export function tieneVerboDePedido(texto: string): boolean {
+  return VERBO_PEDIDO.test(preparar(texto));
+}
+
 /**
  * Si el mensaje dice con un número cuántos bidones quiere (D95): "3 de 20" o "2x20" sí; "el bidón de 20" no (es una
  * pregunta por el precio de uno, aunque se lea como un bidón).
