@@ -143,16 +143,30 @@ describe('marcas que llegan tarde, sin señal (D84)', () => {
     ]);
   });
 
-  it('vale hasta 3 días atrás; sin la fecha de su ruta, o con una más antigua o futura, vale solo hoy', async () => {
+  it('vale hasta 3 días atrás; sin la fecha de su ruta (la app anterior), vale solo hoy', async () => {
     const { env, repartidor } = await conPedidosAnteriores();
     const sinFecha = await marcar(env, repartidor, 'P261112-EEEEE', {});
     expect(sinFecha.status).toBe(409);
     expect(await sinFecha.json()).toEqual({ error: 'Ese pedido no es de la ruta de ese día: puede que lo hayan cambiado de fecha.' });
     expect((await marcar(env, repartidor, 'P261110-GGGGG', { fecha: '2026-11-10' })).status).toBe(200);
-    expect((await marcar(env, repartidor, 'P261109-FFFFF', { fecha: '2026-11-09' })).status).toBe(409);
-    expect((await marcar(env, repartidor, 'P261114-DDDDD', { fecha: '2026-11-14' })).status).toBe(409);
     // Una fecha que no existe no sirve: vale hoy.
     expect((await marcar(env, repartidor, 'P261113-AAAAA', { fecha: '2026-11-99' })).status).toBe(200);
+  });
+
+  it('una marca de una ruta de hace más de 3 días, o del futuro, se rechaza a la vista: no se anota para hoy', async () => {
+    const { db, env, repartidor } = await conPedidosAnteriores();
+    // El pedido del lunes se reagendó para hoy; la marca vieja del lunes no puede caer en la entrega de hoy.
+    db.sql("UPDATE pedidos SET fecha_confirmada = '2026-11-13' WHERE id = 'P261109-FFFFF'");
+    const vieja = await marcar(env, repartidor, 'P261109-FFFFF', { fecha: '2026-11-09', marcadoEn: AHORA - 4 * 86400 });
+    expect(vieja.status).toBe(409);
+    expect(await vieja.json()).toEqual({ error: 'Esa marca es de una ruta de hace más de 3 días: ya no se anota desde la app. Avísale a la oficina.' });
+    const vieja2 = await pedir(env, '/api/repartidor/pedidos/P261109-FFFFF/no-se-pudo', repartidor, { motivo: 'no_estaba', detalle: '', fecha: '2026-11-09' });
+    expect(vieja2.status).toBe(409);
+    expect((await marcar(env, repartidor, 'P261113-AAAAA', { fecha: '2026-11-14' })).status).toBe(409);
+    expect(db.sql("SELECT estado, entregado_en, no_entregado_en FROM pedidos WHERE id IN ('P261109-FFFFF', 'P261113-AAAAA') ORDER BY id")).toEqual([
+      { estado: 'Confirmado', entregado_en: null, no_entregado_en: null },
+      { estado: 'Confirmado', entregado_en: null, no_entregado_en: null },
+    ]);
   });
 
   it('la hora del teléfono vale solo si la marca llegó con atraso, y nunca una del futuro', async () => {
