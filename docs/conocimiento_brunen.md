@@ -1,6 +1,6 @@
 # Conocimiento del proyecto — Chatbot Brunen SpA
 Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
-Última actualización: 2026-11-25
+Última actualización: 2026-11-26
 
 > Datos sensibles (cuenta bancaria, teléfono de la operadora, teléfonos de clientes) NO se guardan en este repo:
 > viven en la hoja CONFIGURACION / CLIENTES de la planilla. Aquí solo se indica dónde están.
@@ -80,8 +80,8 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 5. Cliente con envases pendientes: anotar para el repartidor.
 6. Fuera de zona: informar comunas y registrar con estado `Fuera_de_zona`.
 7. Festivo o pedido posterior a las 9:00: proponer el siguiente día de despacho.
-8. Audio: el bot no responde. Los audios los responde siempre la operadora (dueño, 2026-10-29); el bot solo deja un aviso en el panel.
-9. Imagen: posible comprobante → Drive, asociar al pedido pendiente, alertar.
+8. Audio: el bot no responde. Los audios los responde siempre la operadora (dueño, 2026-10-29); el bot lo transcribe (Workers AI, D68) y deja el texto en un aviso del panel.
+9. Imagen o PDF: posible comprobante → se reenvía al grupo privado de Telegram del dueño y la operadora y queda un aviso en el panel (D68); una persona lo revisa y marca el pago.
 10. Fuera del horario de la operadora: registrar y avisar que se responderá en horario de atención.
 11. Contingencia: `ESTADO_SERVICIO = reducido` agrega `MENSAJE_EXCEPCION`; `BOT_ACTIVO = NO` apaga el bot.
 12. Mensajes que inicia el negocio fuera de la ventana de 24 h requieren plantillas aprobadas por Meta.
@@ -104,10 +104,10 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 - Interpretación: parser por reglas + LLM de respaldo (Groq gratis). Gemini gratis descartado (usa los datos).
 - Datos: los pedidos y los avisos viven en la base D1 de Cloudflare, junto con la memoria del bot (mensajes ya vistos, pedido a medias, último pedido); Google Sheets sigue para CLIENTES, PRECIOS, CONFIGURACION y FERIADOS (D32, D33). Respaldo de D1: Time Travel (7 días) y, desde el 2026-11-14, una copia en la misma planilla (hojas RESPALDO_PEDIDOS cada 30 minutos y RESPALDO_CLIENTES cada noche), la descarga en Excel desde el panel y un script para restaurar (D66, docs/RESPALDO.md).
 - Panel de administración propio (un Worker aparte, detrás de Cloudflare Access: D34) para que la operadora y el dueño vean, confirmen y cambien pedidos y avisos. Telegram queda solo para lo muy urgente (reclamos y fallas del sistema). Desde el 2026-11-10 el panel también arma el reparto del día, listo para copiar o descargar, y permite anotar a mano los pedidos que no llegan por el bot (D42).
-- Comprobantes: se guardarán en D1 por 60 días y se verán en el panel (D30, D32; Drive con la cuenta de servicio no sirve). Monitoreo: UptimeRobot → `/salud`. Además, una tarea programada (el vigía, D43) deja un aviso si un mensaje quedó sin atender y revisa cada mañana el token de WhatsApp y la planilla.
+- Comprobantes: el bot los reenvía al grupo privado de Telegram (D68); en la base queda solo el aviso (antes se pensó guardarlos en D1, D30 y D32). Monitoreo: UptimeRobot → `/salud`. Además, una tarea programada (el vigía, D43) deja un aviso si un mensaje quedó sin atender y revisa cada mañana el token de WhatsApp y la planilla.
 - Flujo: webhook → validar firma → 200 inmediato → deduplicar → revisar `BOT_ACTIVO` → buscar cliente → según tipo:
   - Texto: juntar los mensajes seguidos → parser (→ LLM si hace falta) → pedido / pregunta frecuente / escalamiento. El pedido y su aviso quedan en D1. Lo dudoso se anota igual y se manda a revisión; al cliente no se le promete.
-  - Imagen: posible comprobante → aviso en el panel (guardar la imagen y anotar en PAGOS: Etapa 6). Audio u otro: pedir texto.
+  - Imagen o PDF: posible comprobante → Telegram y aviso en el panel (D68). Audio: se transcribe y queda como aviso, sin respuesta (D36, D68). Otro tipo (video, sticker): responde que una persona lo revisará y deja un aviso.
 
 ## 11. Google Sheets (un archivo)
 > Desde D33 los pedidos y los avisos viven en D1 y el panel los lee y los cambia; las columnas de PEDIDOS de abajo quedan como formato de referencia y para un espejo futuro en la planilla.
