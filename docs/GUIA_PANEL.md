@@ -15,6 +15,8 @@ Para quien confirma los pedidos y arma el reparto. El panel es una página priva
 ## Hoy
 Es lo primero que se ve. Arriba, en una frase, cómo va el día (entregas, efectivo cobrado, pedidos por confirmar y avisos urgentes). Abajo, una fila por cada cosa que hay que mirar: tócala y te lleva ahí. Lo que está en rojo es urgente. **Equipo** está en el botón de arriba, junto a "Salir".
 
+Mientras quedan entregas, Hoy también dice dónde está el repartidor ("en vivo" con un punto verde y la hora de su última ubicación) y, con la ruta publicada, la siguiente entrega con su hora aproximada y las que vienen después (D92). Si cambiaste la ruta y el repartidor todavía no lo vio en su app, aparece una fila para avisarle por WhatsApp (D94). Al tocarlas te lleva a esa parada en Reparto.
+
 ## Clientes
 - Cada cliente reúne sus teléfonos, sus direcciones y sus pedidos. Las fichas se crean solas con los pedidos que llegan (por teléfono).
 - **Buscar**: por nombre, parte del teléfono, dirección o comuna.
@@ -62,6 +64,7 @@ Para una llamada, un audio o una empresa con plan mensual. Toca "+ Nuevo pedido"
 
 ## Reparto
 - **Repartidor en vivo (D80):** con su jornada iniciada, arriba dice "en vivo, hace 2 min" o "última señal hace 40 min", y el mapa de la ruta lo muestra. Con la ruta publicada, cada parada que falta dice "Llegaría 12:05–12:25 aprox." y la que va dice "Siguiente": sirve para responderle al cliente que pregunta. Es una estimación, nunca una promesa.
+- **Versión de la ruta (D94):** con la ruta publicada dice a qué hora se publicó y desde cuándo la tiene el repartidor. Si la cambias a mitad del día, su app le muestra un aviso hasta que toque "Entendido"; mientras no lo haga, aquí sale en rojo para que le avises.
 - Muestra las entregas confirmadas de **Hoy**, de **Mañana** o del día que elijas, ordenadas por comuna y dirección, con lo que hay que cargar en el furgón (por viaje), lo que se cobra en cada parada y los vacíos extra.
 - Si dice "Hay pedidos de este día sin confirmar", todavía no están en la lista: toca "Verlos".
 - **Ruta eficiente y mapa**: el orden que recorre menos kilómetros, desde la planta y de vuelta. Puedes subir o bajar paradas, ubicar en el mapa una dirección que sale "aproximada" y tocar **Publicar ruta**: el repartidor ve ese orden en su teléfono.

@@ -61,6 +61,7 @@ Los pedidos por confirmar y el reparto del día, con datos de demostración (tod
 - TypeScript en modo estricto y CI en GitHub Actions (`npm run check` en cada push).
 - Scripts para validar la configuración y simular un mensaje firmado como Meta, sin depender de Meta.
 - `npm run comprobar` revisa en producción, después de cada publicación, que todo responda como debe (sin cambiar nada).
+- `npm run medir-bot` mide cuánto entiende el bot con chats reales exportados de WhatsApp, en el computador, sin red y con los datos personales ocultos (D96).
 - Cómo avisar de una falla de seguridad: [SECURITY.md](SECURITY.md).
 
 ## Estructura

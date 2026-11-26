@@ -19,6 +19,7 @@ La fuente de verdad del negocio es `docs/conocimiento_brunen.md` (importado abaj
 - `npm run check` — typecheck + pruebas. Córrelo antes de dar algo por terminado.
 - `npm test` — solo pruebas. `npm run dev` — Worker local en http://localhost:8787.
 - `npm run deploy` — publica en Cloudflare. **Pide confirmación antes.**
+- `npm run medir-bot -- "datos/chats"` — mide el intérprete con chats reales exportados (lo corre Franco; Claude no lee `datos/` ni `datos-anonimos/`, D96).
 
 ## Principios (no negociables)
 1. El LLM extrae e interpreta; el código calcula. Precios, tramos, fechas y feriados se calculan en `src/precios.ts` y `src/despacho.ts`, con pruebas.
