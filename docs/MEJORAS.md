@@ -69,7 +69,8 @@ panel**. **(Dueño)** = necesita su decisión o tiene costo. Al terminar una, se
 - [x] Actualizar `CLAUDE.md` (decía que los pedidos van a Google Sheets y los comprobantes a Drive). (D84)
 - [ ] Pruebas del panel en el navegador; medir la CPU después de publicar. (La app del repartidor se probó el 2026-11-25 con datos ficticios: sin señal, servidor caído y rechazos, D84.)
 - [x] La cola del repartidor ya no pierde marcas; `/salud` revisa la base; pendientes de D80 cerrados salvo los cortes de viaje. (D84)
-- [ ] Ley 21.719 (rige desde el 15-oct-2027, D82): aviso de privacidad y plazo de guardado. **(Dueño)**
+- [ ] Ley 21.719 (rige desde el 15-oct-2027, D82): aviso de privacidad y plazo de guardado. Borrador listo en `AVISO_PRIVACIDAD.md` (D85). **(Dueño)**
+- [x] `npm run comprobar` después de cada publicación. (D85)
 
 ## 7. Hacia la visión de Franco (D83, 2026-11-25)
 Meta de largo plazo: asistentes de IA, roles dentro del panel, un panel de análisis avanzado y finanzas. Cada paso sirve solo, cuesta USD 0 al mes y se mide antes de seguir. La flota no hace falta (un repartidor): basta con no impedirla.
