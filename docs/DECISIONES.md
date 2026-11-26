@@ -755,3 +755,11 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - Tocar cualquiera de las dos abre Reparto en la tarjeta de esa parada. Esa tarjeta quedaba bajo la barra de pestañas; se corrigió con un margen.
 - Sin cambios en el servidor: usa lo que ya traía el reparto de hoy. Las alertas "sin señal" y "ruta no iniciada" siguen esperando los umbrales que decida Franco.
 - Verificado en el navegador a 375 px con datos ficticios: en vivo, señal vieja, sin ubicación y ruta sin publicar. Sin publicar.
+
+### D93 · 2026-11-26 · Lo guardado en el teléfono del repartidor vence, y una marca vieja no cae en el pedido de hoy
+**De [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md) ("que lo guardado en el teléfono venza por tiempo; qué pasa si la ruta se republica con marcas pendientes"). Al revisarlo apareció un error de D84.**
+- **El error:** una marca hecha sin señal que llegaba con la fecha de una ruta de hace más de 3 días se anotaba como si fuera de hoy. Si la oficina había reagendado ese pedido justo para hoy, un "Entregado" o un "No se pudo" viejo caía en la entrega nueva. Ahora se rechaza con "Esa marca es de una ruta de hace más de 3 días: ya no se anota desde la app. Avísale a la oficina.", y el repartidor la ve como no anotada (D84). Lo mismo con una fecha del futuro. Una marca sin fecha (la app anterior) sigue valiendo para hoy, como antes.
+- **Vence en el teléfono:** la ruta guardada de otro día (trae nombres, direcciones y teléfonos) se borra al abrir la app o al recargar la ruta; sin señal solo servía la de hoy. Las posiciones de más de 6 horas también, porque el servidor ya no las acepta.
+- **Las marcas no vencen solas:** se pierde menos si el servidor decide y el rechazo queda a la vista, que si el teléfono las borra en silencio.
+- **Ruta republicada con marcas pendientes:** no hace falta nada nuevo. Cada marca va por pedido y con la fecha de su ruta, no por el orden: si cambió el orden, se anota igual; si el pedido se movió de día o se canceló, el servidor la rechaza con el motivo y queda a la vista.
+- Verificado: una prueba nueva en rojo y después en verde (la marca vieja de un pedido reagendado para hoy ya no lo toca), y en el navegador con almacenamiento sembrado (se borran la ruta de otro día y la posición de 7 horas; quedan la de hoy y la reciente). Sin migraciones. Sin publicar.
