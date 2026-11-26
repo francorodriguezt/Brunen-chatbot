@@ -22,7 +22,8 @@
     "anonimizar": "node scripts/anonimizar-excel.mjs",
     "cargar-historial": "node --max-old-space-size=3000 scripts/cargar-historial.mjs",
     "restaurar-respaldo": "node scripts/restaurar-respaldo.mjs",
-    "comprobar": "node scripts/comprobar.mjs"
+    "comprobar": "node scripts/comprobar.mjs",
+    "medir-bot": "node scripts/medir-bot.mjs"
   },
   "engines": {
     "node": ">=22.18"

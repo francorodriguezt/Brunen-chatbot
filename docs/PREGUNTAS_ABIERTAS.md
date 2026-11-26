@@ -61,7 +61,7 @@ Las preguntas vienen de [PENDIENTES.md](PENDIENTES.md), [PROPUESTA_SIGUIENTES_PA
 38. **Bot de Telegram:** sigue sin crearse; revisé que no está cargado `TELEGRAM_BOT_TOKEN`. Pasos en [PASOS_FRANCO.md](PASOS_FRANCO.md), punto 2.
 39. **Secreto del panel:** pasar `BRUNEN_PANEL_SECRETO.txt` (en tu carpeta Documentos) a tu gestor de claves y borrar el archivo.
 40. **Clave JSON de Google** en tu carpeta Descargas: guardarla en un lugar seguro o borrarla. Ya está en Cloudflare.
-41. **Mensajes reales de clientes:** exportar 2 o 3 chats de WhatsApp a `datos/` y correr el medidor del bot (lo dejo listo en esta sesión). Es lo que más mejora al bot.
+41. **Mensajes reales de clientes:** en el teléfono del negocio, abre un chat → Más → **Exportar chat → Sin archivos**. Junta 5 a 10 en `datos/chats/` y corre `npm run medir-bot -- "datos/chats"`. Revisa `datos-anonimos/medicion-bot/informe.md` y pégame los no entendidos (D96). Es lo que más mejora al bot.
 42. **Cuentas y prueba real:** la cuenta de Coni, la del repartidor, instalar la app en su teléfono, probar la ubicación y hacer un día de prueba ([PASOS_FRANCO.md](PASOS_FRANCO.md), puntos 3 a 9).
 43. **Historial del Excel:** correr la simulación y mandarme los totales (punto 6).
 44. **Monitoreo:** una cuenta gratis de UptimeRobot que revise `/salud` y te avise al correo.

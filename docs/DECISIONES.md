@@ -783,3 +783,13 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - Sigue siendo una respuesta por mensaje del cliente. A un cliente bloqueado no se le ofrece anotar nada.
 - **Textos nuevos (borradores para que Felipe los apruebe):** la cotización, la oferta, el horario corto y las formas de pago (`src/textos.ts`).
 - Verificado: 10 pruebas nuevas, primero en rojo (cotización con "sí", mayorista, dos tamaños, sin ficha, empresa y hoja caída, un tamaño, pedido con pregunta de horario y de pago, cliente con pedido en curso, oferta sin pedir, bloqueado). Sin publicar.
+
+### D96 · 2026-11-26 · Medidor del bot con chats reales, sin que los datos salgan del computador
+**Mejora D de [PROPUESTA_SIGUIENTES_PASOS.md](PROPUESTA_SIGUIENTES_PASOS.md): el bot se mejoraba a ciegas, porque las 83 pruebas de mensajes son ficticias y el bot todavía no atiende clientes reales.** Los chats de la app de WhatsApp Business sí existen.
+- `npm run medir-bot -- "datos/chats"`: lee chats exportados de WhatsApp (Android o iPhone, "Sin archivos"), junta los mensajes seguidos de cada cliente como hace el bot (hasta 2 minutos entre uno y otro), los pasa por el intérprete real y cuenta cuántos entiende y de qué tipo.
+- **Corre en el computador de Franco, sin red y sin IA**, y deja `informe.md` y `no-entendidos.json` en `datos-anonimos/medicion-bot/`, ignorada por git. Claude no lee `datos/` ni `datos-anonimos/`: Franco revisa el informe y pega los no entendidos que quiera mejorar.
+- **Oculta** teléfonos, correos, RUT, enlaces, direcciones (palabras con mayúscula y un número, salvo días, meses y cómo suele empezar un mensaje), números de departamento y los nombres de los autores del chat. Es una ayuda y no una garantía: el informe se revisa antes de compartirlo, y así lo dice.
+- Con dos o más chats, el negocio se reconoce solo (es quien escribe en todos); con uno, `--negocio "Nombre"`.
+- Usa el intérprete tal cual (`src/interprete.ts`), empaquetado al vuelo con esbuild, que ya viene con wrangler: sin dependencias nuevas.
+- **Primer hallazgo, ya corregido:** "el agua venía rara", "viene turbio" y "olor raro" no se entendían como reclamos. Se sumaron a la lista de reclamos y como casos en `tests/mensajes.json`.
+- Verificado: 6 pruebas con chats ficticios (los dos formatos, negocio, grupos, ocultar y la medición) y de punta a punta con dos chats ficticios.

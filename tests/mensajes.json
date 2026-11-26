@@ -332,6 +332,18 @@
     {
       "mensaje": "se cancela al recibir?",
       "esperado": { "intencion": "pregunta", "tipo_pregunta": "pago" }
+    },
+    {
+      "mensaje": "oiga el agua venía rara",
+      "esperado": { "intencion": "reclamo", "accion": "escalar" }
+    },
+    {
+      "mensaje": "el bidón de hoy viene turbio",
+      "esperado": { "intencion": "reclamo", "accion": "escalar" }
+    },
+    {
+      "mensaje": "el agua tiene un olor raro",
+      "esperado": { "intencion": "reclamo", "accion": "escalar" }
     }
   ]
 }
