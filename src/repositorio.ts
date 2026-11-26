@@ -312,6 +312,14 @@ export const SQL_RESUMEN = `SELECT
 /** Paradas que caben en una ruta publicada: una consulta de D1 admite 100 valores. */
 export const MAXIMO_DE_PARADAS_PUBLICADAS = 90;
 
+/** La versión de la ruta publicada de un día y la última que confirmó la app del repartidor (D94). */
+export interface PublicacionDeRuta {
+  version: number;
+  publicadaEn: number;
+  vistaVersion: number | null;
+  vistaEn: number | null;
+}
+
 export class RepositorioD1 {
   constructor(
     private readonly db: BaseDatos,
@@ -514,6 +522,52 @@ export class RepositorioD1 {
         .bind(...grupo.flatMap(([id, viaje]) => [id, fecha, viaje]))
         .run();
     }
+  }
+
+  /**
+   * Anota que se publicó la ruta de ese día (D94) y devuelve su versión: 1 la primera vez, y sube con cada publicación.
+   * Borra lo de hace más de 30 días. Lanza si falta la migración 0017: quien publica sigue sin la versión.
+   */
+  async registrarPublicacion(fecha: string, ahora: number): Promise<number> {
+    await this.db.prepare('DELETE FROM rutas_publicadas WHERE fecha < ?1').bind(sumarDias(fecha, -30)).run();
+    const [fila] = await this.filas(
+      `INSERT INTO rutas_publicadas (fecha, version, publicada_en) VALUES (?1, 1, ?2)
+       ON CONFLICT (fecha) DO UPDATE SET version = version + 1, publicada_en = ?2
+       RETURNING version`,
+      fecha,
+      ahora,
+    );
+    return Number(fila?.version ?? 1);
+  }
+
+  /** La versión publicada de la ruta de ese día y la que confirmó el repartidor (D94). Null sin publicar o sin la migración 0017. */
+  async publicacionDe(fecha: string): Promise<PublicacionDeRuta | null> {
+    try {
+      const [fila] = await this.filas('SELECT version, publicada_en, vista_version, vista_en FROM rutas_publicadas WHERE fecha = ?1', fecha);
+      if (!fila) return null;
+      const numeroONulo = (v: unknown) => (typeof v === 'number' ? v : null);
+      return { version: Number(fila.version), publicadaEn: Number(fila.publicada_en), vistaVersion: numeroONulo(fila.vista_version), vistaEn: numeroONulo(fila.vista_en) };
+    } catch (falla) {
+      console.error('No se pudo leer la versión de la ruta:', falla instanceof Error ? falla.message : falla);
+      return null;
+    }
+  }
+
+  /**
+   * La app del repartidor confirma que tiene esa versión de la ruta de ese día (D94). Nunca baja: una confirmación que
+   * llega tarde, de una versión anterior, no cambia nada. Falso si esa versión no existe.
+   */
+  async confirmarPublicacion(fecha: string, version: number, ahora: number): Promise<boolean> {
+    const resultado = await this.db
+      .prepare(
+        `UPDATE rutas_publicadas SET
+           vista_en = CASE WHEN COALESCE(vista_version, 0) < ?2 THEN ?3 ELSE vista_en END,
+           vista_version = MAX(COALESCE(vista_version, 0), ?2)
+         WHERE fecha = ?1 AND version >= ?2`,
+      )
+      .bind(fecha, version, ahora)
+      .run();
+    return (resultado.meta?.changes ?? 0) > 0;
   }
 
   /** Los viajes guardados al publicar la ruta de ese día (D86). Vacío si no hay, o si falta la migración 0016. */

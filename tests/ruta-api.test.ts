@@ -207,3 +207,27 @@ describe('POST /api/puntos: poner un pin a mano', () => {
     expect(((await llamar('/api/puntos', { comuna: 'Las Condes', lat: -33.4, lng: -70.5 })) as Response).status).toBe(400);
   });
 });
+
+describe('versiones de la ruta publicada (D94)', () => {
+  it('cada publicación del día sube la versión; el día siguiente empieza en 1', async () => {
+    const { repositorio, llamar } = await entorno();
+    const orden = ['P261113-AAAAA', 'P261113-BBBBB', 'P261113-CCCCC'];
+    const primera = (await (await llamar('/api/ruta/publicar', { fecha: FECHA, orden }) as Response).json()) as { version: number | null };
+    expect(primera.version).toBe(1);
+    const segunda = (await (await llamar('/api/ruta/publicar', { fecha: FECHA, orden: [...orden].reverse() }) as Response).json()) as { version: number | null };
+    expect(segunda.version).toBe(2);
+    expect(await repositorio.publicacionDe(FECHA)).toEqual({ version: 2, publicadaEn: AHORA, vistaVersion: null, vistaEn: null });
+    expect(await repositorio.registrarPublicacion('2026-11-14', AHORA)).toBe(1);
+  });
+
+  it('sin la tabla (antes de aplicar la migración 0017) la ruta se publica igual, sin versión', async () => {
+    const { db, repositorio, llamar } = await entorno();
+    db.sql('DROP TABLE rutas_publicadas');
+    const silencio = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = (await llamar('/api/ruta/publicar', { fecha: FECHA, orden: ['P261113-AAAAA', 'P261113-BBBBB', 'P261113-CCCCC'] })) as Response;
+    expect(r.status).toBe(200);
+    expect(((await r.json()) as { version: number | null }).version).toBeNull();
+    expect(await repositorio.publicacionDe(FECHA)).toBeNull();
+    silencio.mockRestore();
+  });
+});

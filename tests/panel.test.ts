@@ -1039,3 +1039,15 @@ describe('correcciones de la revisión: el panel', () => {
     expect(await repositorio.historialDe('P261028-AAAAA')).toHaveLength(1);
   });
 });
+
+describe('la API: la versión de la ruta publicada en el reparto (D94)', () => {
+  it('sin publicar no trae nada; publicada, dice la versión y cuál confirmó el repartidor', async () => {
+    const { env, repositorio } = await entornoPanel();
+    expect(((await (await pedir(env, '/api/reparto?fecha=2026-10-29')).json()) as { publicacion: unknown }).publicacion).toBeNull();
+    await repositorio.registrarPublicacion('2026-10-29', AHORA - 300);
+    await repositorio.registrarPublicacion('2026-10-29', AHORA - 60);
+    expect(await repositorio.confirmarPublicacion('2026-10-29', 1, AHORA)).toBe(true);
+    const datos = (await (await pedir(env, '/api/reparto?fecha=2026-10-29')).json()) as { publicacion: unknown };
+    expect(datos.publicacion).toEqual({ version: 2, publicadaEn: AHORA - 60, vistaVersion: 1, vistaEn: AHORA });
+  });
+});

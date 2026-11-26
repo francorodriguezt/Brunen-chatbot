@@ -306,3 +306,35 @@ describe('consentimiento, jornada y posiciones (fase E, D80)', () => {
     expect((await pedir(env, '/api/repartidor/posiciones', repartidor, { posiciones: 'aqui' })).status).toBe(400);
   });
 });
+
+describe('cambios de la ruta publicada (D94)', () => {
+  type ConVersion = { publicacion: { version: number; publicadaEn: number; vista: number | null } | null };
+  const leerRuta = async (env: EntornoPanel, token: string) => (await (await pedir(env, '/api/repartidor/ruta', token)).json()) as ConVersion;
+
+  it('sin publicar no hay versión; al publicar, la ruta dice cuál es y cuál confirmó el repartidor', async () => {
+    const { db, env, repartidor } = await entorno();
+    expect((await leerRuta(env, repartidor)).publicacion).toBeNull();
+    const repositorio = new RepositorioD1(db, () => 1);
+    await repositorio.registrarPublicacion(HOY, AHORA - 600);
+    expect((await leerRuta(env, repartidor)).publicacion).toEqual({ version: 1, publicadaEn: AHORA - 600, vista: null });
+    expect((await pedir(env, '/api/repartidor/ruta/vista', repartidor, { version: 1 })).status).toBe(200);
+    await repositorio.registrarPublicacion(HOY, AHORA - 60);
+    expect((await leerRuta(env, repartidor)).publicacion).toEqual({ version: 2, publicadaEn: AHORA - 60, vista: 1 });
+    expect((await pedir(env, '/api/repartidor/ruta/vista', repartidor, { version: 2 })).status).toBe(200);
+    // Confirmar una versión anterior (una respuesta atrasada) no la hace retroceder.
+    expect((await pedir(env, '/api/repartidor/ruta/vista', repartidor, { version: 1 })).status).toBe(200);
+    expect((await leerRuta(env, repartidor)).publicacion?.vista).toBe(2);
+    expect(db.sql("SELECT vista_version, vista_en FROM rutas_publicadas WHERE fecha = '2026-11-13'")).toEqual([{ vista_version: 2, vista_en: AHORA }]);
+  });
+
+  it('una versión que no existe, o sin la sesión del repartidor, no se confirma', async () => {
+    const { db, env, repartidor, administrador } = await entorno();
+    expect((await pedir(env, '/api/repartidor/ruta/vista', repartidor, { version: 1 })).status).toBe(409); // sin publicar
+    await new RepositorioD1(db, () => 1).registrarPublicacion(HOY, AHORA - 600);
+    expect((await pedir(env, '/api/repartidor/ruta/vista', repartidor, { version: 2 })).status).toBe(409);
+    expect((await pedir(env, '/api/repartidor/ruta/vista', repartidor, { version: 'una' })).status).toBe(400);
+    expect((await pedir(env, '/api/repartidor/ruta/vista', administrador, { version: 1 })).status).toBe(401);
+    expect((await pedir(env, '/api/repartidor/ruta/vista', repartidor, { version: 1 }, { 'content-type': 'application/json' })).status).toBe(400);
+    expect(db.sql('SELECT vista_version FROM rutas_publicadas')).toEqual([{ vista_version: null }]);
+  });
+});
