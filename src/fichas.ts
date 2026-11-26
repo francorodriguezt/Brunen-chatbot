@@ -405,6 +405,12 @@ export class RepositorioClientes {
       ahora,
       quien,
     );
+    // El detalle de un "No se pudo" lo escribe el repartidor con sus palabras y puede nombrar a alguien: se borra. El
+    // resto del historial solo dice qué campos cambiaron, no sus valores.
+    await this.cambios(
+      `UPDATE historial_pedidos SET detalle = 'Detalle borrado a pedido del cliente.' WHERE accion = 'no_entregado' AND pedido_id IN (SELECT id FROM pedidos WHERE ${suyos})`,
+      id,
+    );
     const avisos = await this.cambios(
       `UPDATE avisos SET telefono = '', nombre = '', texto = '', motivos = '[]', resumen = 'Datos del cliente borrados a su pedido.'
        WHERE telefono IN (${telefonosDe}) OR id_pedido IN (SELECT id FROM pedidos WHERE ${suyos})`,
