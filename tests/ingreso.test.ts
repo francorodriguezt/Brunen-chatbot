@@ -353,6 +353,14 @@ describe('equipo: un administrador gestiona a los repartidores', () => {
     expect((await entrarComoRepartidor(env)).status).toBe(200);
   });
 
+  it('desactivar a un repartidor borra su ubicación y sus jornadas (D84)', async () => {
+    const { como, db, repartidor } = await listo();
+    db.sql('INSERT INTO jornadas (id, usuario_id, fecha, iniciada_en) VALUES (1, ?, ?, ?)', repartidor.id, '2026-11-13', AHORA - 600);
+    db.sql('INSERT INTO posiciones (usuario_id, jornada_id, en, lat, lng, precision_m) VALUES (?, 1, ?, -33.45, -70.6, 10)', repartidor.id, AHORA - 60);
+    expect((await como(`/usuarios/${repartidor.id}/estado`, { activo: false })).status).toBe(200);
+    expect(db.sql('SELECT (SELECT COUNT(*) FROM posiciones) AS posiciones, (SELECT COUNT(*) FROM jornadas) AS jornadas')).toEqual([{ posiciones: 0, jornadas: 0 }]);
+  });
+
   it('cerrar las sesiones de un repartidor lo obliga a entrar de nuevo', async () => {
     const { como, env, repartidor } = await listo();
     const cookie = cookieDe(await entrarComoRepartidor(env));

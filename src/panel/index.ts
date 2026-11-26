@@ -113,6 +113,7 @@ function contexto(request: Request, env: EntornoPanel, ahoraSegundos: number): C
     repositorio: new RepositorioD1(env.DB),
     ahoraSegundos,
     cookieSegura: !esLocal(new URL(request.url).hostname),
+    seguimiento: new RepositorioSeguimiento(env.DB as BaseDatos),
   };
 }
 

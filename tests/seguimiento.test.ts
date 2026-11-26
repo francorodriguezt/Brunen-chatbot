@@ -93,6 +93,34 @@ describe('consentimiento y jornada (D80)', () => {
     expect(db.sql('SELECT COUNT(*) AS n FROM posiciones')).toEqual([{ n: 0 }]);
   });
 
+  it('con dos repartidores, la posición es la del que tiene la jornada abierta (D84)', async () => {
+    const { db, s } = base();
+    db.sql("INSERT INTO usuarios (id, rut, nombre, rol, clave_sal, clave_hash, creado_en, actualizado_en) VALUES (8, '333333333', 'Repartidor Emergencia', 'repartidor', 's', 'h', 1, 1)");
+    for (const id of [7, 8]) {
+      await s.decidir(id, true, AHORA - 1000);
+      await s.iniciar(id, HOY, AHORA - 900);
+    }
+    await s.guardarPosiciones(8, [posicion(AHORA - 300, MACUL)], AHORA - 290);
+    await s.guardarPosiciones(7, [posicion(AHORA - 60, NUNOA)], AHORA - 50);
+    expect(await s.ultimaDeHoy(HOY)).toMatchObject({ nombre: 'Repartidor Prueba', ...NUNOA });
+    await s.terminar(7, HOY, AHORA - 40);
+    expect(await s.ultimaDeHoy(HOY)).toMatchObject({ nombre: 'Repartidor Emergencia', ...MACUL, jornadaAbierta: true });
+  });
+
+  it('al desactivar a un repartidor se borran sus posiciones y sus jornadas, no las de otro; el consentimiento queda (D84)', async () => {
+    const { db, s } = base();
+    db.sql("INSERT INTO usuarios (id, rut, nombre, rol, clave_sal, clave_hash, creado_en, actualizado_en) VALUES (8, '333333333', 'Repartidor Emergencia', 'repartidor', 's', 'h', 1, 1)");
+    for (const id of [7, 8]) {
+      await s.decidir(id, true, AHORA - 1000);
+      await s.iniciar(id, HOY, AHORA - 900);
+      await s.guardarPosiciones(id, [posicion(AHORA - 60)], AHORA);
+    }
+    await s.olvidar(7);
+    expect(db.sql('SELECT usuario_id FROM posiciones')).toEqual([{ usuario_id: 8 }]);
+    expect(db.sql('SELECT usuario_id FROM jornadas')).toEqual([{ usuario_id: 8 }]);
+    expect(await s.tieneConsentimiento(7)).toBe(true);
+  });
+
   it('la última posición de hoy trae el nombre y si la jornada sigue abierta; se borran las de más de 3 días', async () => {
     const { s } = base();
     await s.decidir(7, true, AHORA - 1000);

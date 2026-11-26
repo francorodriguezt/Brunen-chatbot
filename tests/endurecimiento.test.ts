@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import worker, { type Contexto, type Env } from '../src/index';
+import type { BaseDatos } from '../src/almacen';
 import { firmarHmacSha256 } from '../src/firma';
 import { enviarTexto, LIMITE_TEXTO } from '../src/whatsapp';
+import { crearBaseSqlite } from './ayudas';
 
 // Todos los valores son ficticios.
 const ENV: Env = {
@@ -58,6 +60,20 @@ describe('/salud y verificación', () => {
     const respuesta = await worker.fetch(new Request('https://bot.example/salud', { method: 'HEAD' }), ENV, contexto().ctx);
     expect(respuesta.status).toBe(200);
     expect(await respuesta.text()).toBe('');
+  });
+
+  it('/salud revisa que la base responda; si no, 503 sin decir por qué (D84)', async () => {
+    const sana = await worker.fetch(new Request('https://bot.example/salud'), { ...ENV, DB: crearBaseSqlite() }, contexto().ctx);
+    expect([sana.status, await sana.text()]).toEqual([200, 'ok']);
+    const silencio = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const rota = {
+      prepare: () => {
+        throw new Error('D1_ERROR: sin conexión');
+      },
+    } as unknown as BaseDatos;
+    const caida = await worker.fetch(new Request('https://bot.example/salud'), { ...ENV, DB: rota }, contexto().ctx);
+    expect([caida.status, await caida.text()]).toEqual([503, 'error']);
+    silencio.mockRestore();
   });
 
   it('el verify token sigue funcionando y rechaza uno de otro largo', async () => {
