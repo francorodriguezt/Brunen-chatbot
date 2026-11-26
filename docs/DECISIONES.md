@@ -747,3 +747,11 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 
 ### D91 · 2026-11-26 · Una observación al marcar Entregado
 **Lo último de la lista de experiencias móviles que no necesita decisiones.** Al marcar Entregado, el repartidor puede escribir una observación opcional ("dejé en conserjería"). Va al historial del pedido ("Retiró 3 vacíos. Nota: ..."), en una línea y con un tope de 200 caracteres; una que no es texto se ignora. Como la escribe con sus palabras y puede nombrar a alguien, al borrar los datos de un cliente (D87) se borra junto con el detalle de sus No se pudo. Verificado con pruebas y de punta a punta en local. Sin publicar.
+
+### D92 · 2026-11-26 · El repartidor y las próximas entregas en Hoy
+**De [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md), sin decisiones pendientes:** la pantalla Hoy del panel (la que abre Constanza en el iPhone) muestra, mientras quedan entregas, dónde se vio al repartidor y lo que viene, sin ir a Reparto.
+- **Repartidor:** "en vivo" con un punto verde y "Última ubicación: 14:40", o "última ubicación a las 13:40" cuando la señal no es reciente, o "Sin ubicación del repartidor hoy". Se muestra la hora y no "hace N min": Hoy no se vuelve a dibujar si los datos no cambian, y ese texto quedaría viejo.
+- **Próximas entregas,** solo con la ruta publicada (sin ella no hay orden): "Siguiente: Rosa (Ñuñoa) · 14:45–14:55 aprox." y "Después: …, … y N más". Es la misma ventana aproximada que ya mostraba Reparto (D80), nunca una hora exacta.
+- Tocar cualquiera de las dos abre Reparto en la tarjeta de esa parada. Esa tarjeta quedaba bajo la barra de pestañas; se corrigió con un margen.
+- Sin cambios en el servidor: usa lo que ya traía el reparto de hoy. Las alertas "sin señal" y "ruta no iniciada" siguen esperando los umbrales que decida Franco.
+- Verificado en el navegador a 375 px con datos ficticios: en vivo, señal vieja, sin ubicación y ruta sin publicar. Sin publicar.
