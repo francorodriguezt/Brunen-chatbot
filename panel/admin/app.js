@@ -2114,6 +2114,9 @@ async function abrirCliente(id) {
     formulario.elements.nombre.value = cliente.nombre;
     formulario.elements.tipoCliente.value = cliente.tipoCliente;
     formulario.elements.notas.value = cliente.notas;
+    formulario.elements.precioEspecial20L.value = cliente.precioEspecial20L ?? '';
+    formulario.elements.vaciosPendientes.value = String(cliente.vaciosPendientes ?? 0);
+    formulario.elements.bloqueado.checked = cliente.bloqueado === true;
     $('titulo-cliente').textContent = cliente.nombre || 'Cliente sin nombre';
     $('ficha-cliente').replaceChildren(fichaDelCliente(cliente, pedidos, fijo));
     $('error-cliente').hidden = true;
@@ -2134,7 +2137,15 @@ async function guardarCliente(evento) {
   const formulario = $('formulario-cliente');
   $('guardar-cliente').disabled = true;
   try {
-    await api(`/api/clientes/${clienteAbierto.id}/editar`, { nombre: formulario.elements.nombre.value, tipoCliente: formulario.elements.tipoCliente.value, notas: formulario.elements.notas.value });
+    const precio = soloDigitos(formulario.elements.precioEspecial20L.value);
+    await api(`/api/clientes/${clienteAbierto.id}/editar`, {
+      nombre: formulario.elements.nombre.value,
+      tipoCliente: formulario.elements.tipoCliente.value,
+      notas: formulario.elements.notas.value,
+      precioEspecial20L: precio === '' ? null : Number(precio),
+      vaciosPendientes: formulario.elements.vaciosPendientes.value === '' ? 0 : Number(formulario.elements.vaciosPendientes.value),
+      bloqueado: formulario.elements.bloqueado.checked,
+    });
     $('dialogo-cliente').close();
     avisar('Cliente guardado.');
     await recargarVistaActual();

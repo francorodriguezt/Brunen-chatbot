@@ -242,8 +242,6 @@ Ejemplo del tono esperado (al terminar una tarea):
 **Todo lo que falta, en una sola lista de 124 puntos con quién y dónde: `docs/LO_QUE_FALTA.md`.**
 
 **Lo primero:** Franco responde `docs/PREGUNTAS_ABIERTAS.md` por número ("3 sí", "4 20 min y 10:30"). Cada respuesta se anota en `DECISIONES.md` y se marca ahí. Las que destraban trabajo de la IA:
-- la 3 (clientes en un solo lugar, después de la 12 de Felipe);
-- la 4 (umbrales de las alertas "sin señal" y "ruta no iniciada");
 - las 22 a 25 (cobros);
 - la 45 (textos nuevos del bot);
 - la 41 (chats reales para `npm run medir-bot`).
@@ -264,10 +262,10 @@ Ejemplo del tono esperado (al terminar una tarea):
 | 12 | Decisiones de Felipe: margen de hora al cliente (hoy ±10 min mínimo), retención de datos, promociones | Felipe |
 | 13 | Revisar correos de facturación de Cloudflare en el correo de Brunen | Felipe y Franco |
 | 14 | La operadora: si acepta avisos por Telegram y que su nombre/horario estén en el repo público | Franco pregunta |
-| 15 | Exportar chats reales de WhatsApp a `datos/chats/`, correr `npm run medir-bot` y pasarle a la IA los no entendidos (revisados) | Franco |
+| 15 | Exportar más chats reales de WhatsApp a `datos/chats/` (los 6 primeros ya se midieron, D103), correr `npm run medir-bot` y pasarle a la IA los no entendidos (revisados) | Franco |
 
 ## 6. Mejoras propuestas (en `docs/PROPUESTA_SIGUIENTES_PASOS.md`)
-1. **Clientes en un solo lugar**: la ficha guarda precio especial, vacíos que debe y bloqueado; el bot la mira antes que la hoja CLIENTES. Espera el visto bueno de Franco (pregunta 3) y la respuesta de Felipe sobre minimarket (pregunta 12).
+1. **Clientes en un solo lugar**: construido el 2026-11-27 (D104), sin publicar. La ficha guarda precio especial, vacíos que debe y bloqueado; el bot la mira junto con la hoja CLIENTES y manda la ficha. Falta la migración 0018 en la base real, publicar y cargar el precio de $1.311 en la ficha de ese cliente.
 2. **Cobros**: pendiente → informado → verificado, pago parcial, "Por verificar" y saldo por cliente. Espera las preguntas 22 a 25.
 3. **Bot**:
    - hechas: cotizar (A) y dos cosas a la vez (B), en D95; el medidor con chats reales (D), en D96;

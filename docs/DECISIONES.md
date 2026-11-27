@@ -875,3 +875,20 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
   - **saludos y cierres:** "disculpen la demora", "Sí, gracias", "No hay problema", "Recargas recibidas", y un cierre con saludo delante ("Hola, buenos días! Ok, gracias"). No se responden (cupo de mensajes).
 - **Lo que sigue sin entenderse, a propósito:** respuestas sueltas a una pregunta que hizo una persona ("Sí / 4", "6 / por ahora"), "El total de hoy y lo anterior" (cuánto debe: lo ve una persona), "en efectivo le entrego" y frases sin contexto. Para medir más, hacen falta más chats (D96).
 - Verificado: 1.651 pruebas (14 casos nuevos en `tests/mensajes.json`, 2 en el flujo, 2 en el medidor, 3 en "¿cuándo llega?"). **Sin publicar.**
+
+### D104 · 2026-11-27 · Clientes en un solo lugar: el bot cotiza con la ficha del panel
+**Franco respondió la pregunta 12:** todo minimarket paga precio mayorista, salvo un cliente minimarket con un precio propio de $1.311 por bidón (no se sabe por qué). Con eso se construyó la propuesta 1 (pregunta 3).
+- **Antes:** el bot solo miraba la hoja CLIENTES para el tipo, el precio especial y el bloqueo; las fichas del panel (D53) tenían el tipo, pero el bot no las leía. Además, un precio especial en la hoja solo valía con el tipo "especial": un minimarket con precio propio no se podía escribir.
+- **Ahora** la ficha guarda también el precio especial por bidón de 20 L, los vacíos que debe y si está bloqueado (migración `0018_condiciones_del_cliente.sql`), y se cambian en el panel (Clientes > Ver ficha).
+- **Cómo decide el bot** (`combinarConFicha` en `src/clientes.ts`), en cada mensaje, leyendo la ficha y la hoja a la vez:
+  - Si la ficha tiene condiciones (un tipo, un precio especial o un bloqueo), **manda la ficha**: hogar → precio normal, minimarket → mayorista, empresa → empresa (siempre a revisión, regla 7). Con precio especial cotiza a ese precio, aunque sea minimarket.
+  - Si la hoja dice otra cosa (un tipo distinto de "normal" o un precio especial), se usa la ficha y el pedido queda para revisión con el aviso "…se usó la ficha. Corrige o borra la fila de la hoja". Una fila "normal" o sin tipo no es un desacuerdo.
+  - **La hoja deja de hacer falta:** un teléfono que no está en la hoja, o con la hoja caída, se atiende con su ficha si tiene dirección. Un bloqueo vale siempre.
+  - Una ficha sin condiciones no cambia nada: la hoja sigue de respaldo, como antes. Si la base falla al leer la ficha, también.
+  - Los vacíos de la ficha, si tiene, pasan a las notas del repartidor (si no, los de la hoja).
+- **Al unir fichas:** manda el precio especial de la que queda (si no tiene, toma el de la otra), los vacíos se suman y el bloqueo pasa.
+- **Sin la migración 0018 todo funciona como antes:** la ficha se lee con `SELECT *` y las condiciones solo se escriben si cambian. Probado con una base sin la 0018.
+- **Lo que hay que hacer a mano:** en el panel, abrir la ficha del cliente de $1.311, elegir Minimarket y escribir 1311 en el precio especial (el nombre no va en el repositorio). Los minimarket que ya figuran como tales en sus pedidos quedan como mayoristas solos; revisar en Clientes los que falten.
+- **Costo:** una consulta más a la base por mensaje (en paralelo con la hoja). Sin costo mensual.
+- **Lo que no cambia:** un precio especial sigue definido solo para 20 L (pregunta 15): en 12 L y 10 L se cotiza con tramos y va a revisión.
+- Pruebas: 4 en `tests/fichas.test.ts` (guardar, rechazar, unir y base sin la 0018) y 7 en `tests/clientes.test.ts` (combinar y la ficha caída). Verificado en el navegador a 375 px: la ficha guarda minimarket, $1.311 y 2 vacíos, y rechaza un precio de $5. **Sin publicar; la migración 0018 no está aplicada en la base real.**

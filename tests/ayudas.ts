@@ -54,12 +54,13 @@ export const lecturasDe = (llamadas: string[], hoja: string): number => llamadas
 /**
  * Base D1 de prueba sobre SQLite en memoria, con el esquema real de `migrations/`.
  * Imita la interfaz de D1 que usa el código: `prepare().bind().run()`, donde un SELECT devuelve `results`
- * y una escritura devuelve `meta.changes`.
+ * y una escritura devuelve `meta.changes`. Con `antesDe` ("0018"), se aplican solo las migraciones anteriores: así se
+ * prueba que el código sigue andando en una base que todavía no tiene la última.
  */
-export function crearBaseSqlite(): BaseDatos & { sql(sentencia: string, ...valores: unknown[]): unknown[] } {
+export function crearBaseSqlite(antesDe?: string): BaseDatos & { sql(sentencia: string, ...valores: unknown[]): unknown[] } {
   const db = new DatabaseSync(':memory:');
   const carpeta = fileURLToPath(new URL('../migrations/', import.meta.url));
-  for (const archivo of readdirSync(carpeta).sort()) db.exec(readFileSync(carpeta + archivo, 'utf8'));
+  for (const archivo of readdirSync(carpeta).sort()) if (antesDe === undefined || archivo < antesDe) db.exec(readFileSync(carpeta + archivo, 'utf8'));
   // Como D1: un SELECT, o una escritura con RETURNING, devuelve sus filas en `results`.
   const esConsulta = (sql: string) => /^\s*(select|with)\b/i.test(sql) || /\breturning\b/i.test(sql);
   return {

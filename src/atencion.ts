@@ -15,7 +15,8 @@
 import { ESPERA_POR_DEFECTO_MS, agruparMensaje, limpiarPendientes } from './agrupador';
 import type { Alerta } from './alertas';
 import type { BaseDatos } from './almacen';
-import { buscarCliente } from './clientes';
+import { buscarClienteConFicha } from './clientes';
+import { RepositorioClientes } from './fichas';
 import { leerServicio } from './configuracion';
 import { MemoriaConversaciones } from './conversacion';
 import { fechaHoraLocal } from './despacho';
@@ -74,7 +75,8 @@ function puertosReales(env: EntornoAtencion, ahora: Date): Puertos {
   const db = env.DB;
   return {
     memoria: db ? new MemoriaConversaciones(db) : null,
-    buscarCliente: (telefono) => buscarCliente(env, telefono),
+    // La ficha de la base y la hoja CLIENTES juntas (D104): la ficha manda si tiene condiciones.
+    buscarCliente: (telefono) => buscarClienteConFicha(env, db ? (t) => new RepositorioClientes(db).paraBot(t) : null, telefono),
     ...(db && {
       buscarPedidoAnterior: (telefono: string) => new RepositorioD1(db).datosDelUltimoPedido(telefono),
       buscarUltimoPedidoGuardado: (telefono: string) => new RepositorioD1(db).itemsDelUltimoPedido(telefono),
