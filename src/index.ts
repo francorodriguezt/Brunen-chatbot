@@ -22,6 +22,7 @@ import {
   esperaDeAgrupador,
   flujoActivo,
   limpiezasDelLote,
+  responderAlCliente,
   type EntornoAtencion,
   type ResultadoMensaje,
 } from './atencion';
@@ -41,7 +42,6 @@ import { tareaProgramada } from './vigia';
 import {
   ErrorWhatsApp,
   enmascararTelefono,
-  enviarTexto,
   esErrorDeToken,
   extraerEcos,
   extraerEstados,
@@ -165,15 +165,7 @@ export async function procesarMensaje(mensaje: MensajeEntrante, env: Env, agrupa
   const respuesta = interpretacion
     ? describirInterpretacion(interpretacion, entendido?.conIa, entrega)
     : `Recibí un mensaje de tipo "${mensaje.tipo}".`;
-  await enviarTexto(
-    {
-      token: env.WHATSAPP_TOKEN,
-      phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
-      graphApiVersion: env.GRAPH_API_VERSION,
-    },
-    mensaje.de,
-    respuesta,
-  );
+  await responderAlCliente(env, mensaje.de, respuesta);
   return { resultado: 'respondido', intencion: interpretacion?.intencion as Intencion | undefined };
 }
 

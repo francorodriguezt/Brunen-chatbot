@@ -1421,7 +1421,18 @@ function pintarEstadisticas(e) {
         { clase: 'lista-vacios' },
         ...e.vacios.slice(0, 30).map((v) => h('li', {}, h('b', {}, `${v.faltan} ${v.faltan === 1 ? 'vacío' : 'vacíos'}`), ` · ${v.nombre || 'Sin nombre'} · `, enlaceWhatsApp(v.telefono), ` · última vez el ${fechaLarga(v.ultimoDia)}`)),
       );
+  // Mensajes de WhatsApp del bot este mes contra los 1.000 gratis de Meta (D113): rojo desde el aviso de 800.
+  const m = e.mensajes;
+  const mensajes = m
+    ? h(
+        'p',
+        { clase: m.enviados >= m.aviso ? 'falta' : 'suave' },
+        h('b', {}, `${m.enviados} de ${m.gratis}`),
+        ` mensajes de WhatsApp enviados por el bot este mes${m.enviados >= m.gratis ? ': ya se cobran' : m.enviados >= m.aviso ? ': cerca del tope gratis' : ' (gratis hasta los ' + m.gratis + ')'}. Lo que escribe una persona desde la app no cuenta.`,
+      )
+    : null;
   $('contenido-estadisticas').replaceChildren(
+    ...(mensajes ? [mensajes] : []),
     h('ul', { clase: 'cifras' }, cifra(`el ${fechaLarga(e.hasta)}`, e.dia), cifra('esta semana', e.semana), cifra('este mes', e.mes), cifra('el mes pasado', e.mesAnterior)),
     h('h3', { clase: 'titulo-carga' }, 'Últimos 14 días'),
     barras,

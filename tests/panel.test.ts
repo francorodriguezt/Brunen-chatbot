@@ -758,6 +758,12 @@ describe('la API: bidones entregados (D65)', () => {
     expect(await r.json()).toMatchObject({ hasta: '2026-10-28', dias: expect.any(Array), vacios: expect.any(Array) });
     expect((await pedir(env, '/api/estadisticas?hasta=ayer')).status).toBe(400);
   });
+
+  it('incluye cuántos mensajes de WhatsApp envió el bot este mes, contra los 1.000 gratis (D113)', async () => {
+    const { env } = await entornoPanel();
+    const cuerpo = (await (await pedir(env, '/api/estadisticas?hasta=2026-10-28')).json()) as { mensajes?: Record<string, unknown> };
+    expect(cuerpo.mensajes).toEqual({ mes: expect.stringMatching(/^\d{4}-\d{2}$/), enviados: 0, gratis: 1000, aviso: 800 });
+  });
 });
 
 describe('la API: pedido rápido con el mensaje pegado (D64)', () => {

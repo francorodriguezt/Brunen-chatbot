@@ -95,6 +95,7 @@ describe('migraciones', () => {
       { name: 'telefonos_cliente' },
       { name: 'ultimos_pedidos' },
       { name: 'uso_llm' },
+      { name: 'uso_mensajes' },
       { name: 'usuarios' },
       { name: 'viajes_publicados' },
     ]);

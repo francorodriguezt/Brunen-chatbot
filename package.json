@@ -23,7 +23,8 @@
     "cargar-historial": "node --max-old-space-size=3000 scripts/cargar-historial.mjs",
     "restaurar-respaldo": "node scripts/restaurar-respaldo.mjs",
     "comprobar": "node scripts/comprobar.mjs",
-    "medir-bot": "node scripts/medir-bot.mjs"
+    "medir-bot": "node scripts/medir-bot.mjs",
+    "comparar-ia": "node scripts/comparar-ia.mjs"
   },
   "engines": {
     "node": ">=22.18"

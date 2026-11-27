@@ -102,6 +102,18 @@ describe('el flujo de pedido conectado al Worker', () => {
     expect(mundo.telegram).toEqual([]); // un pedido normal no es urgente
   });
 
+  it('cada respuesta que sale se cuenta en el mes y, al llegar a 800, avisa en el panel y por Telegram (D113)', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno({ TELEGRAM_BOT_TOKEN: '1:TOKEN', TELEGRAM_CHAT_ID: '777' });
+    env.DB.sql("INSERT INTO uso_mensajes (mes, enviados) VALUES ('2026-10', 798)");
+    await enviarAviso(env, texto('quiero 2 de 20 para el viernes')); // el mensaje 799: sin aviso
+    expect(mundo.telegram).toEqual([]);
+    await enviarAviso(env, texto('quiero 1 de 20 para el viernes')); // el 800
+    expect(env.DB.sql('SELECT enviados FROM uso_mensajes')).toEqual([{ enviados: 800 }]);
+    expect(mundo.telegram.some((t) => String(t.cuerpo.text).includes('800 mensajes'))).toBe(true);
+    expect(env.DB.sql("SELECT tipo FROM avisos WHERE origen = 'mensajes-aviso:2026-10'")).toEqual([{ tipo: 'error' }]);
+  });
+
   it('el mismo mensaje procesado dos veces (reintento de Meta) deja un solo pedido, un solo aviso y una sola respuesta', async () => {
     const mundo = stubMundo({ hojas: HOJAS });
     const env = await entorno();

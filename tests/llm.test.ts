@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BaseDatos } from '../src/almacen';
 import { procesarMensaje, type Env } from '../src/index';
 import { interpretar } from '../src/interprete';
-import { completarConRespuesta, interpretarConRespaldo, LLAMADAS_POR_DIA, MAX_CARACTERES } from '../src/llm';
+import { completarConRespuesta, interpretarConRespaldo, jsonDeWorkersAi, LLAMADAS_CLOUDFLARE_POR_DIA, LLAMADAS_POR_DIA, MAX_CARACTERES, MODELO_CLOUDFLARE } from '../src/llm';
+import { crearBaseSqlite } from './ayudas';
 
 // Todos los valores son ficticios: ninguna clave real entra al repo.
 const CLAVE = 'gsk_clave_de_prueba';
@@ -189,7 +190,7 @@ describe('interpretarConRespaldo', () => {
       stubFetch(() => respuestaGroq({ intencion: 'saludo', items: [] }));
       await interpretarConRespaldo('xyz abc qwerty', { GROQ_API_KEY: CLAVE, DB: db }, AHORA);
       expect(consultas).toHaveLength(1);
-      expect(consultas[0]?.valores).toEqual(['2026-10-26', LLAMADAS_POR_DIA]);
+      expect(consultas[0]?.valores).toEqual(['2026-10-26', LLAMADAS_POR_DIA, 1, 0]);
     });
 
     it('con el tope alcanzado no llama a Groq', async () => {
@@ -208,6 +209,140 @@ describe('interpretarConRespaldo', () => {
       const r = await interpretarConRespaldo('xyz abc qwerty', { GROQ_API_KEY: CLAVE, DB: db }, AHORA);
       expect(r.conIa).toBe(false);
       expect(f).not.toHaveBeenCalled();
+    });
+  });
+});
+
+/** Workers AI de mentira: `salida` es lo que devuelve `run`; las llamadas quedan en `llamadas`. */
+function iaFalsa(salida: unknown | Error) {
+  const llamadas: Array<{ modelo: string; entrada: Record<string, unknown> }> = [];
+  return {
+    llamadas,
+    ia: {
+      run: async (modelo: string, entrada: Record<string, unknown>) => {
+        llamadas.push({ modelo, entrada });
+        if (salida instanceof Error) throw salida;
+        return salida;
+      },
+    },
+  };
+}
+const PEDIDO_DE_2 = { intencion: 'pedido', items: [{ tipo: '20L', cantidad: 2 }] };
+
+describe('jsonDeWorkersAi: las formas en que puede venir la respuesta', () => {
+  it('en `response`, como texto o ya como objeto', () => {
+    expect(jsonDeWorkersAi({ response: JSON.stringify(PEDIDO_DE_2) })).toEqual(PEDIDO_DE_2);
+    expect(jsonDeWorkersAi({ response: PEDIDO_DE_2 })).toEqual(PEDIDO_DE_2);
+  });
+
+  it('en `choices`, aunque el modelo escriba algo antes o después del JSON', () => {
+    expect(jsonDeWorkersAi({ choices: [{ message: { content: `Claro: ${JSON.stringify(PEDIDO_DE_2)} listo` } }] })).toEqual(PEDIDO_DE_2);
+  });
+
+  it('en `output` (formato de respuestas), saltando el razonamiento', () => {
+    const salida = {
+      output: [
+        { type: 'reasoning', content: [{ type: 'reasoning_text', text: 'pienso {no es json' }] },
+        { type: 'message', content: [{ type: 'output_text', text: JSON.stringify(PEDIDO_DE_2) }] },
+      ],
+    };
+    expect(jsonDeWorkersAi(salida)).toEqual(PEDIDO_DE_2);
+  });
+
+  it('sin JSON o con algo que no es un objeto, devuelve null', () => {
+    expect(jsonDeWorkersAi(null)).toBeNull();
+    expect(jsonDeWorkersAi('hola')).toBeNull();
+    expect(jsonDeWorkersAi({ response: 'no sé' })).toBeNull();
+    expect(jsonDeWorkersAi({ response: '{roto' })).toBeNull();
+  });
+});
+
+describe('Workers AI como respaldo de Groq (D114)', () => {
+  const TEXTO = 'xyz necesito aguita pal finde';
+
+  it('sin clave de Groq usa Workers AI, con el mismo contrato, y dice quién respondió', async () => {
+    const f = stubFetch(() => respuestaGroq({}));
+    const { ia, llamadas } = iaFalsa({ response: JSON.stringify(PEDIDO_DE_2) });
+    const r = await interpretarConRespaldo(TEXTO, { AI: ia }, AHORA);
+    expect(r.conIa).toBe(true);
+    expect(r.proveedor).toBe('cloudflare');
+    expect(r.interpretacion.items).toEqual([{ tipo: '20L', cantidad: 2 }]);
+    expect(f).not.toHaveBeenCalled();
+    expect(llamadas[0]?.modelo).toBe(MODELO_CLOUDFLARE);
+    // Solo viaja el texto del mensaje, como con Groq.
+    const mensajes = llamadas[0]?.entrada.messages as Array<{ role: string; content: string }>;
+    expect(mensajes.find((m) => m.role === 'user')?.content).toBe(TEXTO);
+  });
+
+  it('con Groq funcionando no toca Workers AI', async () => {
+    stubFetch(() => respuestaGroq(PEDIDO_DE_2));
+    const { ia, llamadas } = iaFalsa({ response: JSON.stringify(PEDIDO_DE_2) });
+    const r = await interpretarConRespaldo(TEXTO, { GROQ_API_KEY: CLAVE, AI: ia }, AHORA);
+    expect(r.proveedor).toBe('groq');
+    expect(llamadas).toHaveLength(0);
+  });
+
+  it('si Groq responde 429 o se cae, pasa a Workers AI', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    stubFetch(() => respuestaGroq({}, 429));
+    const { ia } = iaFalsa({ response: JSON.stringify(PEDIDO_DE_2) });
+    const r = await interpretarConRespaldo(TEXTO, { GROQ_API_KEY: CLAVE, AI: ia }, AHORA);
+    expect(r.proveedor).toBe('cloudflare');
+  });
+
+  it('si Groq respondió pero dijo "desconocido", no gasta una consulta más en Workers AI', async () => {
+    stubFetch(() => respuestaGroq({ intencion: 'desconocido', items: [] }));
+    const { ia, llamadas } = iaFalsa({ response: JSON.stringify(PEDIDO_DE_2) });
+    const r = await interpretarConRespaldo(TEXTO, { GROQ_API_KEY: CLAVE, AI: ia }, AHORA);
+    expect(r.conIa).toBe(false);
+    expect(llamadas).toHaveLength(0);
+  });
+
+  it('si Workers AI falla o devuelve algo que no sirve, deja el resultado de las reglas y no lanza', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect((await interpretarConRespaldo(TEXTO, { AI: iaFalsa(new Error('boom')).ia }, AHORA)).conIa).toBe(false);
+    expect((await interpretarConRespaldo(TEXTO, { AI: iaFalsa({ response: 'no sé' }).ia }, AHORA)).conIa).toBe(false);
+    expect((await interpretarConRespaldo(TEXTO, { AI: iaFalsa({ response: { intencion: 'inventada', items: [] } }).ia }, AHORA)).conIa).toBe(false);
+  });
+
+  it('las reglas que ya entienden el mensaje no gastan ninguna IA', async () => {
+    const { ia, llamadas } = iaFalsa({ response: '{}' });
+    const r = await interpretarConRespaldo('quiero 2 de 20 para mañana', { AI: ia }, AHORA);
+    expect(r.conIa).toBe(false);
+    expect(llamadas).toHaveLength(0);
+  });
+
+  describe('topes diarios, uno por proveedor', () => {
+    it('cada uno cuenta en su columna del día', async () => {
+      const db = crearBaseSqlite();
+      stubFetch(() => respuestaGroq({}, 500));
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { ia } = iaFalsa({ response: JSON.stringify(PEDIDO_DE_2) });
+      await interpretarConRespaldo(TEXTO, { GROQ_API_KEY: CLAVE, AI: ia, DB: db }, AHORA);
+      expect(db.sql('SELECT dia, llamadas, llamadas_cf FROM uso_llm')).toEqual([{ dia: '2026-10-26', llamadas: 1, llamadas_cf: 1 }]);
+    });
+
+    it('con el tope de Groq alcanzado, pasa a Workers AI', async () => {
+      const db = crearBaseSqlite();
+      db.sql(`INSERT INTO uso_llm (dia, llamadas) VALUES ('2026-10-26', ${LLAMADAS_POR_DIA})`);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      const f = stubFetch(() => respuestaGroq(PEDIDO_DE_2));
+      const { ia } = iaFalsa({ response: JSON.stringify(PEDIDO_DE_2) });
+      const r = await interpretarConRespaldo(TEXTO, { GROQ_API_KEY: CLAVE, AI: ia, DB: db }, AHORA);
+      expect(r.proveedor).toBe('cloudflare');
+      expect(f).not.toHaveBeenCalled();
+    });
+
+    it('con los dos topes alcanzados, queda el resultado de las reglas', async () => {
+      const db = crearBaseSqlite();
+      db.sql(`INSERT INTO uso_llm (dia, llamadas, llamadas_cf) VALUES ('2026-10-26', ${LLAMADAS_POR_DIA}, ${LLAMADAS_CLOUDFLARE_POR_DIA})`);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      const f = stubFetch(() => respuestaGroq(PEDIDO_DE_2));
+      const { ia, llamadas } = iaFalsa({ response: JSON.stringify(PEDIDO_DE_2) });
+      const r = await interpretarConRespaldo(TEXTO, { GROQ_API_KEY: CLAVE, AI: ia, DB: db }, AHORA);
+      expect(r.conIa).toBe(false);
+      expect(f).not.toHaveBeenCalled();
+      expect(llamadas).toHaveLength(0);
     });
   });
 });

@@ -18,6 +18,7 @@ import type { BaseDatos } from './almacen';
 import { buscarClienteConFicha } from './clientes';
 import { RepositorioClientes } from './fichas';
 import { leerServicio } from './configuracion';
+import { registrarMensajeEnviado } from './mensajesSalientes';
 import { MemoriaConversaciones } from './conversacion';
 import { fechaHoraLocal } from './despacho';
 import { cargarDiasSinReparto } from './diasSinReparto';
@@ -63,6 +64,17 @@ export function flujoActivo(env: Pick<EntornoAtencion, 'FLUJO_PEDIDO' | 'DB'>): 
 export function esperaDeAgrupador(env: Pick<EntornoAtencion, 'ESPERA_AGRUPADOR_MS'>): number {
   const ms = Number(env.ESPERA_AGRUPADOR_MS);
   return env.ESPERA_AGRUPADOR_MS !== undefined && Number.isFinite(ms) && ms >= 0 && ms <= 20_000 ? ms : ESPERA_POR_DEFECTO_MS;
+}
+
+/**
+ * Envía la respuesta al cliente y la cuenta en el contador del mes (D113). Si el envío falla, lanza el error y no cuenta;
+ * si contar falla, el cliente igual recibe su respuesta. Al cruzar el 800 avisa también por Telegram.
+ */
+export async function responderAlCliente(env: EntornoAtencion, para: string, cuerpo: string, ahora: Date = new Date()): Promise<void> {
+  await enviarTexto(configWhatsApp(env), para, cuerpo);
+  if (!env.DB) return;
+  const alerta = await registrarMensajeEnviado(env.DB, Math.floor(ahora.getTime() / 1000));
+  if (alerta) await enviarAlerta(configTelegram(env), alerta);
 }
 
 const configWhatsApp = (env: EntornoAtencion): ConfigWhatsApp => ({
@@ -170,7 +182,7 @@ export async function atenderTextoConFlujo(
     { respuesta: decision.respuesta, pedido: decision.pedido, completarPedido: decision.completarPedido, alerta: decision.alerta, textoDelCliente: texto },
     ahora,
   );
-  if (respuesta !== null) await enviarTexto(configWhatsApp(env), mensaje.de, respuesta);
+  if (respuesta !== null) await responderAlCliente(env, mensaje.de, respuesta, ahora);
   return { resultado: respuesta === null ? 'sin_respuesta' : 'respondido', intencion: decision.intencion };
 }
 
@@ -258,7 +270,7 @@ export async function atenderNoTexto(mensaje: MensajeEntrante, env: EntornoAtenc
     efectos = { respuesta: textos.recibidoEscalar(), alerta: aviso('escalamiento', `Envió un mensaje de tipo "${mensaje.tipo}"`), textoDelCliente: '' };
   }
   const respuesta = await aplicarEfectos(env, mensaje, efectos, ahora);
-  if (respuesta !== null) await enviarTexto(configWhatsApp(env), mensaje.de, respuesta);
+  if (respuesta !== null) await responderAlCliente(env, mensaje.de, respuesta, ahora);
   return { resultado: respuesta === null ? 'sin_respuesta' : 'respondido', intencion: mensaje.tipo };
 }
 

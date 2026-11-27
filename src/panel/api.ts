@@ -11,6 +11,8 @@
  */
 
 import { cierreDelDia } from '../caja';
+import type { BaseDatos } from '../almacen';
+import { MENSAJES_GRATIS_AL_MES, MENSAJES_PARA_AVISAR, mensajesDelMes, mesDe } from '../mensajesSalientes';
 import { desdeParaEstadisticas, resumirEntregas } from '../estadisticas';
 import { ENCABEZADO_PEDIDOS, filaDePedido, type RepositorioRespaldo } from '../respaldo';
 
@@ -46,6 +48,8 @@ export interface ContextoApi {
   dias?: RepositorioDiasSinReparto;
   /** Seguimiento del repartidor (fase E, D80): su última señal y la hora de llegada a cada parada de hoy. */
   seguimiento?: RepositorioSeguimiento;
+  /** Base para leer el contador de mensajes salientes del mes (D113). */
+  baseDeMensajes?: BaseDatos;
 }
 
 const MAX_CUERPO_BYTES = 20_000;
@@ -249,7 +253,11 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       // Los vacíos que faltan salen de las fichas (D108): bajan solos cuando el cliente los devuelve.
       const deudores = ctx.clientes ? await ctx.clientes.conVaciosPendientes() : null;
       if (deudores) estadisticas.vacios = deudores;
-      return json(estadisticas);
+      // Mensajes de WhatsApp que envió el bot este mes, contra los 1.000 gratis (D113).
+      const mensajes = ctx.baseDeMensajes
+        ? { mes: mesDe(ahoraSegundos), enviados: await mensajesDelMes(ctx.baseDeMensajes, ahoraSegundos), gratis: MENSAJES_GRATIS_AL_MES, aviso: MENSAJES_PARA_AVISAR }
+        : undefined;
+      return json({ ...estadisticas, ...(mensajes && { mensajes }) });
     }
 
     if ((ruta === '/api/reparto' || ruta === '/api/reparto.csv') && metodo === 'GET') {
