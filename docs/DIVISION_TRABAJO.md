@@ -14,9 +14,9 @@ Al 2026-11-27. Los números son los de [LO_QUE_FALTA.md](LO_QUE_FALTA.md); las r
 | Qué | Punto | Estado |
 |---|---|---|
 | Publicar lo del pull request 1, con la migración 0018 | 26–29, 36 | Hecho el 2026-11-27 |
-| Reescribir el historial (nombre y correo en los commits antiguos) | 31 | Espera el visto bueno |
+| Reescribir el historial (nombre y correo en los commits antiguos) | 31 | Hecho el 2026-11-27 (D106) |
 | Publicar cada entrega del Proyecto y correr `npm run comprobar` | 118 | Cada vez |
-| Cargar el historial del Excel | 21 | Cuando Franco lo pida |
+| Cargar el historial del Excel | 21 | Cuando se pruebe o cerca del lanzamiento |
 | Cuentas del panel e instalar la app del repartidor | 15–20 | Franco |
 
 ## Le toca al Proyecto (después de unir y de limpiar el historial)
@@ -40,6 +40,6 @@ Al 2026-11-27. Los números son los de [LO_QUE_FALTA.md](LO_QUE_FALTA.md); las r
 
 ## Mensaje para pegar en el Proyecto
 
-Pégalo **después** de que aquí se reescriba el historial (para que parta de la versión nueva). La rama anterior del Proyecto ya se unió: que cree ramas nuevas.
+Ya puedes pegarlo: el historial se reescribió el 2026-11-27. Que cree ramas nuevas desde `main`.
 
 > Parte desde la última versión de `main` (se reescribió el historial: no uses ramas antiguas). Lee `docs/RESPUESTAS_2026-11-27.md`, `docs/DIVISION_TRABAJO.md` y `docs/INVESTIGACION_2026-11-27.md`. Construye, en pull requests separados y en este orden: (1) cobros según mi respuesta 45; (2) vacíos que faltan como deuda (53); (3) el bot da los datos de transferencia desde la hoja CONFIGURACION y dice que no hay mínimo (42, 43); (4) preguntas frecuentes y textos a partir de los chats que te di (8, 10, 64); (5) capacidad contando solo los de 20 L (47), precio claro para el repartidor (74) y botón "Escribirle" para atrasados (76); (6) contador de mensajes con aviso a los 800 y Workers AI de respaldo (9, 66); (7) notificaciones del panel instalado en el iPhone para los avisos urgentes (3); (8) lo que falte para que Brunen sea su propio Tech Provider, empezando por publicar la política de privacidad (35). No uses el nombre de la operadora en ningún archivo. No publiques nada: yo publico desde mi computador.

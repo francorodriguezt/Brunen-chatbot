@@ -74,3 +74,4 @@ Los números son los de [LO_QUE_FALTA.md](LO_QUE_FALTA.md). Franco aclaró adem�
 | Revisión: alertas con Optiroute | Usan Optiroute hasta el lanzamiento | El aviso se cierra solo (D105) |
 | Revisión: ficha a medias | Hacerlo | Hecho (D105) |
 | Modelo | Seguir con Sonnet | — |
+| 21 (después) | No tiene el Excel; se carga cuando se pruebe o cerca del lanzamiento | Pendiente hasta entonces |

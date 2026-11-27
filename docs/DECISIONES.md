@@ -915,3 +915,11 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
   - migración `0018_condiciones_del_cliente` aplicada en la base real; punto de restauración previo `00001269-00000000-00005130-5d37b955b05529f55cbce281c7d6cae0`;
   - administración `94785954`, pública `9e1f0429`, bot `11fc003b`;
   - `npm run comprobar`: 9 de 9. La app publicada trae `cambios.js` (copia `brunen-v4`) y la base tiene las columnas nuevas de la ficha.
+
+### D106 · 2026-11-27 · Historial de git reescrito: sin el nombre de la operadora ni el correo personal
+**Franco lo pidió ("reescribe el historial de git y fuerza la subida"), porque la operadora no quiere figurar en el repositorio (respuestas 31 y 55).**
+- Se reescribieron los 234 commits de `main`: el nombre se cambió por "la operadora" en archivos y mensajes, y el correo personal de autor por el de `noreply` de GitHub. Los archivos de la última versión quedaron idénticos. Antes se hizo un respaldo completo en el computador de Franco.
+- Se hizo con `git fast-export` y `fast-import` en una copia aparte, sin instalar herramientas; se verificó (0 menciones, solo correos `noreply`, mismo árbol final) y se subió con `--force-with-lease`. La rama del Proyecto (ya unida) se borró.
+- **Los identificadores de commits anteriores a esta fecha cambiaron:** las referencias antiguas en estos documentos ya no existen.
+- **Lo que queda en GitHub:** la página del pull request 1 y los commits viejos por su identificador siguen accesibles. Solo el soporte de GitHub puede borrarlos (pedir "remove cached views and pull request refs").
+- El repositorio quedó configurado con el correo `noreply` para los commits nuevos.
