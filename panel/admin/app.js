@@ -1222,7 +1222,22 @@ function lineaDePublicacion(publicacion, fecha) {
   return h('p', { clase: 'suave' }, `${cuando}. El repartidor la tiene desde las ${hora(publicacion.vistaEn)}.`);
 }
 
-function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja = null, mensajes = {}, sinReparto = null, seguimiento = null, publicacion = null }) {
+/**
+ * D102: lo que cambió desde que se publicó la ruta sin volver a publicarla. La app del repartidor ya lo avisa (lo nuevo
+ * va al final); aquí se recuerda que volver a publicar pone las paradas nuevas en el orden más corto.
+ */
+function lineaDeCambiosSinPublicar(cambios) {
+  if (!cambios) return null;
+  const partes = [];
+  const n = (lista) => lista.length;
+  if (n(cambios.agregadas) > 0) partes.push(n(cambios.agregadas) === 1 ? 'se agregó 1 parada' : `se agregaron ${n(cambios.agregadas)} paradas`);
+  if (n(cambios.quitadas) > 0) partes.push(n(cambios.quitadas) === 1 ? 'se quitó 1' : `se quitaron ${n(cambios.quitadas)}`);
+  if (partes.length === 0) return null;
+  const nuevas = n(cambios.agregadas) > 0 ? ' Las nuevas van al final: vuelve a publicar en «Ruta eficiente y mapa» para ponerlas en orden.' : '';
+  return h('p', { clase: 'revision' }, `Desde que publicaste la ruta, ${partes.join(' y ')}. El repartidor lo ve como aviso en su app.${nuevas}`);
+}
+
+function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja = null, mensajes = {}, sinReparto = null, seguimiento = null, publicacion = null, cambiosSinPublicar = null }) {
   const resumen = $('resumen-reparto');
   const lista = $('lista-reparto');
   // Un día marcado sin reparto (D74): el bot ya no lo ofrece, pero lo que se anotó antes hay que moverlo.
@@ -1276,6 +1291,7 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja 
         )
       : null,
     (reparto.publicada ? lineaDePublicacion(publicacion, reparto.fecha) : null) ?? '',
+    lineaDeCambiosSinPublicar(cambiosSinPublicar) ?? '',
     sinConfirmar ?? '',
     lineaDelRepartidor(seguimiento) ?? '',
     cierreDelDia(caja) ?? '',

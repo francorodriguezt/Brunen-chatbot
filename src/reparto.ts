@@ -79,6 +79,54 @@ export interface RepartoDelDia {
   publicada: boolean;
 }
 
+/** Lo que cambió en la ruta de un día desde que se publicó, sin volver a publicarla (D102). */
+export interface CambiosSinPublicar {
+  /** Paradas que no estaban al publicar (un pedido confirmado después): van al final de la ruta. */
+  agregadas: Array<{ idPedido: string; nombre: string; comuna: string }>;
+  /** Pedidos que estaban al publicar y ya no están (cancelados, movidos a otro día o devueltos a "por confirmar"). */
+  quitadas: string[];
+}
+
+/**
+ * Compara la ruta de hoy con la que se publicó (los viajes guardados al publicar, D86). null si no se publicó o si no
+ * hay viajes guardados (una publicación anterior a D86): no se sabe qué había.
+ */
+export function cambiosDesdeLaPublicacion(reparto: RepartoDelDia, viajes: ReadonlyMap<string, number>): CambiosSinPublicar | null {
+  if (!reparto.publicada || viajes.size === 0) return null;
+  const ahora = new Set(reparto.paradas.map((p) => p.idPedido));
+  return {
+    agregadas: reparto.paradas
+      .filter((p) => !viajes.has(p.idPedido) && p.estado !== 'Entregado')
+      .map((p) => ({ idPedido: p.idPedido, nombre: p.nombre, comuna: p.comuna })),
+    quitadas: [...viajes.keys()].filter((id) => !ahora.has(id)).sort(),
+  };
+}
+
+/** Lo que ven la app y el panel: quién se agregó y quién ya no está, con su nombre y comuna. null si no cambió nada. */
+export interface CambiosConNombre {
+  agregadas: Array<{ nombre: string; comuna: string }>;
+  quitadas: Array<{ nombre: string; comuna: string }>;
+}
+
+const MAXIMO_NOMBRADOS = 10;
+
+/** Busca el nombre de los pedidos quitados (ya no están en la lista del día). Nunca falla: sin nombre, va vacío. */
+export async function nombrarCambios(
+  pedidos: { obtenerPedido(id: string): Promise<{ nombre: string; comuna: string } | null> },
+  cambios: CambiosSinPublicar | null,
+): Promise<CambiosConNombre | null> {
+  if (!cambios || (cambios.agregadas.length === 0 && cambios.quitadas.length === 0)) return null;
+  const quitadas = await Promise.all(
+    cambios.quitadas.slice(0, MAXIMO_NOMBRADOS).map(async (id) => {
+      const pedido = await pedidos.obtenerPedido(id).catch(() => null);
+      return { nombre: pedido?.nombre ?? '', comuna: pedido?.comuna ?? '' };
+    }),
+  );
+  // Si hay más de 10 quitadas, las demás van sin nombre: lo que importa es que se note el cambio.
+  for (let i = MAXIMO_NOMBRADOS; i < cambios.quitadas.length; i++) quitadas.push({ nombre: '', comuna: '' });
+  return { agregadas: cambios.agregadas.map(({ nombre, comuna }) => ({ nombre, comuna })), quitadas };
+}
+
 /**
  * Parte las paradas en viajes de hasta `capacidad` bidones, sin cambiar su orden: cuando la siguiente parada no cabe,
  * empieza otro viaje. Un pedido más grande que el furgón va solo en su viaje y queda marcado.
