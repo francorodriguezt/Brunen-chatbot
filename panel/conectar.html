@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Conectar el número · Brunen</title>
+  <link rel="icon" href="/iconos/icono-192.png">
+  <link rel="stylesheet" href="/estilos.css">
+</head>
+<body class="documento">
+  <main class="documento-contenido" id="conectar" data-app-id="{{APP_ID}}" data-config-id="{{CONFIG_ID}}" data-version="{{VERSION}}">
+    <h1>Conectar el número de WhatsApp de Brunen</h1>
+    <p class="documento-version">Página de uso interno. Solo está activa el día de la conexión.</p>
+
+    <h2>Antes de empezar</h2>
+    <ul>
+      <li>Ten a mano el teléfono con la app <strong>WhatsApp Business</strong> (versión 2.24.17 o más nueva) y ábrela: va a pedir un código y hay que dejarla abierta hasta el final.</li>
+      <li>Ten abierto el computador donde corre <code>npm run conectar-numero</code> con las claves cargadas (docs/TECH_PROVIDER.md).</li>
+      <li>El código que entrega Meta <strong>vale 5 minutos</strong> y se usa una sola vez. Apenas aparezca, cópialo y ejecuta el comando.</li>
+      <li>Después de canjearlo hay <strong>24 horas</strong> para sincronizar; el comando lo hace solo.</li>
+      <li>Cuando Meta pregunte si compartes tu historial de chats, lo recomendado es <strong>no compartirlo</strong>: el bot no lo usa y son datos de clientes.</li>
+    </ul>
+
+    <p><button type="button" id="iniciar" class="entrada entrada-admin" disabled>Conectar con Meta</button></p>
+    <p id="estado" class="documento-version" role="status">Cargando la herramienta de Meta…</p>
+
+    <section id="resultado" hidden>
+      <h2>Resultado</h2>
+      <dl id="datos"></dl>
+      <h2>Ejecuta esto en tu computador</h2>
+      <p>Dentro de 5 minutos. El comando te pregunta por el secreto de la app sin mostrarlo.</p>
+      <pre id="comando" tabindex="0"></pre>
+      <p><button type="button" id="copiar">Copiar el comando</button></p>
+    </section>
+  </main>
+  <script src="/conectar.js" type="module"></script>
+</body>
+</html>

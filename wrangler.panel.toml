@@ -19,6 +19,18 @@ ACCESS_AUD = ""
 # D56, opción 1: esta es la dirección pública (portada y repartidor). Con la dirección de la administración aquí
 # (https://brunen-admin.<subdominio>.workers.dev), /admin manda allá y esta dirección nunca sirve datos de administración.
 PANEL_ADMIN_URL = "https://brunen-admin.brunen-chatbot.workers.dev"
+# Aviso de privacidad público en /privacidad (D116). No existe hasta que el dueño apruebe el texto (docs/AVISO_PRIVACIDAD.md)
+# y se completen estas cuatro variables; con PRIVACIDAD_PUBLICADA = "SI" y los tres datos escritos, aparece.
+PRIVACIDAD_PUBLICADA = ""
+PRIVACIDAD_RUT = ""
+PRIVACIDAD_CORREO = ""
+PRIVACIDAD_FECHA = ""
+# Página /conectar para conectar el número de WhatsApp como Tech Provider (D116, docs/TECH_PROVIDER.md). Existe solo con
+# CONECTAR_ACTIVO = "SI" (el día de la conexión; después se vuelve a dejar vacío). No son secretos: el secreto de la app
+# y el token del número NUNCA van aquí ni en el Worker; los usa solo `npm run conectar-numero`, en el computador.
+CONECTAR_ACTIVO = ""
+META_APP_ID = ""
+META_CONFIG_ID = ""
 # Opcional, segunda barrera con los correos autorizados (PANEL_CORREOS, separados por coma): se carga con
 # `wrangler secret put PANEL_CORREOS -c wrangler.panel.toml`, no aquí. Son correos de personas y este repositorio es público.
 
