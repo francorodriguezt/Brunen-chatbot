@@ -255,7 +255,7 @@ function decidirPedido(e: EntradaMotor, itemsPedidos: ItemInterpretado[], repite
   }
   if (tamanoSupuesto) {
     precioSeguro = false;
-    motivos.push(`No dijo el tamaño: se anotó de ${tamanoSupuesto.replace('L', ' L')}, como sus pedidos anteriores. Confírmalo.`);
+    motivos.push(`No dijo el tamaño: se anotó de ${tamanoSupuesto.replace('L', ' L')}, como su último pedido. Confírmalo.`);
   }
   if (sinHoja) motivos.push('No se pudo leer la hoja CLIENTES: revisar si tiene precio especial, si es mayorista o empresa, o si está bloqueado, antes de confirmar.');
   if (previo) motivos.push(`Sin ficha en CLIENTES (se conoce por su pedido ${previo.idPedido}): confirmar el precio y el tipo de cliente.`);
