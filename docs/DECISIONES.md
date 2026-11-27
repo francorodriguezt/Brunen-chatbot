@@ -968,3 +968,15 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **El texto de la respuesta del pedido cambió:** como pasó con "Entrega en: …" (D55), conviene que Felipe lo sepa (punto 10). No cambia nada que dependa de aprobación de dinero ni de datos.
 - **Probado con los mensajes de los chats (anonimizados) en `tests/mensajes.json`** y con pruebas de la conversación.
 
+
+### D111 · 2026-11-27 · El furgón cuenta solo los bidones de 20 L y el repartidor ve cuánto cobrar (respuestas 47 y 74)
+**Franco respondió: la capacidad del furgón se cuenta solo con los bidones de 20 L (los de 12 L y 10 L son pocos y no cambian la carga), y el repartidor debe ver con claridad qué cobrar.**
+- **Capacidad:** `CAPACIDAD_FURGON = 65` ahora significa 65 bidones de **20 L**. `bidonesEnFurgon(parada)` en `src/reparto.ts` cuenta solo esos, y el armado de viajes (`armarCargas`) y la ruta (`paraRuta`) lo usan. Los de 12 L y 10 L se llevan igual, pero no ocupan lugar en la cuenta. Cada viaje dice "60 bidones de 20 L" o "40 de 20 L y 5 de 12 y 10 L". La regla es una simplificación que Franco eligió: si un día hay muchos de 12 L y 10 L, la operadora lo ve en el texto del viaje.
+- **Precio claro en la app del repartidor:** cada parada dice en negrita una sola cosa: "Cobrar en efectivo: $X", "No cobrar: ya está pagado", "No cobrar en la puerta: paga por transferencia" o, si el pedido no tiene valor, "Efectivo sin valor confirmado: pregunta a la oficina cuánto cobrar". Debajo, en gris, "Valor del pedido: $X · ya pagó $Y". Sale del modelo de cobros (D107): `total`, `montoPagado` y `estadoPago` del pedido. No se inventa ningún valor.
+- Probado con casos de 20 L solamente, mezclados (20 L con 12 L y 10 L) y pedidos sin precio; la app del repartidor se revisó en el navegador a 375 px.
+
+### D112 · 2026-11-27 · "Escribirle" a los clientes que se atrasaron (respuesta 76)
+**Franco pidió un botón para escribirles a los clientes que suelen pedir y hace rato no lo hacen.**
+- En la lista "por pedir" del panel, cada cliente tiene el botón **Escribirle**: abre su chat de WhatsApp (el de la app, en el teléfono o el computador de quien lo toca) con un mensaje listo: "Hola {nombre}, te escribimos de Brunen. ¿Necesitas agua esta semana? Si quieres, respóndenos con cuántos bidones y para qué día, y te lo agendamos." La persona lo revisa y lo envía.
+- **No lo envía el bot**: es un mensaje que inicia el negocio, y fuera de la ventana de 24 h exigiría una plantilla aprobada por Meta (regla 12) y gastaría mensajes. Así no cuenta en el presupuesto de la Cloud API. Mismo diseño que "avisar al cliente" (D79).
+- El texto está en `textoDeRecordatorio` (`panel/admin/avisar-cliente.js`), con prueba. El teléfono es el primero de la ficha.

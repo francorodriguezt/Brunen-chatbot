@@ -13,7 +13,7 @@
  */
 
 import { fechaHoraLocal } from '../despacho';
-import { armarReparto } from '../reparto';
+import { armarReparto, bidonesEnFurgon } from '../reparto';
 import type { RepositorioSeguimiento } from '../seguimiento';
 import { RepositorioPuntos, claveDePunto } from '../puntos';
 import { MAXIMO_DE_PARADAS_PUBLICADAS, type RepositorioD1 } from '../repositorio';
@@ -69,7 +69,8 @@ async function cargarDelDia(ctx: ContextoRuta, fecha: string) {
     });
     if (parada.estado === 'Entregado') entregadas.push(parada.idPedido);
     else if (!ubicacion) sinUbicar.push(parada.idPedido);
-    else paraRuta.push({ id: parada.idPedido, punto: ubicacion.punto, bidones: parada.totalBidones });
+    // La capacidad del furgón cuenta solo los de 20 L (D111).
+    else paraRuta.push({ id: parada.idPedido, punto: ubicacion.punto, bidones: bidonesEnFurgon(parada) });
   }
   const sinOrden = new Set(pedidos.filter((p) => p.ordenRuta === null).map((p) => p.id));
   return { reparto, paradas, paraRuta, entregadas, sinUbicar, sinOrden };

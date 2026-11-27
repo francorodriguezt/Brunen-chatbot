@@ -109,6 +109,10 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
       vaciosEsperados: vaciosEsperados(parada),
       notas: parada.notas,
       formaPago: pedido?.formaPago ?? '',
+      // El valor del pedido, solo de referencia (D111): lo que debe cobrar sigue siendo `cobrar`, que descuenta lo ya pagado.
+      total: parada.total,
+      pagado: pedido?.montoPagado ?? 0,
+      estadoPago: pedido?.estadoPago ?? 'pendiente',
       cobrar: estado === 'entregado' ? null : aCobrar,
       // Para "Corregir" una entrega: cuánto se cobra en efectivo y si ya lo cobró, para no perder el cobro.
       montoEfectivo: pedido?.formaPago === 'efectivo' && parada.total !== null ? Math.max(0, parada.total - (pedido.montoPagado - (entrega?.cobrado ?? 0))) || null : null,

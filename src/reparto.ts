@@ -50,17 +50,23 @@ export interface CargaDelFurgon {
   numero: number;
   desde: number;
   hasta: number;
+  /** Todos los bidones del viaje, de cualquier tamaño. */
   totalBidones: number;
+  /** Los de 20 L: son los que cuentan para la capacidad del furgón (D111). */
+  de20L: number;
   /** Un solo pedido con más bidones de los que caben: hay que repartirlo en dos viajes a mano. */
   excedeFurgon: boolean;
 }
 
 /**
- * Bidones que caben en el furgón (el dueño y la operadora, 2026-11-10). Cuenta igual un bidón de 20, 12 o 10 L mientras no se
- * sepa cuántos de cada tamaño caben (pregunta pendiente). En 267 de 504 días del Excel se pasó de 65: lo normal es
- * hacer más de un viaje en el día.
+ * Bidones de 20 L que caben en el furgón: unos 60 a 65 (Franco, 2026-11-27, respuesta 47). Los de 12 y 10 L van encima
+ * sin problema, así que **no cuentan** para la capacidad (D111). Antes se contaban todos por igual mientras no se supiera.
+ * En 267 de 504 días del Excel se pasó de 65 bidones: lo normal es hacer más de un viaje en el día.
  */
 export const CAPACIDAD_FURGON = 65;
+
+/** Lo que de una parada ocupa lugar en el furgón: solo sus bidones de 20 L (D111). */
+export const bidonesEnFurgon = (parada: { bidones: Record<TipoBidon, number> }): number => parada.bidones['20L'];
 
 export interface RepartoDelDia {
   fecha: string;
@@ -143,16 +149,17 @@ export function armarCargas(paradas: ParadaDeReparto[], capacidad: number = CAPA
     const guardado = viajes?.get(parada.idPedido) ?? null;
     const empieza =
       !actual ||
-      (guardado !== null ? guardado !== viajeGuardado : actual.totalBidones > 0 && actual.totalBidones + parada.totalBidones > capacidad);
+      (guardado !== null ? guardado !== viajeGuardado : actual.de20L > 0 && actual.de20L + bidonesEnFurgon(parada) > capacidad);
     if (empieza) {
-      actual = { numero: cargas.length + 1, desde: parada.orden, hasta: parada.orden, totalBidones: 0, excedeFurgon: false };
+      actual = { numero: cargas.length + 1, desde: parada.orden, hasta: parada.orden, totalBidones: 0, de20L: 0, excedeFurgon: false };
       cargas.push(actual);
       viajeGuardado = guardado;
     }
     if (!actual) continue;
     actual.hasta = parada.orden;
     actual.totalBidones += parada.totalBidones;
-    actual.excedeFurgon = actual.totalBidones > capacidad;
+    actual.de20L += bidonesEnFurgon(parada);
+    actual.excedeFurgon = actual.de20L > capacidad;
     parada.carga = actual.numero;
   }
   return cargas;
@@ -233,6 +240,13 @@ export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string, 
   };
 }
 
+/** "60 bidones de 20 L" o, si lleva otros tamaños encima, "60 de 20 L y 8 de 12 y 10 L". */
+export function textoDeCarga(carga: Pick<CargaDelFurgon, 'totalBidones' | 'de20L'>): string {
+  const otros = carga.totalBidones - carga.de20L;
+  if (otros <= 0) return `${carga.de20L} ${carga.de20L === 1 ? 'bidón' : 'bidones'} de 20 L`;
+  return carga.de20L > 0 ? `${carga.de20L} de 20 L y ${otros} de 12 y 10 L` : `${otros} de 12 y 10 L`;
+}
+
 const plural = (cantidad: number, uno: string, varios: string): string => `${cantidad} ${cantidad === 1 ? uno : varios}`;
 // `envasesARetirar` son los vacíos que el cliente debe de antes, ADEMÁS del cambio de cada bidón (D72).
 const envases = (cantidad: number): string => plural(cantidad, 'vacío extra', 'vacíos extra');
@@ -274,13 +288,13 @@ export function textoDeReparto(reparto: RepartoDelDia): string {
     plural(reparto.paradas.length, 'parada', 'paradas'),
     `${plural(reparto.totalBidones, 'bidón', 'bidones')} (${desglose})`,
     reparto.envasesARetirar > 0 ? `retirar ${envases(reparto.envasesARetirar)}` : '',
-    reparto.cargas.length > 1 ? `${reparto.cargas.length} cargas (el furgón lleva ${CAPACIDAD_FURGON})` : '',
+    reparto.cargas.length > 1 ? `${reparto.cargas.length} cargas (el furgón lleva ${CAPACIDAD_FURGON} de 20 L)` : '',
   ].filter(Boolean);
 
   const conCargas = reparto.cargas.length > 1;
   const lineas = reparto.paradas.flatMap((p) => {
     const carga = conCargas ? reparto.cargas.find((c) => c.desde === p.orden) : undefined;
-    const encabezado = carga ? [`— Carga ${carga.numero}: ${carga.totalBidones} bidones${carga.excedeFurgon ? ' (no cabe en un viaje)' : ''} —`] : [];
+    const encabezado = carga ? [`— Carga ${carga.numero}: ${textoDeCarga(carga)}${carga.excedeFurgon ? ' (no cabe en un viaje)' : ''} —`] : [];
     return [...encabezado, [
       `${p.orden}. ${[p.direccion, p.comuna].filter(Boolean).join(', ') || 'sin dirección'}`,
       p.nombre,

@@ -90,6 +90,8 @@ describe('la ruta del repartidor (fase D, D61)', () => {
     const ana = datos.paradas.find((p) => p.idPedido === 'P261113-AAAAA');
     expect(ana).toMatchObject({ cobrar: 9900, estado: 'pendiente', notas: 'Timbre 4B', telefono: '56911111111', totalBidones: 3, envasesARetirar: 3 });
     expect(datos.paradas.find((p) => p.idPedido === 'P261113-BBBBB')?.cobrar).toBeNull();
+    // El valor del pedido viaja aparte de lo que se cobra, para que la pantalla los etiquete distinto (D111).
+    expect(ana).toMatchObject({ total: 9900, pagado: 0, estadoPago: 'pendiente' });
     expect(JSON.stringify(datos)).not.toContain('Nota interna');
     expect(datos.motivos.map((m) => m.valor)).toContain('no_estaba');
   });

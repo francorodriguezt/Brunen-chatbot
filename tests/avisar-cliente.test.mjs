@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { enlaceParaAvisar, textoDeCambio, textoDeCancelacion } from '../panel/admin/avisar-cliente.js';
+import { enlaceParaAvisar, textoDeCambio, textoDeCancelacion, textoDeRecordatorio } from '../panel/admin/avisar-cliente.js';
 
 // Todo ficticio.
 const antes = { bidones: '3 de 20 L', fecha: 'jueves 19 de noviembre', total: '$9.900' };
@@ -22,6 +22,14 @@ describe('Avisar al cliente (D99)', () => {
     );
     // Una nota para el repartidor o el pago no se le avisan.
     expect(textoDeCambio({ nombre: 'Ana', antes, despues: { ...antes } })).toBe('');
+  });
+
+  it('el recordatorio a un cliente atrasado es una pregunta corta, sin precios', () => {
+    expect(textoDeRecordatorio({ nombre: 'Ana Prueba' })).toBe(
+      'Hola Ana, te escribimos de Brunen. ¿Necesitas agua esta semana? Si quieres, respóndenos con cuántos bidones y para qué día, y te lo agendamos.',
+    );
+    expect(textoDeRecordatorio({ nombre: '' })).toMatch(/^Hola, te escribimos/);
+    expect(textoDeRecordatorio({ nombre: 'Ana' })).not.toMatch(/\$/);
   });
 
   it('el enlace abre su chat con el texto listo; sin teléfono no hay enlace', () => {

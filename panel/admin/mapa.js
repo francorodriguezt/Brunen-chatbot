@@ -241,7 +241,7 @@ export function crearRutaDelDia({ contenedor, api, h, boton, avisar, alPublicar 
         'h3',
         { clase: `titulo-carga${carga.excedeFurgon ? ' excede' : ''}` },
         // Aquí cuenta solo lo que falta entregar: con entregas hechas, los viajes se rearman y no calzan con los de la lista.
-        `${datos.entregadas.length > 0 ? 'Lo que queda, viaje' : 'Viaje'} ${carga.numero}: ${carga.bidones} bidones, ${desde}${carga.excedeFurgon ? ' (un pedido no cabe en un viaje: divídelo)' : ''}`,
+        `${datos.entregadas.length > 0 ? 'Lo que queda, viaje' : 'Viaje'} ${carga.numero}: ${carga.bidones} de 20 L, ${desde}${carga.excedeFurgon ? ' (un pedido no cabe en un viaje: divídelo)' : ''}`,
       );
       return [titulo, ...carga.paradas.map((id) => filaDeParada(paradas.get(id), ++numero))];
     });

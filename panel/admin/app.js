@@ -8,7 +8,7 @@ import { darFormatoAlRut, mostrarIngreso, pedir, registrarAplicacion } from '/in
 import { crearRutaDelDia } from '/admin/mapa.js';
 import { crearMapaDeClientes } from '/admin/mapa-clientes.js';
 import { avisoDeFecha } from '/admin/aviso-de-fecha.js';
-import { enlaceParaAvisar, textoDeCambio, textoDeCancelacion } from '/admin/avisar-cliente.js';
+import { enlaceParaAvisar, textoDeCambio, textoDeCancelacion, textoDeRecordatorio } from '/admin/avisar-cliente.js';
 
 // Cada consulta es una solicitud al Worker (el plan gratis permite 100.000 al día): con la pestaña a la vista se consulta
 // seguido para enterarse rápido de un pedido, y con la pestaña oculta o la ventana tapada, más espaciado.
@@ -1332,13 +1332,13 @@ function pintarReparto({ reparto, texto, tsv, entregas = {}, motivos = {}, caja 
       h('a', { clase: 'boton', href: `/admin/api/reparto.csv?fecha=${encodeURIComponent(reparto.fecha)}`, download: `reparto-${reparto.fecha}.csv` }, 'Descargar archivo'),
     ),
   );
-  // Con más de un viaje (el furgón lleva 65 bidones, D60), un título antes de la primera parada de cada carga.
+  // Con más de un viaje (el furgón lleva 65 bidones de 20 L, D60, D111), un título antes de la primera parada de cada carga.
   const conCargas = reparto.cargas.length > 1;
   lista.replaceChildren(
     ...reparto.paradas.flatMap((parada) => {
       const carga = conCargas ? reparto.cargas.find((c) => c.desde === parada.orden) : undefined;
       const titulo = carga
-        ? h('h3', { clase: `titulo-carga${carga.excedeFurgon ? ' excede' : ''}` }, `Viaje ${carga.numero}: ${carga.totalBidones} bidones${carga.excedeFurgon ? ' (no cabe en un viaje: divídelo)' : ''}`)
+        ? h('h3', { clase: `titulo-carga${carga.excedeFurgon ? ' excede' : ''}` }, `Viaje ${carga.numero}: ${textoDeCarga(carga)}${carga.excedeFurgon ? ' (no cabe en un viaje: divídelo)' : ''}`)
         : null;
       const tarjeta = tarjetaDeParada(parada, entregas[parada.idPedido], motivos, mensajes[parada.idPedido], seguimiento);
       return titulo ? [titulo, tarjeta] : [tarjeta];
@@ -1676,6 +1676,13 @@ function activarVista(nombre) {
 // ---- Hoy: lo que hay que hacer ahora, en una pantalla (D70) ----
 
 const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+/** "60 bidones de 20 L" o, con otros tamaños encima, "60 de 20 L y 8 de 12 y 10 L": solo los de 20 L cuentan para el furgón (D111). */
+function textoDeCarga(carga) {
+  const otros = carga.totalBidones - carga.de20L;
+  if (otros <= 0) return `${carga.de20L} ${carga.de20L === 1 ? 'bidón' : 'bidones'} de 20 L`;
+  return carga.de20L > 0 ? `${carga.de20L} de 20 L y ${otros} de 12 y 10 L` : `${otros} de 12 y 10 L`;
+}
+
 const bidonesDe = (reparto) => Object.values(reparto?.carga ?? {}).reduce((suma, n) => suma + (Number(n) || 0), 0);
 
 /** El próximo día de reparto después de hoy: el domingo no se reparte. */
@@ -2002,6 +2009,15 @@ async function cargarClientes() {
   else lista.replaceChildren(...clientes.map(tarjetaDeCliente));
 }
 
+/**
+ * "Escribirle" (D112): abre su chat en WhatsApp con un recordatorio listo. El bot no escribe solo (un mensaje más y, fuera de
+ * las 24 horas, una plantilla pagada): la persona lo revisa y lo envía desde la app del negocio, sin costo.
+ */
+function escribirleA(cliente) {
+  const enlace = enlaceParaAvisar(cliente.telefonos[0], textoDeRecordatorio({ nombre: cliente.nombre }));
+  return enlace ? boton('Escribirle', 'boton boton-principal', () => window.open(enlace, '_blank', 'noopener,noreferrer')) : null;
+}
+
 /** A quién le toca pedir (D58). Se carga al abrir el desplegable: lee todos los pedidos, así que no va con cada recarga. */
 async function cargarPorPedir() {
   const lista = $('lista-por-pedir');
@@ -2021,7 +2037,7 @@ async function cargarPorPedir() {
           h('div', { clase: 'tarjeta-cabecera' }, h('span', { clase: 'persona-nombre' }, c.nombre || 'Sin nombre'), h('span', { clase: 'insignia ambar' }, `${c.diasSinPedir} días sin pedir`)),
           h('div', { clase: 'cliente' }, ...c.telefonos.map(enlaceWhatsApp)),
           h('div', { clase: 'datos' }, h('span', {}, h('b', {}, 'Suele pedir: '), `cada ${c.cadaDias} días`), h('span', {}, h('b', {}, 'Último: '), fechaLarga(c.ultimo))),
-          h('div', { clase: 'acciones' }, boton('Ver ficha', 'boton', () => void abrirCliente(c.id))),
+          h('div', { clase: 'acciones' }, escribirleA(c), boton('Ver ficha', 'boton', () => void abrirCliente(c.id))),
         ),
       ),
       ...(nota ? [nota] : []),

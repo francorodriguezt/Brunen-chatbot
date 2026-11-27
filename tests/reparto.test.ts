@@ -229,7 +229,7 @@ describe('cargas del furgón (fase C, D60)', () => {
 
   it('con 65 bidones o menos hay una sola carga y el texto no cambia', () => {
     const reparto = armarReparto([de20('P1', 30, 'Calle 1'), de20('P2', 35, 'Calle 2')], DIA);
-    expect(reparto.cargas).toEqual([{ numero: 1, desde: 1, hasta: 2, totalBidones: 65, excedeFurgon: false }]);
+    expect(reparto.cargas).toEqual([{ numero: 1, desde: 1, hasta: 2, totalBidones: 65, de20L: 65, excedeFurgon: false }]);
     expect(textoDeReparto(reparto)).not.toContain('Carga');
   });
 
@@ -238,15 +238,45 @@ describe('cargas del furgón (fase C, D60)', () => {
     expect(reparto.cargas.map((c) => [c.desde, c.hasta, c.totalBidones])).toEqual([[1, 2, 60], [3, 4, 30]]);
     expect(reparto.paradas.map((p) => p.carga)).toEqual([1, 1, 2, 2]);
     const texto = textoDeReparto(reparto);
-    expect(texto).toContain('2 cargas (el furgón lleva 65)');
-    expect(texto).toContain('— Carga 1: 60 bidones —');
-    expect(texto).toContain('— Carga 2: 30 bidones —');
+    expect(texto).toContain('2 cargas (el furgón lleva 65 de 20 L)');
+    expect(texto).toContain('— Carga 1: 60 bidones de 20 L —');
+    expect(texto).toContain('— Carga 2: 30 bidones de 20 L —');
   });
 
   it('un pedido más grande que el furgón va solo en su carga y queda marcado', () => {
     const reparto = armarReparto([de20('P1', 10, 'Calle 1'), de20('P2', 80, 'Calle 2'), de20('P3', 5, 'Calle 3')], DIA);
     expect(reparto.cargas.map((c) => [c.desde, c.hasta, c.excedeFurgon])).toEqual([[1, 1, false], [2, 2, true], [3, 3, false]]);
-    expect(textoDeReparto(reparto)).toContain('— Carga 2: 80 bidones (no cabe en un viaje) —');
+    expect(textoDeReparto(reparto)).toContain('— Carga 2: 80 bidones de 20 L (no cabe en un viaje) —');
+  });
+});
+
+describe('la capacidad del furgón cuenta solo los de 20 L (respuesta 47, D111)', () => {
+  const mezcla = (id: string, de20: number, de12: number, direccion: string) =>
+    pedido(id, {
+      direccion,
+      lineas: [
+        { tipo: '20L', cantidad: de20, precioUnitario: null, subtotal: null },
+        ...(de12 > 0 ? [{ tipo: '12L' as const, cantidad: de12, precioUnitario: null, subtotal: null }] : []),
+      ],
+      total: null,
+    });
+
+  it('los de 12 y 10 L van encima: no empujan a otro viaje', () => {
+    // 60 de 20 L + 30 de 12 L serían 90 bidones: antes eran dos viajes, ahora uno.
+    const reparto = armarReparto([mezcla('P1', 30, 0, 'Calle 1'), mezcla('P2', 30, 30, 'Calle 2')], DIA);
+    expect(reparto.cargas).toEqual([{ numero: 1, desde: 1, hasta: 2, totalBidones: 90, de20L: 60, excedeFurgon: false }]);
+    expect(textoDeReparto(reparto)).not.toContain('Carga');
+  });
+
+  it('los de 20 L sí: pasados 65 se arma otro viaje, y el texto dice cuántos de cada grupo', () => {
+    const reparto = armarReparto([mezcla('P1', 40, 5, 'Calle 1'), mezcla('P2', 30, 0, 'Calle 2')], DIA);
+    expect(reparto.cargas.map((c) => [c.desde, c.hasta, c.de20L, c.totalBidones])).toEqual([[1, 1, 40, 45], [2, 2, 30, 30]]);
+    expect(textoDeReparto(reparto)).toContain('— Carga 1: 40 de 20 L y 5 de 12 y 10 L —');
+  });
+
+  it('un pedido solo de 12 L no ocupa lugar: un viaje que lleva solo esos no queda "sobre el tope"', () => {
+    const reparto = armarReparto([mezcla('P1', 1, 200, 'Calle 1')], DIA);
+    expect(reparto.cargas[0]).toMatchObject({ de20L: 1, totalBidones: 201, excedeFurgon: false });
   });
 });
 

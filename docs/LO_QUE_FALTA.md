@@ -75,7 +75,7 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
 44. **Hora de llegada al cliente**: ¿le parece bien una ventana de al menos 20 minutos? (P21). ¿Se avisa la hora a todos o solo a los que la piden (columna `Aviso_Hora`)?
 45. **Cobros**: quién verifica los pagos, si el repartidor rinde el efectivo cada día, si hay abonos y si hay clientes a crédito (P22 a P25). Respondida (45) y construida en D107.
 46. **Cliente bloqueado**: ¿se le contesta algo? (P26).
-47. **Furgón**: cuántos bidones de 12 L y 10 L caben y el peso máximo (P27). Si los sobrantes quedan en el furgón y si la carga lleva margen.
+47. **Furgón**: ✅ la capacidad se cuenta solo con los de 20 L (D111). Falta el peso máximo (P27) y saber si los sobrantes quedan en el furgón y si la carga lleva margen.
 48. **Hora de salida y minutos por parada** (P28).
 49. **Clientes atrasados**: ¿les escribe la operadora o el bot con plantilla pagada? (P29).
 50. **Dominio propio** para el panel (P30).
@@ -111,9 +111,9 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
 71. **Asociar comprobantes a un pedido** cuando hay varios sin pagar. — Espera P6.
 72. **Llenar solos los vacíos por retirar** al reconocer al cliente. — ✅ Hecho en D108 (bot, pedidos fijos y Nuevo pedido).
 73. **Incidencias sin parada** (furgón, diferencias) en la app del repartidor. — Espera la lista de Felipe y la operadora (punto 60).
-74. **Precio de todo el pedido en la app del repartidor**. Hoy ve solo lo que cobra en efectivo; mostrar más es decisión del negocio.
+74. **Precio de todo el pedido en la app del repartidor**. — ✅ Hecho en D111: ve qué cobrar y el valor del pedido.
 75. **Promociones** que el bot cotiza solo y que se arman desde el panel. — Espera a Felipe.
-76. **Recordatorios a clientes frecuentes**. — Espera P29.
+76. **Recordatorios a clientes frecuentes**. — ✅ Botón "Escribirle" en la lista "por pedir" (D112); el mensaje lo envía una persona.
 77. **Distancia real de calle** (Mapbox). — Espera P7.
 
 ## 8. Construcción que no espera a nadie (cuando haya tiempo)

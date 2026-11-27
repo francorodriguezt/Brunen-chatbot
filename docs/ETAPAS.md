@@ -12,7 +12,7 @@ Cada etapa termina con una prueba concreta. No se avanza sin que la anterior fun
 | 5 | La operadora: bandeja de pedidos y avisos con Confirmar / Cambiar; Telegram solo para lo muy urgente | 🟡 La bandeja y las acciones están en el panel (P1, probado en local); faltan el acceso, el despliegue y el bot de Telegram |
 | 6 | Imágenes (comprobantes + PAGOS), audio, fuera de zona, reclamos, lista del día | 🟡 La lista del día está en el panel (pestaña Reparto, D42; columnas provisionales); comprobantes: guardarlos en D1 y verlos en el panel (D30, D32), sin construir |
 | 7 | Producción: número definitivo, verificación de empresa, piloto con 5–10 clientes | |
-| P | Panel de administración: pedidos, avisos, clientes, mapa, estadísticas | 🟡 P1 (bandeja) y la primera parte de P2 (reparto del día, pedidos a mano y búsqueda, D42) listas y probadas en local; acceso decidido: Cloudflare Access (D34), falta activarlo y desplegar; P3 a P5 sin empezar Cobros (pestaña *Cobros*, D107): pagos por pedido, verificación, rendición del efectivo y crédito; sin publicar, falta la migración 0019. |
+| P | Panel de administración: pedidos, avisos, clientes, mapa, estadísticas | 🟡 P1 (bandeja) y la primera parte de P2 (reparto del día, pedidos a mano y búsqueda, D42) listas y probadas en local; acceso decidido: Cloudflare Access (D34), falta activarlo y desplegar; P3 a P5 sin empezar Cobros (pestaña *Cobros*, D107): pagos por pedido, verificación, rendición del efectivo y crédito; sin publicar, falta la migración 0019. Reparto (D111, D112): capacidad del furgón solo con 20 L, cobro claro para el repartidor y "Escribirle" a los atrasados; sin publicar. |
 
 ---
 

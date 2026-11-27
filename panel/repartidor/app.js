@@ -385,6 +385,32 @@ function insignia(parada, esSiguiente) {
   return null;
 }
 
+/**
+ * Lo que el repartidor ve de la plata de una parada (D111), con etiquetas que no se confunden: lo que **debe cobrar** va
+ * en negrita y aparte; el valor del pedido es solo una referencia. Si no hay nada que cobrar, lo dice con todas sus letras.
+ */
+function datosDePago(p) {
+  const filas = [];
+  const pagado = p.estadoPago === 'pagado' || p.estadoPago === 'informado';
+  if (p.estado === 'entregado') {
+    // Ya entregó: lo que cobró queda en "Cobré" al corregir; aquí solo la referencia.
+  } else if (p.cobrar !== null) {
+    filas.push(h('span', { clase: 'cobrar' }, h('b', {}, 'Cobrar en efectivo: '), pesos.format(p.cobrar)));
+  } else if (pagado) {
+    filas.push(h('span', { clase: 'cobrar' }, h('b', {}, 'No cobrar: '), 'ya está pagado'));
+  } else if (p.formaPago === 'efectivo') {
+    filas.push(h('span', { clase: 'falta' }, h('b', {}, 'Efectivo sin valor confirmado: '), 'pregunta a la oficina cuánto cobrar'));
+  } else if (p.formaPago) {
+    filas.push(h('span', { clase: 'cobrar' }, h('b', {}, 'No cobrar en la puerta: '), `paga por ${NOMBRE_DE_PAGO[p.formaPago] ?? p.formaPago}`));
+  }
+  if (p.total !== null && p.total !== undefined) {
+    filas.push(h('span', { clase: 'suave' }, h('b', {}, 'Valor del pedido: '), pesos.format(p.total), p.pagado > 0 && p.pagado < p.total ? ` · ya pagó ${pesos.format(p.pagado)}` : ''));
+  }
+  return filas;
+}
+
+const NOMBRE_DE_PAGO = { transferencia: 'transferencia', redcompra: 'Redcompra', webpay: 'Webpay', plan: 'plan mensual', otro: 'otro medio' };
+
 function tarjeta(p, esSiguiente = false) {
   const { lugar, google: enGoogle, waze: enWaze } = enlacesDe(p);
   const formulario = abierta?.id === p.idPedido ? (abierta.tipo === 'entregado' ? formularioEntregado(p) : formularioNoSePudo(p)) : null;
@@ -399,7 +425,7 @@ function tarjeta(p, esSiguiente = false) {
       h('span', {}, h('b', {}, 'Deja: '), textoBidones(p.bidones)),
       // Uno por bidón es lo normal; esto avisa solo cuando además debe vacíos de antes (D72).
       p.envasesARetirar > 0 ? h('span', {}, h('b', {}, 'Retirar: '), `${p.vaciosEsperados ?? p.envasesARetirar} vacíos (${p.envasesARetirar} que debía)`) : null,
-      p.cobrar !== null ? h('span', { clase: 'cobrar' }, h('b', {}, 'Cobrar en efectivo: '), pesos.format(p.cobrar)) : p.formaPago ? h('span', {}, h('b', {}, 'Pago: '), p.formaPago) : null,
+      ...datosDePago(p),
       p.notas ? h('span', {}, h('b', {}, 'Notas: '), p.notas) : null,
       p.estado === 'entregado' && p.vaciosRetirados !== null ? h('span', { clase: 'suave' }, `Retiró ${p.vaciosRetirados} ${p.vaciosRetirados === 1 ? 'vacío' : 'vacíos'}.`) : null,
       p.estado === 'no_se_pudo' ? h('span', { clase: 'suave' }, `Motivo: ${textoMotivo(p.motivo)}.`) : null,

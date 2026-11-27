@@ -3,6 +3,7 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Próxima sesión
+ACTUALIZACIÓN 2026-11-27 (D111 y D112, sin publicar): el furgón cuenta solo los bidones de 20 L, la app del repartidor dice con claridad cuánto cobrar y la lista "por pedir" tiene el botón "Escribirle". Sin migración.
 ACTUALIZACIÓN 2026-11-27 (D110, sin publicar): textos y preguntas frecuentes desde los chats reales: "¿son retornables?" / carga inicial, y el recordatorio de dejar los vacíos listos en la respuesta del pedido. Sin migración. Franco decide los textos guiándose por los chats; **si quiere, avisarle a Felipe que cambió la respuesta del pedido** (punto 10).
 ACTUALIZACIÓN 2026-11-27 (D109, sin publicar): el bot da los datos de transferencia desde la hoja CONFIGURACION y dice que no hay mínimo. **Falta (Franco o el dueño): agregar la fila `DATOS_TRANSFERENCIA` en la hoja CONFIGURACION real.** Mientras no esté, el bot sigue derivando la pregunta a una persona. No hace falta migración.
 ACTUALIZACIÓN 2026-11-27 (D108, sin publicar): **vacíos que faltan como deuda** (respuesta 53): al entregar, lo que falta pasa a la ficha y el próximo pedido lo retira. **Antes de publicar hay que aplicar la migración `0020_vacios_a_deuda`.**

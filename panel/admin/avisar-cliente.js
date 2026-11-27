@@ -32,6 +32,14 @@ export function textoDeCambio({ nombre, antes, despues }) {
   return `Hola${primerNombre(nombre)}, te escribimos de Brunen. Cambiamos tu pedido: ${lista}. Si algo no te calza, respóndenos por aquí.`;
 }
 
+/**
+ * El recordatorio para un cliente frecuente que lleva más días sin pedir que su ritmo (D112, respuesta 76). Una pregunta
+ * corta y sin presión; no menciona precios ni promociones. La persona lo revisa antes de enviarlo.
+ */
+export function textoDeRecordatorio({ nombre }) {
+  return `Hola${primerNombre(nombre)}, te escribimos de Brunen. ¿Necesitas agua esta semana? Si quieres, respóndenos con cuántos bidones y para qué día, y te lo agendamos.`;
+}
+
 /** El chat del cliente con el texto listo, o null si no hay un teléfono que sirva. */
 export function enlaceParaAvisar(telefono, texto) {
   const digitos = String(telefono ?? '').replace(/\D/g, '');
