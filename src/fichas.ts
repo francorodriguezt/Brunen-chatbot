@@ -65,7 +65,7 @@ export interface FichaParaBot extends CondicionesDeFicha {
   comuna: string;
 }
 
-export type ErrorDeCliente = 'no_existe' | 'datos_invalidos' | 'telefono_invalido' | 'telefono_de_otro' | 'mismo_cliente' | 'pedidos_vivos';
+export type ErrorDeCliente = 'no_existe' | 'datos_invalidos' | 'telefono_invalido' | 'telefono_de_otro' | 'mismo_cliente' | 'pedidos_vivos' | 'falta_migracion';
 
 /** Lo que quedó después de borrar los datos de un cliente (D87). */
 export interface ResultadoDeOlvido {
@@ -398,9 +398,19 @@ export class RepositorioClientes {
     const bloqueado = datos.bloqueado === undefined ? actual.bloqueado : datos.bloqueado;
     if (precio === undefined || !Number.isInteger(vacios) || vacios < 0 || vacios > 500 || typeof bloqueado !== 'boolean') return { ok: false, error: 'datos_invalidos' };
 
-    await this.cambios('UPDATE clientes SET nombre = ?2, tipo_cliente = ?3, notas = ?4, actualizado_en = ?5 WHERE id = ?1', id, nombre, tipo, notas, ahora);
-    if (precio !== actual.precioEspecial20L || vacios !== actual.vaciosPendientes || bloqueado !== actual.bloqueado) {
-      await this.cambios('UPDATE clientes SET precio_especial_20l = ?2, vacios_pendientes = ?3, bloqueado = ?4 WHERE id = ?1', id, precio, vacios, bloqueado ? 1 : 0);
+    if (precio === actual.precioEspecial20L && vacios === actual.vaciosPendientes && bloqueado === actual.bloqueado) {
+      await this.cambios('UPDATE clientes SET nombre = ?2, tipo_cliente = ?3, notas = ?4, actualizado_en = ?5 WHERE id = ?1', id, nombre, tipo, notas, ahora);
+      return { ok: true, valor: true };
+    }
+    // En una sola escritura: sin la migración 0018 no queda la mitad guardada (D105).
+    try {
+      await this.cambios(
+        'UPDATE clientes SET nombre = ?2, tipo_cliente = ?3, notas = ?4, actualizado_en = ?5, precio_especial_20l = ?6, vacios_pendientes = ?7, bloqueado = ?8 WHERE id = ?1',
+        id, nombre, tipo, notas, ahora, precio, vacios, bloqueado ? 1 : 0,
+      );
+    } catch (falla) {
+      if (/no such column/i.test(falla instanceof Error ? falla.message : String(falla))) return { ok: false, error: 'falta_migracion' };
+      throw falla;
     }
     return { ok: true, valor: true };
   }

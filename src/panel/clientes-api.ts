@@ -35,6 +35,7 @@ const MENSAJES = {
   telefono_de_otro: [409, 'Ese teléfono ya es de otro cliente. Si son el mismo, usa "Unir con otro cliente".'],
   mismo_cliente: [422, 'Es el mismo cliente.'],
   pedidos_vivos: [409, 'Tiene pedidos sin entregar: entrégalos o cancélalos antes de borrar sus datos.'],
+  falta_migracion: [409, 'Falta actualizar la base para guardar el precio especial, los vacíos y el bloqueo. No se guardó nada.'],
 } as const;
 
 function errorDeCliente(codigo: keyof typeof MENSAJES, otroId?: number): Response {
