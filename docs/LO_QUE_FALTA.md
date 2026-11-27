@@ -73,7 +73,7 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
 42. **¿El bot puede dar los datos de transferencia?** (P18).
 43. **¿Hay un mínimo de pedido?** (P19).
 44. **Hora de llegada al cliente**: ¿le parece bien una ventana de al menos 20 minutos? (P21). ¿Se avisa la hora a todos o solo a los que la piden (columna `Aviso_Hora`)?
-45. **Cobros**: quién verifica los pagos, si el repartidor rinde el efectivo cada día, si hay abonos y si hay clientes a crédito (P22 a P25). Destraba la mejora de cobros.
+45. **Cobros**: quién verifica los pagos, si el repartidor rinde el efectivo cada día, si hay abonos y si hay clientes a crédito (P22 a P25). Respondida (45) y construida en D107.
 46. **Cliente bloqueado**: ¿se le contesta algo? (P26).
 47. **Furgón**: cuántos bidones de 12 L y 10 L caben y el peso máximo (P27). Si los sobrantes quedan en el furgón y si la carga lleva margen.
 48. **Hora de salida y minutos por parada** (P28).
@@ -105,7 +105,7 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
 ## 7. Construcción que espera una decisión
 
 67. **Fichas como única fuente de clientes** (propuesta 1): migración nueva, el bot mira la ficha primero, copia única desde la hoja CLIENTES con los casos que no coinciden. — Espera P3 y P12. Proyecto para el código; Aquí para la migración y publicar.
-68. **Cobros** (propuesta 2): pendiente → informado → verificado, pago parcial, lista "Por verificar" y saldo por cliente. — Espera P22 a P25.
+68. **Cobros** (propuesta 2): pendiente → informado → verificado, pago parcial, lista "Por verificar" y saldo por cliente. — ✅ Hecho en D107.
 69. **Alertas "sin señal" y "ruta no iniciada"** en Hoy y por Telegram. — Espera P4.
 70. **Avisar al cliente un cambio o una cancelación** con un botón que abre su chat. — Espera P5.
 71. **Asociar comprobantes a un pedido** cuando hay varios sin pagar. — Espera P6.
@@ -151,7 +151,7 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
 
 Cada paso sirve solo, cuesta USD 0 al mes y se mide antes de seguir ([MEJORAS.md](MEJORAS.md) §7).
 
-98. **Cobros** (punto 68): la base de las finanzas.
+98. **Cobros** (punto 68): la base de las finanzas. ✅ Construido en D107 (sin publicar; migración 0019).
 99. **Libro de envases**: cada envase entregado o retirado queda como un movimiento; el saldo por cliente sale de ahí, con vacíos por formato y cierre con diferencias. Falta el saldo inicial de cada cliente.
 100. **Gastos simples desde el celular** para Felipe y la operadora (fecha, monto, categoría, foto opcional).
 101. **Roles dentro del panel**: operadora y despacho, con permisos revisados en el servidor.

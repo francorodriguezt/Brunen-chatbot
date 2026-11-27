@@ -9,6 +9,7 @@
 
 import type { BaseDatos } from './almacen';
 import { fechaHoraLocal } from './despacho';
+import { RepositorioCobros } from './cobros';
 import { RepositorioD1, type EstadoDePedido, type PedidoGuardado } from './repositorio';
 
 /** Motivos de "No se pudo", con el texto que ve el repartidor y que llega en el aviso. */
@@ -63,9 +64,11 @@ const numeroONulo = (v: unknown): number | null => (typeof v === 'number' ? v : 
 
 export class RepositorioEntregas {
   private readonly repositorio: RepositorioD1;
+  private readonly cobros: RepositorioCobros;
 
   constructor(private readonly db: BaseDatos) {
     this.repositorio = new RepositorioD1(db);
+    this.cobros = new RepositorioCobros(db);
   }
 
   private async cambios(sql: string, ...valores: unknown[]): Promise<number> {
@@ -101,13 +104,13 @@ export class RepositorioEntregas {
       const cambio = await this.repositorio.cambiarEstado(id, 'Entregado', o.quien, o.ahora);
       if (!cambio.ok) return { ok: false, error: 'no_disponible' };
     }
-    // El pago vuelve a pendiente solo si lo había marcado pagado una entrega anterior (no si lo marcó una persona).
+    // El cobro queda como un pago "informado" (D107): lo que falta del pedido, que una persona verifica al rendir el día.
+    const cobrado = await this.cobros.cobroDeEntrega(id, datos.cobrado, { quien: o.quien, ahora: o.ahora, fecha: o.fecha });
     await this.cambios(
       `UPDATE pedidos SET
          vacios_retirados = ?2,
-         entregado_en = COALESCE(entregado_en, ?5),
-         estado_pago = CASE WHEN ?4 = 1 THEN 'pagado' WHEN cobrado_en_entrega IS NOT NULL THEN 'pendiente' ELSE estado_pago END,
-         cobrado_en_entrega = CASE WHEN ?4 = 1 THEN total ELSE NULL END,
+         entregado_en = COALESCE(entregado_en, ?4),
+         cobrado_en_entrega = ?5,
          no_entregado_en = NULL,
          no_entregado_motivo = '',
          actualizado_en = ?3
@@ -115,11 +118,11 @@ export class RepositorioEntregas {
       id,
       datos.vacios,
       o.ahora,
-      datos.cobrado ? 1 : 0,
       o.hecho ?? o.ahora,
+      cobrado,
     );
     const vacios = `Retiró ${datos.vacios} ${datos.vacios === 1 ? 'vacío' : 'vacíos'}`;
-    const detalle = datos.cobrado ? `${vacios}; cobró${pedido.total !== null ? ` $${pedido.total.toLocaleString('es-CL')}` : ''}.` : `${vacios}.`;
+    const detalle = cobrado !== null ? `${vacios}; cobró $${cobrado.toLocaleString('es-CL')}.` : `${vacios}.`;
     await this.historial(id, o, 'entrega', detalle + (observacion ? ` Nota: ${observacion}` : '') + textoDeAtraso(o));
     return { ok: true };
   }

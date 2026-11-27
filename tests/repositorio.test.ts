@@ -86,6 +86,8 @@ describe('guardar lo que decide el bot', () => {
       numeroDocumento: '',
       tipoCliente: '',
       ordenRuta: null,
+      montoPagado: 0,
+      montoVerificado: 0,
     });
     expect(await r.historialDe('P261028-AAAAA')).toEqual([{ en: AHORA, quien: 'bot', accion: 'creado', detalle: '' }]);
   });

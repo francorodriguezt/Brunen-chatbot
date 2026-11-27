@@ -164,6 +164,13 @@ const comparar = (a: string, b: string): number => (comparador ??= new Intl.Coll
 
 const sinBidones = (): Record<TipoBidon, number> => ({ '20L': 0, '12L': 0, '10L': 0 });
 
+/** Lo que falta cobrar de un pedido: el total menos lo pagado; null si no hay precio o ya no falta nada (D107). */
+export function saldoPorCobrar(pedido: Pick<PedidoGuardado, 'total' | 'montoPagado' | 'estadoPago'>): number | null {
+  if (pedido.total === null || pedido.estadoPago === 'pagado') return null;
+  const falta = pedido.total - pedido.montoPagado;
+  return falta > 0 ? falta : null;
+}
+
 /**
  * Los pedidos de un día (YYYY-MM-DD) que salen a reparto. La fecha que cuenta es la confirmada; si no hay, la que propuso
  * el bot. `viajes`: los guardados al publicar la ruta (D86); se usan solo si cubren todas las paradas publicadas.
@@ -190,7 +197,8 @@ export function armarReparto(pedidos: readonly PedidoGuardado[], fecha: string, 
       envasesARetirar: pedido.envasesARetirar,
       notas: pedido.notasRepartidor,
       total: pedido.total,
-      cobrarEnEfectivo: pedido.formaPago === 'efectivo' && pedido.estadoPago !== 'pagado' ? pedido.total : null,
+      // Lo que falta por cobrar (D107): el total menos los abonos. Pagado, o informado del todo, ya no hay nada que cobrar.
+      cobrarEnEfectivo: pedido.formaPago === 'efectivo' && saldoPorCobrar(pedido) !== null ? saldoPorCobrar(pedido) : null,
       actualizadoEn: pedido.actualizadoEn,
       carga: 1,
     });

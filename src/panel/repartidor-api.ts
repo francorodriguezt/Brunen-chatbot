@@ -91,7 +91,7 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
     const pedido = porId.get(parada.idPedido);
     const entrega = entregas.get(parada.idPedido);
     const estado = estadoDeParada(entrega, parada.estado);
-    const efectivoPendiente = pedido?.formaPago === 'efectivo' && pedido.estadoPago === 'pendiente';
+    const aCobrar = pedido?.formaPago === 'efectivo' ? parada.cobrarEnEfectivo : null;
     const exacto = parada.direccion.trim() ? conocidos.get(claveDePunto(parada.direccion, parada.comuna)) : undefined;
     return {
       orden: parada.orden,
@@ -109,9 +109,9 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
       vaciosEsperados: vaciosEsperados(parada),
       notas: parada.notas,
       formaPago: pedido?.formaPago ?? '',
-      cobrar: estado === 'entregado' || !efectivoPendiente ? null : parada.total,
+      cobrar: estado === 'entregado' ? null : aCobrar,
       // Para "Corregir" una entrega: cuánto se cobra en efectivo y si ya lo cobró, para no perder el cobro.
-      montoEfectivo: pedido?.formaPago === 'efectivo' ? parada.total : null,
+      montoEfectivo: pedido?.formaPago === 'efectivo' && parada.total !== null ? Math.max(0, parada.total - (pedido.montoPagado - (entrega?.cobrado ?? 0))) || null : null,
       cobrado: entrega?.cobrado ?? null,
       estado,
       vaciosRetirados: entrega?.vaciosRetirados ?? null,

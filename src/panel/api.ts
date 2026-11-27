@@ -22,6 +22,7 @@ import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
 import { armarReparto, cambiosDesdeLaPublicacion, csvDeReparto, mensajeDeParada, nombrarCambios, textoDeReparto, tsvDeReparto } from '../reparto';
 import { ESTADOS_DE_PEDIDO, OPCIONES_DE_PEDIDO, type CambiosDePedido, type DatosDePago, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type PedidoManual, type RepositorioD1 } from '../repositorio';
 import type { RepositorioClientes } from '../fichas';
+import type { RepositorioCobros } from '../cobros';
 import { cargarDiasSinReparto, fechaValida as fechaValidaSinReparto, limpiarMotivo, motivoSinReparto, type RepositorioDiasSinReparto } from '../diasSinReparto';
 import { leerPedidoPegado } from '../pegado';
 import { POSICION_EN_VIVO_S, estimarElDia, type RepositorioSeguimiento } from '../seguimiento';
@@ -35,6 +36,8 @@ export interface ContextoApi {
   ahoraSegundos: number;
   /** Fichas de clientes (D53): si viene, un cambio de dirección queda también en el historial del cliente. */
   clientes?: RepositorioClientes;
+  /** Cobros (D107): si viene, marcar "pagado" o "pendiente" a mano en el editor deja sus pagos al día. */
+  cobros?: RepositorioCobros;
   /** Lo que anota el repartidor (fase D, D61): si viene, el reparto lo muestra para seguir el avance. */
   entregas?: RepositorioEntregas;
   /** Respaldo de la base (D66): la descarga en Excel y el estado de la copia en Google Sheets. */
@@ -352,6 +355,14 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
         const cambios = aCambios(cuerpo);
         if (!cambios) return error(400, 'Solicitud no válida.');
         const editado = await repositorio.editarPedido(id, cambios, correo, ahoraSegundos, version);
+        if (editado.ok && ctx.cobros && (cambios.estadoPago === 'pagado' || cambios.estadoPago === 'pendiente')) {
+          // El estado de pago se cambió a mano (D107): los pagos anotados se alinean con lo que dijo la persona.
+          try {
+            await ctx.cobros.alinearConEstadoManual(id, cambios.estadoPago, editado.valor.formaPago, correo, ahoraSegundos);
+          } catch (falla) {
+            console.error('No se pudieron alinear los pagos con el estado de pago:', falla instanceof Error ? falla.message : falla);
+          }
+        }
         if (editado.ok && ctx.clientes && (cambios.direccion !== undefined || cambios.comuna !== undefined)) {
           // El pedido ya quedó guardado: si falla anotar la dirección en la ficha, no se le dice a la persona que falló.
           try {

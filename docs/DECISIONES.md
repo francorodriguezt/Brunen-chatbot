@@ -923,3 +923,17 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Los identificadores de commits anteriores a esta fecha cambiaron:** las referencias antiguas en estos documentos ya no existen.
 - **Lo que queda en GitHub:** la página del pull request 1 y los commits viejos por su identificador siguen accesibles. Solo el soporte de GitHub puede borrarlos (pedir "remove cached views and pull request refs").
 - El repositorio quedó configurado con el correo `noreply` para los commits nuevos.
+
+### D107 · 2026-11-27 · Cobros: pagos por pedido, verificación y rendición del efectivo (respuesta 45)
+**Franco respondió (45): los cobros se ven al terminar la planificación del día; el repartidor rinde todo el efectivo cada día; a veces carga bencina al furgón con ese efectivo; hay abonos y transferencias; debería haber clientes a crédito. Se construyó eso, sin cambiar lo que ya hacía el repartidor.**
+- **Un pedido puede tener varios pagos** (tabla `pagos`, migración `0019_cobros`). Cada pago dice monto, forma (efectivo, transferencia, Redcompra, Webpay u otro), quién lo informó y quién lo verificó. Estados de un pago: *informado* (se dijo que se cobró, nadie lo vio), *verificado* (una persona vio el dinero) o *rechazado* (no llegó: deja de contar).
+- **El estado de pago del pedido sale de los pagos:** *pendiente* (nada), *abonado* (una parte), *informado* (todo, falta verificar) o *pagado* (todo y verificado). El pedido guarda las dos sumas (`monto_pagado`, `monto_verificado`) para no recalcular en cada lista. Lo calcula `estadoDeCobro` en `src/cobros.ts`, con pruebas (el código calcula, no el LLM).
+- **Lo que hacía el repartidor al tocar "Cobré" cambia en una cosa:** antes dejaba el pedido "pagado"; ahora anota un pago de efectivo *informado* por lo que faltaba, y el pedido queda "por verificar" hasta que una persona rinde el día. Si corrige el cobro el mismo día, su pago anterior se reemplaza (no se duplica). Lo que él ve (a cobrar, cobrado) no cambia, salvo que a cobrar ahora descuenta los abonos.
+- **Rendición del día** (pestaña *Cobros*): el efectivo que cobró el repartidor ese día, la bencina que pagó con ese efectivo y lo que entregó. Al guardarla, el efectivo de ese día queda verificado y se muestra la diferencia (faltan o sobran). Se puede guardar de nuevo si llega un cobro atrasado. No deja rendir un día que todavía no llega.
+- **Por verificar:** lista de pagos anotados sin ver (transferencias, abonos) con "Llegó" y "No llegó". El efectivo del repartidor no sale ahí: se verifica en bloque al rendir.
+- **Saldos por cliente:** pedidos entregados con precio que no están pagados del todo, por cliente y desde cuándo. Los clientes **a crédito** (casilla nueva en su ficha, columna `clientes.credito`) salen marcados: su saldo no es un atraso.
+- **Desde el pedido**, el botón *Pagos* muestra sus pagos y deja anotar otro (monto, forma, nota y, si ya se vio el dinero, verificado). El editor viejo de "Pagado/Pendiente" sigue funcionando: marcar pagado anota un pago por lo que falta, ya verificado; marcar pendiente quita los que no estén verificados.
+- **Cierre del día:** un cobro informado o pagado ya no se cuenta como "entregado sin cobrar".
+- **Antes de publicar:** hay que aplicar la migración `0019_cobros` (agrega dos tablas y tres columnas). Sin ella, el panel y el repartidor no pueden anotar cobros.
+- **No se hizo:** libro de envases, gastos y panel de análisis (puntos 99 a 102 de LO_QUE_FALTA); el pago de una factura no se concilia con el banco.
+

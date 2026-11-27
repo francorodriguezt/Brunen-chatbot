@@ -21,6 +21,8 @@ import { error, manejarApi } from './api';
 import { RepositorioClientes } from '../fichas';
 import { RepositorioFijos } from '../fijos';
 import { manejarClientes } from './clientes-api';
+import { manejarCobros } from './cobros-api';
+import { RepositorioCobros } from '../cobros';
 import { RepositorioEntregas } from '../entregas';
 import { manejarRepartidor } from './repartidor-api';
 import { manejarRuta } from './ruta-api';
@@ -168,7 +170,8 @@ async function apiDeAdministracion(request: Request, url: URL, env: EntornoPanel
       (await manejarUsuarios(request, interna, { ...ctx, yo: sesion.usuario })) ??
       (await manejarRuta(request, interna, { repositorio: ctx.repositorio, puntos: new RepositorioPuntos(env.DB as BaseDatos), seguimiento: new RepositorioSeguimiento(env.DB as BaseDatos), ahoraSegundos })) ??
       (await manejarClientes(request, interna, { clientes, repositorio: ctx.repositorio, fijos: new RepositorioFijos(env.DB as BaseDatos), puntos: new RepositorioPuntos(env.DB as BaseDatos), ahoraSegundos, correo })) ??
-      (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes, entregas: new RepositorioEntregas(env.DB as BaseDatos), respaldo: new RepositorioRespaldo(env.DB as BaseDatos), dias: new RepositorioDiasSinReparto(env.DB as BaseDatos), seguimiento: new RepositorioSeguimiento(env.DB as BaseDatos) }));
+      (await manejarCobros(request, interna, { cobros: new RepositorioCobros(env.DB as BaseDatos), repositorio: ctx.repositorio, ahoraSegundos, correo })) ??
+      (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes, cobros: new RepositorioCobros(env.DB as BaseDatos), entregas: new RepositorioEntregas(env.DB as BaseDatos), respaldo: new RepositorioRespaldo(env.DB as BaseDatos), dias: new RepositorioDiasSinReparto(env.DB as BaseDatos), seguimiento: new RepositorioSeguimiento(env.DB as BaseDatos) }));
     if (sesion?.renovada && token) respuesta.headers.append('set-cookie', cookieDeSesion(token, true, ctx.cookieSegura));
     return respuesta;
   } catch (falla) {

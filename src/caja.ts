@@ -71,7 +71,7 @@ export function cierreDelDia(reparto: RepartoDelDia, pedidos: readonly PedidoGua
     if (pedidoDe.get(parada.idPedido)?.formaPago !== 'efectivo') continue;
     if (parada.total === null) cierre.efectivo.sinPrecio++;
     else cierre.efectivo.esperado += parada.total;
-    if (entregada && !entrega?.cobrado && pedidoDe.get(parada.idPedido)?.estadoPago !== 'pagado') cierre.efectivo.entregadosSinCobrar++;
+    if (entregada && !entrega?.cobrado && !['pagado', 'informado'].includes(pedidoDe.get(parada.idPedido)?.estadoPago ?? '')) cierre.efectivo.entregadosSinCobrar++;
   }
   return cierre;
 }

@@ -38,6 +38,8 @@ export interface ResumenDeCliente {
 }
 
 export interface FichaDeCliente extends ResumenDeCliente, CondicionesDeFicha {
+  /** Paga después (por ejemplo, a fin de mes): su saldo no es un atraso (D107). */
+  credito: boolean;
   notas: string;
   direcciones: DireccionDeCliente[];
   creadoEn: number;
@@ -353,7 +355,7 @@ export class RepositorioClientes {
     // `SELECT *`: así se lee igual antes y después de la migración 0018 (D104).
     const [extra] = await this.filas('SELECT * FROM clientes WHERE id = ?1', id);
     const direcciones = await this.filas('SELECT * FROM direcciones_cliente WHERE cliente_id = ?1 ORDER BY ultimo_uso DESC, id DESC', id);
-    return { ...aResumen(fila), ...aCondiciones(extra), notas: texto(extra?.notas), creadoEn: numero(extra?.creado_en), direcciones: direcciones.map(aDireccion) };
+    return { ...aResumen(fila), ...aCondiciones(extra), credito: numero(extra?.credito) === 1, notas: texto(extra?.notas), creadoEn: numero(extra?.creado_en), direcciones: direcciones.map(aDireccion) };
   }
 
   /**
@@ -381,7 +383,7 @@ export class RepositorioClientes {
 
   async editar(
     id: number,
-    datos: { nombre?: unknown; tipoCliente?: unknown; notas?: unknown; precioEspecial20L?: unknown; vaciosPendientes?: unknown; bloqueado?: unknown },
+    datos: { nombre?: unknown; tipoCliente?: unknown; notas?: unknown; precioEspecial20L?: unknown; vaciosPendientes?: unknown; bloqueado?: unknown; credito?: unknown },
     ahora: number,
   ): Promise<ResultadoCliente<true>> {
     const actual = await this.ficha(id);
@@ -398,7 +400,17 @@ export class RepositorioClientes {
     const bloqueado = datos.bloqueado === undefined ? actual.bloqueado : datos.bloqueado;
     if (precio === undefined || !Number.isInteger(vacios) || vacios < 0 || vacios > 500 || typeof bloqueado !== 'boolean') return { ok: false, error: 'datos_invalidos' };
 
+    const credito = datos.credito === undefined ? actual.credito : datos.credito;
+    if (typeof credito !== 'boolean') return { ok: false, error: 'datos_invalidos' };
+
     if (precio === actual.precioEspecial20L && vacios === actual.vaciosPendientes && bloqueado === actual.bloqueado) {
+      // El crédito (D107) tiene su propia migración (0019): solo se escribe si cambia.
+      try {
+        if (credito !== actual.credito) await this.cambios('UPDATE clientes SET credito = ?2 WHERE id = ?1', id, credito ? 1 : 0);
+      } catch (falla) {
+        if (/no such column/i.test(falla instanceof Error ? falla.message : String(falla))) return { ok: false, error: 'falta_migracion' };
+        throw falla;
+      }
       await this.cambios('UPDATE clientes SET nombre = ?2, tipo_cliente = ?3, notas = ?4, actualizado_en = ?5 WHERE id = ?1', id, nombre, tipo, notas, ahora);
       return { ok: true, valor: true };
     }
@@ -408,6 +420,7 @@ export class RepositorioClientes {
         'UPDATE clientes SET nombre = ?2, tipo_cliente = ?3, notas = ?4, actualizado_en = ?5, precio_especial_20l = ?6, vacios_pendientes = ?7, bloqueado = ?8 WHERE id = ?1',
         id, nombre, tipo, notas, ahora, precio, vacios, bloqueado ? 1 : 0,
       );
+      if (credito !== actual.credito) await this.cambios('UPDATE clientes SET credito = ?2 WHERE id = ?1', id, credito ? 1 : 0);
     } catch (falla) {
       if (/no such column/i.test(falla instanceof Error ? falla.message : String(falla))) return { ok: false, error: 'falta_migracion' };
       throw falla;
@@ -469,6 +482,7 @@ export class RepositorioClientes {
         destino, b.precioEspecial20L, b.vaciosPendientes, b.bloqueado ? 1 : 0,
       );
     }
+    if (b.credito) await this.cambios('UPDATE clientes SET credito = 1 WHERE id = ?1', destino);
     await this.cambios('DELETE FROM clientes WHERE id = ?1', origen);
     return { ok: true, valor: true };
   }

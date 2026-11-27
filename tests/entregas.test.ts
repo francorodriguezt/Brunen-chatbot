@@ -48,10 +48,10 @@ describe('Entregado (fase D, D61)', () => {
     ]);
   });
 
-  it('si cobró, el pago queda pagado y se anota lo cobrado; si después se corrige, vuelve a pendiente', async () => {
+  it('si cobró, el pago queda informado (falta verificarlo) y se anota lo cobrado; si después se corrige, vuelve a pendiente', async () => {
     const { db, repositorio, entregas } = await base(pedido());
     await entregas.entregar('P261113-AAAAA', { vacios: 3, cobrado: true }, opciones);
-    expect((await repositorio.obtenerPedido('P261113-AAAAA'))?.estadoPago).toBe('pagado');
+    expect(await repositorio.obtenerPedido('P261113-AAAAA')).toMatchObject({ estadoPago: 'informado', montoPagado: 9900, montoVerificado: 0 });
     expect(db.sql("SELECT cobrado_en_entrega FROM pedidos WHERE id = 'P261113-AAAAA'")).toEqual([{ cobrado_en_entrega: 9900 }]);
     await entregas.entregar('P261113-AAAAA', { vacios: 1, cobrado: false }, { ...opciones, ahora: AHORA + 60 });
     expect((await repositorio.obtenerPedido('P261113-AAAAA'))?.estadoPago).toBe('pendiente');

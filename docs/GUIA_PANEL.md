@@ -77,6 +77,13 @@ Para una llamada, un audio o una empresa con plan mensual. Toca "+ Nuevo pedido"
 - **Descargar archivo**: lo mismo, en un archivo que Excel abre.
 - Cuando sale el furgón, marca **En ruta**; cuando se entrega, **Entregado**. Un pedido entregado ya no se puede cambiar.
 
+## Cobros
+Una pestaña con tres cosas, de arriba abajo (D107):
+- **Por verificar:** pagos que alguien anotó (una transferencia, un abono) y que nadie ha visto llegar. Toca **Llegó** cuando veas el dinero en el banco, o **No llegó** si no está: ese pago deja de contar. El efectivo que cobra el repartidor no sale aquí.
+- **Rendición del día:** elige el día, escribe cuánta **bencina** pagó el repartidor con el efectivo y cuánto **entregó**, y toca **Rendir y verificar el efectivo**. Dice si cuadra, si faltan o si sobran pesos. Si después llega un cobro atrasado de ese día, vuelve a guardarla.
+- **Lo que deben los clientes:** pedidos entregados que no están pagados del todo, por cliente. Los **a crédito** salen en gris (su saldo no es un atraso); marca "Cliente a crédito" en la ficha del cliente.
+- En cada pedido, el botón **Pagos** muestra lo que se ha pagado y deja anotar otro (un abono, una transferencia). Un pedido puede quedar *Pendiente*, *Abonado* (pagó una parte), *Por verificar* (pagó todo y falta ver el dinero) o *Pagado*.
+
 ## Avisos
 Lo que el bot no resuelve solo y deja para una persona: reclamos, facturas, comprobantes de pago, audios, mensajes que no entendió y fallas del sistema. Atiende el caso por WhatsApp y toca "Marcar resuelto". Los de borde rojo son urgentes y llegan también por Telegram.
 

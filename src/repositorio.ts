@@ -59,6 +59,9 @@ export interface PedidoGuardado {
   tipoCliente: TipoDeCliente | '';
   /** Posición de la parada en la ruta publicada de su día (fase C, D63); null = sin publicar. */
   ordenRuta: number | null;
+  /** Lo pagado (informado o verificado) y lo verificado, en pesos (D107). Sin pagos anotados, 0. */
+  montoPagado: number;
+  montoVerificado: number;
 }
 
 /**
@@ -67,12 +70,13 @@ export interface PedidoGuardado {
  */
 export const OPCIONES_DE_PEDIDO = {
   formaPago: ['transferencia', 'efectivo', 'redcompra', 'webpay', 'plan', 'otro'],
+  // Los que una persona puede elegir a mano. "abonado" e "informado" los pone el sistema al sumar los pagos (D107).
   estadoPago: ['pendiente', 'pagado'],
   documento: ['boleta', 'factura'],
   tipoCliente: ['hogar', 'minimarket', 'empresa'],
 } as const;
 export type FormaDePago = (typeof OPCIONES_DE_PEDIDO.formaPago)[number];
-export type EstadoDePago = (typeof OPCIONES_DE_PEDIDO.estadoPago)[number];
+export type EstadoDePago = (typeof OPCIONES_DE_PEDIDO.estadoPago)[number] | 'abonado' | 'informado';
 export type Documento = (typeof OPCIONES_DE_PEDIDO.documento)[number];
 export type TipoDeCliente = (typeof OPCIONES_DE_PEDIDO.tipoCliente)[number];
 
@@ -250,11 +254,13 @@ function aPedido(fila: Record<string, unknown>): PedidoGuardado {
     actualizadoEn: numero(fila.actualizado_en),
     mensajeCliente: texto(fila.mensaje_cliente),
     formaPago: texto(fila.forma_pago) as FormaDePago | '',
-    estadoPago: fila.estado_pago === 'pagado' ? 'pagado' : 'pendiente',
+    estadoPago: ['pagado', 'abonado', 'informado'].includes(texto(fila.estado_pago)) ? (texto(fila.estado_pago) as EstadoDePago) : 'pendiente',
     documento: texto(fila.documento) as Documento | '',
     numeroDocumento: texto(fila.numero_documento),
     tipoCliente: texto(fila.tipo_cliente) as TipoDeCliente | '',
     ordenRuta: typeof fila.orden_ruta === 'number' ? fila.orden_ruta : null,
+    montoPagado: numero(fila.monto_pagado),
+    montoVerificado: numero(fila.monto_verificado),
   };
 }
 
@@ -281,7 +287,7 @@ const TIPOS_DE_PEDIDO_SQL = TIPOS_DE_AVISO_DE_PEDIDO.map((tipo) => `'${tipo}'`).
 
 // `mensaje_cliente`: lo que escribió al hacer el pedido, del aviso que nació con él (no de un reclamo o pago posterior).
 const COLUMNAS_PEDIDO = `id, creado_en, telefono, nombre, comuna, direccion, fecha_entrega, fecha_confirmada, estado, lineas, total, notas_repartidor, envases_a_retirar, observaciones, confirmado_por, actualizado_en,
-  forma_pago, estado_pago, documento, numero_documento, tipo_cliente, orden_ruta,
+  forma_pago, estado_pago, documento, numero_documento, tipo_cliente, orden_ruta, monto_pagado, monto_verificado,
   (SELECT texto FROM avisos WHERE avisos.id_pedido = pedidos.id AND avisos.tipo IN (${TIPOS_DE_PEDIDO_SQL}) AND avisos.texto != '' ORDER BY avisos.id LIMIT 1) AS mensaje_cliente`;
 
 export interface FiltroDePedidos {

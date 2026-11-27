@@ -18,7 +18,7 @@ const REFRESCO_FORZADO_MS = 60_000;
 const ZONA = 'America/Santiago';
 const MAX_LINEAS = 5; // el mismo tope que impone el servidor
 
-const PESTANAS = ['hoy', 'pedidos', 'clientes', 'reparto', 'avisos'];
+const PESTANAS = ['hoy', 'pedidos', 'clientes', 'reparto', 'cobros', 'avisos'];
 const VISTAS = [...PESTANAS, 'equipo']; // Equipo se abre desde la barra de arriba: se usa poco y así caben las pestañas en el celular
 const DESHACER_MS = 10_000; // lo que dura el aviso con "Deshacer"
 const ESPERA_AL_BUSCAR_MS = 350; // se busca cuando la persona deja de escribir, no en cada letra
@@ -69,11 +69,14 @@ const NOMBRE_BIDON = Object.fromEntries(TIPOS_BIDON.map(([valor, texto]) => [val
 // Cómo se muestra cada valor de pago, documento y tipo de cliente (D52). Las listas vienen del servidor.
 const ETIQUETAS = {
   formaPago: { '': 'Sin definir', transferencia: 'Transferencia', efectivo: 'Efectivo', redcompra: 'Redcompra', webpay: 'Webpay', plan: 'Plan mensual', otro: 'Otro' },
-  estadoPago: { pendiente: 'Pendiente', pagado: 'Pagado' },
+  estadoPago: { pendiente: 'Pendiente', abonado: 'Abonado', informado: 'Por verificar', pagado: 'Pagado' },
   documento: { '': 'Ninguno', boleta: 'Boleta', factura: 'Factura' },
   tipoCliente: { '': 'Sin definir', hogar: 'Hogar', minimarket: 'Minimarket', empresa: 'Empresa' },
 };
 const CAMPOS_DE_PAGO = ['formaPago', 'estadoPago', 'documento', 'tipoCliente'];
+// Lo que una persona puede elegir a mano en el editor. "Abonado" y "Por verificar" los fijan los pagos (D107).
+const ESTADOS_DE_PAGO_A_MANO = ['pendiente', 'pagado'];
+const FORMAS_DE_UN_PAGO = [['efectivo', 'Efectivo'], ['transferencia', 'Transferencia'], ['redcompra', 'Redcompra'], ['webpay', 'Webpay'], ['otro', 'Otro']];
 
 const MENSAJE_DE_CAMBIO = {
   Confirmado: 'Pedido confirmado.',
@@ -89,6 +92,7 @@ const estado = {
   fecha: '',
   buscar: '',
   fechaReparto: '',
+  fechaCobros: '',
   estadoDeAvisos: 'abierto',
   resumen: null,
   opciones: { comunas: [], fechaSugerida: '' },
@@ -311,6 +315,13 @@ function listaDeLineas(pedido) {
   );
 }
 
+/** "Abonado $2.000 de $9.900" mientras falte; si no, el estado a secas. */
+function textoDelEstadoDePago(pedido) {
+  const etiqueta = ETIQUETAS.estadoPago[pedido.estadoPago] ?? pedido.estadoPago;
+  if (pedido.estadoPago === 'abonado' && pedido.total !== null) return `${etiqueta} ${pesos.format(pedido.montoPagado)} de ${pesos.format(pedido.total)}`;
+  return etiqueta;
+}
+
 function datosDelPedido(pedido) {
   const dato = (nombre, valor, falta = false) => h('span', {}, h('b', {}, `${nombre}: `), falta ? h('span', { clase: 'falta' }, valor) : valor);
   return h(
@@ -321,7 +332,7 @@ function datosDelPedido(pedido) {
     dato('Dirección', pedido.direccion || 'falta', !pedido.direccion),
     pedido.tipoCliente ? dato('Tipo', ETIQUETAS.tipoCliente[pedido.tipoCliente] ?? pedido.tipoCliente) : null,
     // Que no esté pagado es lo normal (muchos pagan al recibir): no va en ámbar como lo que falta de verdad.
-    dato('Pago', [ETIQUETAS.formaPago[pedido.formaPago] ?? pedido.formaPago, ETIQUETAS.estadoPago[pedido.estadoPago]].join(' · ')),
+    dato('Pago', [ETIQUETAS.formaPago[pedido.formaPago] ?? pedido.formaPago, textoDelEstadoDePago(pedido)].join(' · ')),
     pedido.documento ? dato(ETIQUETAS.documento[pedido.documento], pedido.numeroDocumento || 'sin número', !pedido.numeroDocumento) : null,
     pedido.envasesARetirar > 0 ? dato('Vacíos extra por retirar', pedido.envasesARetirar) : null,
     pedido.notasRepartidor ? dato('Notas', pedido.notasRepartidor) : null,
@@ -356,6 +367,13 @@ function historialDe(pedido) {
 }
 
 function accionesDe(pedido) {
+  const acciones = accionesPorEstado(pedido);
+  // Los pagos se anotan en cualquier pedido vivo con precio: un abono puede llegar antes o después de la entrega (D107).
+  if (pedido.estado !== 'Cancelado' && pedido.total !== null) acciones.push(boton('Pagos', 'boton', () => void abrirPagos(pedido.id)));
+  return acciones;
+}
+
+function accionesPorEstado(pedido) {
   const cambiar = boton('Cambiar', 'boton', () => abrirEditor(pedido));
   const cancelar = boton('Cancelar pedido', 'boton boton-peligro', () => cancelarPedido(pedido));
   const pasarA = (nuevo, texto, clase = 'boton') => boton(texto, clase, () => cambiarEstado(pedido, nuevo));
@@ -863,6 +881,13 @@ function prepararFormulario(esNuevo, titulo, textoDelBoton) {
   mostrarErrorDelEditor('');
 }
 
+/** "Abonado" y "Por verificar" no se eligen a mano: si el pedido ya está así, el desplegable lo muestra sin ofrecerlo a los demás. */
+function ponerEstadoDePago(select, valor) {
+  for (const extra of select.querySelectorAll('option[data-extra]')) extra.remove();
+  if (!ESTADOS_DE_PAGO_A_MANO.includes(valor)) select.append(h('option', { value: valor, 'data-extra': '1' }, ETIQUETAS.estadoPago[valor] ?? valor));
+  select.value = valor;
+}
+
 function abrirEditor(pedido) {
   pedidoEnEdicion = pedido;
   prepararFormulario(false, `Cambiar pedido ${pedido.id}`, 'Guardar');
@@ -873,6 +898,7 @@ function abrirEditor(pedido) {
   formulario.elements.notas.value = pedido.notasRepartidor;
   formulario.elements.envases.value = pedido.envasesARetirar;
   for (const campo of CAMPOS_DE_PAGO) formulario.elements[campo].value = pedido[campo];
+  ponerEstadoDePago(formulario.elements.estadoPago, pedido.estadoPago);
   formulario.elements.numeroDocumento.value = pedido.numeroDocumento;
   $('editar-lineas').replaceChildren(...pedido.lineas.map(filaDeLinea));
   actualizarTotalDelEditor();
@@ -1882,7 +1908,7 @@ function pintarHoy({ hoy, siguiente, resumen, repartoHoy, repartoSiguiente, cerr
 
 async function recargarVistaActual() {
   try {
-    await { hoy: cargarHoy, pedidos: cargarPedidos, clientes: cargarClientes, reparto: cargarReparto, avisos: cargarAvisos, equipo: cargarEquipo }[estado.vista]();
+    await { hoy: cargarHoy, pedidos: cargarPedidos, clientes: cargarClientes, reparto: cargarReparto, cobros: cargarCobros, avisos: cargarAvisos, equipo: cargarEquipo }[estado.vista]();
     estado.ultimaCarga = Date.now();
     // Que se vea de cuándo son los datos: si el teléfono estuvo sin señal, la hora queda atrás (Prompt Maestro, D88).
     $('actualizado').replaceChildren(h('span', { clase: 'actualizado-palabra' }, 'Actualizado '), formatoHora.format(new Date(estado.ultimaCarga)));
@@ -2117,6 +2143,7 @@ async function abrirCliente(id) {
     formulario.elements.precioEspecial20L.value = cliente.precioEspecial20L ?? '';
     formulario.elements.vaciosPendientes.value = String(cliente.vaciosPendientes ?? 0);
     formulario.elements.bloqueado.checked = cliente.bloqueado === true;
+    formulario.elements.credito.checked = cliente.credito === true;
     $('titulo-cliente').textContent = cliente.nombre || 'Cliente sin nombre';
     $('ficha-cliente').replaceChildren(fichaDelCliente(cliente, pedidos, fijo));
     $('error-cliente').hidden = true;
@@ -2145,6 +2172,7 @@ async function guardarCliente(evento) {
       precioEspecial20L: precio === '' ? null : Number(precio),
       vaciosPendientes: formulario.elements.vaciosPendientes.value === '' ? 0 : Number(formulario.elements.vaciosPendientes.value),
       bloqueado: formulario.elements.bloqueado.checked,
+      credito: formulario.elements.credito.checked,
     });
     $('dialogo-cliente').close();
     avisar('Cliente guardado.');
@@ -2223,6 +2251,218 @@ async function cargarEquipo() {
   const { usuarios } = await api('/api/usuarios');
   $('lista-equipo').replaceChildren(...usuarios.map(tarjetaDePersona));
   void mostrarEstadoDelRespaldo();
+}
+
+// ---- Cobros (D107) ----
+
+const NOMBRE_DE_FORMA = Object.fromEntries(FORMAS_DE_UN_PAGO);
+const textoDeEstadoDeUnPago = { informado: 'Por verificar', verificado: 'Verificado', rechazado: 'Rechazado' };
+
+async function cargarCobros() {
+  estado.fechaCobros ||= hoyEnSantiago();
+  $('fecha-cobros').value = estado.fechaCobros;
+  const { porVerificar, rendicion, saldos } = await api(`/api/cobros?fecha=${encodeURIComponent(estado.fechaCobros)}`);
+  pintarPorVerificar(porVerificar);
+  pintarRendicion(rendicion);
+  pintarSaldos(saldos);
+}
+
+async function decidirPago(pago, decision) {
+  try {
+    await api(`/api/pagos/${pago.id}/${decision}`, {});
+    avisar(decision === 'verificar' ? 'Pago verificado.' : 'Pago rechazado: ya no cuenta.');
+    await recargarVistaActual();
+  } catch (falla) {
+    avisar(falla.message, true);
+  }
+}
+
+function pintarPorVerificar(pagos) {
+  if (pagos.length === 0) {
+    $('lista-por-verificar').replaceChildren(h('p', { clase: 'suave' }, 'No hay pagos por verificar.'));
+    return;
+  }
+  $('lista-por-verificar').replaceChildren(
+    ...pagos.map((pago) =>
+      h(
+        'article',
+        { clase: 'tarjeta compacta' },
+        h('div', { clase: 'tarjeta-cabecera' }, h('b', {}, pago.nombre || telefonoLegible(pago.telefono)), h('b', {}, pesos.format(pago.monto))),
+        h('p', { clase: 'suave' }, `${NOMBRE_DE_FORMA[pago.forma] ?? pago.forma} · pedido ${pago.pedidoId}${pago.totalPedido === null ? '' : ` de ${pesos.format(pago.totalPedido)}`} · lo anotó ${pago.informadoPor} ${cuando(pago.informadoEn)}${pago.nota ? ` · ${pago.nota}` : ''}`),
+        h('div', { clase: 'acciones' }, boton('Llegó', 'boton boton-principal', () => void decidirPago(pago, 'verificar')), boton('No llegó', 'boton boton-peligro', () => void decidirPago(pago, 'rechazar'))),
+      ),
+    ),
+  );
+}
+
+function pintarRendicion(r) {
+  const g = r.guardada;
+  const resumen = h(
+    'p',
+    {},
+    `Efectivo cobrado por el repartidor: `,
+    h('b', {}, pesos.format(r.efectivoCobrado)),
+    ` en ${plural(r.cobros, 'cobro', 'cobros')}`,
+    r.porVerificar > 0 ? ` (${r.porVerificar} sin verificar)` : '',
+    '.',
+  );
+  const formulario = h(
+    'form',
+    { clase: 'campos', novalidate: true, onsubmit: (evento) => void guardarRendicion(evento, r) },
+    h('label', {}, 'Bencina ($)', h('input', { type: 'number', name: 'bencina', min: 0, max: 2000000, step: 1, inputmode: 'numeric', value: g ? g.bencina : 0 })),
+    h('label', {}, 'Entregó ($)', h('input', { type: 'number', name: 'entregado', min: 0, max: 20000000, step: 1, inputmode: 'numeric', required: true, value: g ? g.entregado : r.efectivoCobrado })),
+    h('label', { clase: 'ancho' }, 'Nota (opcional)', h('input', { type: 'text', name: 'nota', maxlength: 300, autocomplete: 'off', value: g ? g.nota : '' })),
+    h('p', { clase: 'error-formulario ancho', role: 'alert', hidden: true, id: 'error-rendicion' }),
+    h('div', { clase: 'acciones ancho' }, h('button', { type: 'submit', clase: 'boton boton-principal' }, g ? 'Guardar de nuevo' : 'Rendir y verificar el efectivo')),
+  );
+  const estadoDeLaRendicion = !g
+    ? h('p', { clase: 'suave' }, 'Todavía no se rinde este día.')
+    : h(
+        'p',
+        { clase: g.diferencia === 0 ? 'suave' : 'falta' },
+        g.diferencia === 0
+          ? `Rendido por ${g.registradoPor} ${cuando(g.registradoEn)}: cuadra.`
+          : g.diferencia > 0
+            ? `Rendido por ${g.registradoPor} ${cuando(g.registradoEn)}: faltan ${pesos.format(g.diferencia)}.`
+            : `Rendido por ${g.registradoPor} ${cuando(g.registradoEn)}: sobran ${pesos.format(-g.diferencia)}.`,
+      );
+  $('rendicion-dia').replaceChildren(resumen, estadoDeLaRendicion, formulario);
+}
+
+async function guardarRendicion(evento, r) {
+  evento.preventDefault();
+  const campos = evento.currentTarget.elements;
+  const error = $('error-rendicion');
+  error.hidden = true;
+  if (campos.entregado.value === '') {
+    error.textContent = 'Escribe cuánto efectivo entregó.';
+    error.hidden = false;
+    return;
+  }
+  try {
+    const { rendicion } = await api('/api/cobros/rendicion', {
+      fecha: r.fecha,
+      bencina: campos.bencina.value === '' ? 0 : Number(campos.bencina.value),
+      entregado: Number(campos.entregado.value),
+      nota: campos.nota.value,
+    });
+    const d = rendicion.guardada?.diferencia ?? 0;
+    avisar(d === 0 ? 'Rendición guardada: cuadra.' : d > 0 ? `Rendición guardada: faltan ${pesos.format(d)}.` : `Rendición guardada: sobran ${pesos.format(-d)}.`);
+    await recargarVistaActual();
+  } catch (falla) {
+    error.textContent = falla.message;
+    error.hidden = false;
+  }
+}
+
+function pintarSaldos(saldos) {
+  if (saldos.length === 0) {
+    $('lista-saldos').replaceChildren(h('p', { clase: 'suave' }, 'Nadie debe nada.'));
+    return;
+  }
+  const total = saldos.reduce((suma, s) => suma + s.saldo, 0);
+  $('lista-saldos').replaceChildren(
+    h('p', {}, 'Total por cobrar: ', h('b', {}, pesos.format(total))),
+    ...saldos.map((s) =>
+      h(
+        'article',
+        { clase: 'tarjeta compacta' },
+        h('div', { clase: 'tarjeta-cabecera' }, h('b', {}, s.nombre || telefonoLegible(s.telefono)), h('b', {}, pesos.format(s.saldo))),
+        h('p', { clase: s.credito ? 'suave' : 'falta' }, `${plural(s.pedidos, 'pedido', 'pedidos')} · debe desde el ${fechaLarga(s.desde)}${s.credito ? ' · a crédito' : ''}`),
+        s.clienteId === null ? null : h('div', { clase: 'acciones' }, boton('Ver cliente', 'boton boton-chico', () => void abrirCliente(s.clienteId))),
+      ),
+    ),
+  );
+}
+
+// Los pagos de un pedido: lo que hay, y anotar otro (un abono, una transferencia).
+let pedidoDePagos = null;
+
+async function abrirPagos(id) {
+  try {
+    pedidoDePagos = id;
+    const formulario = $('formulario-pago');
+    formulario.reset();
+    $('error-pago').hidden = true;
+    $('titulo-pagos').textContent = `Pagos del pedido ${id}`;
+    await pintarPagos(id);
+    if (!$('dialogo-pagos').open) $('dialogo-pagos').showModal();
+  } catch (falla) {
+    avisar(falla.message, true);
+  }
+}
+
+async function pintarPagos(id) {
+  const datos = await api(`/api/pedidos/${encodeURIComponent(id)}/pagos`);
+  $('resumen-pagos').replaceChildren(
+    h(
+      'p',
+      {},
+      datos.total === null ? 'Sin precio todavía. ' : `Total ${pesos.format(datos.total)} · pagado ${pesos.format(datos.pagado)} · verificado ${pesos.format(datos.verificado)}`,
+      datos.total !== null && datos.saldo > 0 ? h('b', {}, ` · falta ${pesos.format(datos.saldo)}`) : null,
+      ' · ',
+      h('b', {}, ETIQUETAS.estadoPago[datos.estado] ?? datos.estado),
+    ),
+  );
+  $('lista-pagos').replaceChildren(
+    ...(datos.pagos.length === 0
+      ? [h('li', { clase: 'suave' }, 'Todavía no hay pagos anotados.')]
+      : datos.pagos.map((p) => {
+          const lineas = [`${pesos.format(p.monto)} · ${NOMBRE_DE_FORMA[p.forma] ?? p.forma} · ${textoDeEstadoDeUnPago[p.estado] ?? p.estado}`, `${p.origen === 'repartidor' ? 'Repartidor' : p.informadoPor} ${cuando(p.informadoEn)}${p.nota ? ` · ${p.nota}` : ''}`];
+          return h(
+            'li',
+            { clase: p.estado === 'rechazado' ? 'suave' : '' },
+            h('span', {}, lineas.join(' — ')),
+            p.estado === 'informado'
+              ? h(
+                  'span',
+                  { clase: 'acciones' },
+                  boton('Llegó', 'boton boton-chico', () => void decidirPagoDesdePedido(p, 'verificar')),
+                  boton('No llegó', 'boton boton-chico boton-peligro', () => void decidirPagoDesdePedido(p, 'rechazar')),
+                )
+              : null,
+          );
+        })),
+  );
+}
+
+async function decidirPagoDesdePedido(pago, decision) {
+  try {
+    await api(`/api/pagos/${pago.id}/${decision}`, {});
+    await pintarPagos(pedidoDePagos);
+    await refrescar();
+  } catch (falla) {
+    avisar(falla.message, true);
+  }
+}
+
+async function anotarPago(evento) {
+  evento.preventDefault();
+  if (!pedidoDePagos) return;
+  const campos = $('formulario-pago').elements;
+  const monto = Number(campos.monto.value);
+  const error = $('error-pago');
+  if (!Number.isInteger(monto) || monto <= 0) {
+    error.textContent = 'Escribe el monto en pesos (un número entero).';
+    error.hidden = false;
+    return;
+  }
+  error.hidden = true;
+  $('guardar-pago').disabled = true;
+  try {
+    await api(`/api/pedidos/${encodeURIComponent(pedidoDePagos)}/pagos`, { monto, forma: campos.forma.value, verificado: campos.verificado.checked, nota: campos.nota.value });
+    avisar('Pago anotado.');
+    campos.monto.value = '';
+    campos.nota.value = '';
+    campos.verificado.checked = false;
+    await pintarPagos(pedidoDePagos);
+    await refrescar();
+  } catch (falla) {
+    error.textContent = falla.message;
+    error.hidden = false;
+  } finally {
+    $('guardar-pago').disabled = false;
+  }
 }
 
 // ---- Respaldo (D66) ----
@@ -2453,7 +2693,7 @@ function llenarListasDePago(opciones = {}) {
   const formulario = $('formulario-editar');
   for (const campo of CAMPOS_DE_PAGO) {
     const valores = opciones[campo] ?? Object.keys(ETIQUETAS[campo]).filter(Boolean);
-    const conVacio = campo === 'estadoPago' ? valores : ['', ...valores];
+    const conVacio = campo === 'estadoPago' ? valores.filter((v) => ESTADOS_DE_PAGO_A_MANO.includes(v)) : ['', ...valores];
     formulario.elements[campo].replaceChildren(...conVacio.map((valor) => h('option', { value: valor }, ETIQUETAS[campo][valor] ?? valor)));
   }
 }
@@ -2524,6 +2764,13 @@ function iniciar() {
     if (evento.currentTarget.open) void cargarPorPedir();
   });
   $('formulario-cliente').addEventListener('submit', (evento) => void guardarCliente(evento));
+  $('formulario-pago').addEventListener('submit', (evento) => void anotarPago(evento));
+  $('cerrar-pagos').addEventListener('click', () => $('dialogo-pagos').close());
+  $('formulario-pago').elements.forma.replaceChildren(...FORMAS_DE_UN_PAGO.map(([valor, texto]) => h('option', { value: valor }, texto)));
+  $('fecha-cobros').addEventListener('change', (evento) => {
+    estado.fechaCobros = evento.currentTarget.value || hoyEnSantiago();
+    void cargarCobros();
+  });
   $('cerrar-cliente').addEventListener('click', () => $('dialogo-cliente').close());
 
   $('nuevo-pedido').addEventListener('click', () => abrirNuevoPedido());

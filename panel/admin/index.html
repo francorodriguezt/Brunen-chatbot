@@ -36,6 +36,7 @@
       </button>
       <button type="button" role="tab" id="pestana-clientes" aria-selected="false" aria-controls="vista-clientes" tabindex="-1">Clientes</button>
       <button type="button" role="tab" id="pestana-reparto" aria-selected="false" aria-controls="vista-reparto" tabindex="-1">Reparto</button>
+      <button type="button" role="tab" id="pestana-cobros" aria-selected="false" aria-controls="vista-cobros" tabindex="-1">Cobros</button>
       <button type="button" role="tab" id="pestana-avisos" aria-selected="false" aria-controls="vista-avisos" tabindex="-1">
         Avisos <span class="contador" id="cuenta-avisos" hidden></span>
       </button>
@@ -106,6 +107,23 @@
         <ul id="lista-dias-sin-reparto" class="lista-dias"></ul>
       </details>
       <div id="lista-reparto" class="lista"></div>
+    </section>
+    <section id="vista-cobros" role="tabpanel" aria-labelledby="pestana-cobros" hidden>
+      <section class="tarjeta" aria-labelledby="titulo-por-verificar">
+        <h2 id="titulo-por-verificar" class="titulo-reparto">Por verificar</h2>
+        <p class="suave">Pagos que alguien anotó y nadie ha visto llegar (transferencias, abonos). El efectivo del repartidor se verifica al rendir el día.</p>
+        <div id="lista-por-verificar" class="lista"></div>
+      </section>
+      <section class="tarjeta" aria-labelledby="titulo-rendicion">
+        <h2 id="titulo-rendicion" class="titulo-reparto">Rendición del día</h2>
+        <label class="campo-fecha">Día <input type="date" id="fecha-cobros"></label>
+        <div id="rendicion-dia"></div>
+      </section>
+      <section class="tarjeta" aria-labelledby="titulo-saldos">
+        <h2 id="titulo-saldos" class="titulo-reparto">Lo que deben los clientes</h2>
+        <p class="suave">Pedidos entregados que no están pagados del todo. Los clientes a crédito se marcan: su saldo no es un atraso.</p>
+        <div id="lista-saldos" class="lista"></div>
+      </section>
     </section>
     <section id="vista-avisos" role="tabpanel" aria-labelledby="pestana-avisos" hidden>
       <div class="filtros" role="group" aria-label="Qué avisos mostrar" id="filtros-avisos"></div>
@@ -189,6 +207,26 @@
     </form>
   </dialog>
 
+  <dialog id="dialogo-pagos" aria-labelledby="titulo-pagos">
+    <form method="dialog" id="formulario-pago" novalidate>
+      <h2 id="titulo-pagos">Pagos</h2>
+      <div id="resumen-pagos"></div>
+      <ul id="lista-pagos" class="lista-respaldo"></ul>
+      <h3 class="titulo-reparto">Anotar un pago</h3>
+      <div class="campos">
+        <label>Monto ($) <input type="number" name="monto" min="1" max="2000000" step="1" inputmode="numeric" autocomplete="off"></label>
+        <label>Forma <select name="forma"></select></label>
+        <label class="ancho casilla"><input type="checkbox" name="verificado"> Ya vi el dinero (queda verificado)</label>
+        <label class="ancho">Nota (opcional) <input type="text" name="nota" maxlength="200" autocomplete="off"></label>
+      </div>
+      <p class="error-formulario" id="error-pago" role="alert" hidden></p>
+      <div class="acciones-dialogo">
+        <button type="button" class="boton" id="cerrar-pagos">Cerrar</button>
+        <button type="submit" class="boton boton-principal" id="guardar-pago">Anotar pago</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="dialogo-cliente" aria-labelledby="titulo-cliente">
     <form method="dialog" id="formulario-cliente" novalidate>
       <h2 id="titulo-cliente">Cliente</h2>
@@ -197,6 +235,7 @@
         <label>Tipo de cliente <select name="tipoCliente"></select></label>
         <label>Precio especial por bidón de 20 L <input type="text" name="precioEspecial20L" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="Sin precio especial"></label>
         <label>Vacíos que debe <input type="number" name="vaciosPendientes" min="0" max="500" step="1" inputmode="numeric"></label>
+        <label class="ancho casilla"><input type="checkbox" name="credito"> Cliente a crédito: paga después (por ejemplo, a fin de mes) y su saldo no es un atraso</label>
         <label class="ancho casilla"><input type="checkbox" name="bloqueado"> Bloqueado: el bot no anota sus pedidos y lo atiende una persona</label>
         <p class="ancho pista">El bot usa esta ficha para el precio: minimarket paga mayorista y, si tiene precio especial, ese precio. La hoja CLIENTES queda solo de respaldo.</p>
         <label class="ancho">Notas <textarea name="notas" rows="2" maxlength="500"></textarea></label>

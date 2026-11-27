@@ -30,6 +30,8 @@ function pedido(id: string, cambios: Partial<PedidoGuardado> = {}): PedidoGuarda
     numeroDocumento: '',
     tipoCliente: '',
     ordenRuta: null,
+    montoPagado: 0,
+    montoVerificado: 0,
     ...cambios,
   };
 }

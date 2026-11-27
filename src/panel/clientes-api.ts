@@ -137,6 +137,7 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
         precioEspecial20L: cuerpo.precioEspecial20L,
         vaciosPendientes: cuerpo.vaciosPendientes,
         bloqueado: cuerpo.bloqueado,
+        credito: cuerpo.credito,
       },
       ahoraSegundos,
     );

@@ -195,8 +195,10 @@ describe('marcas que llegan tarde, sin señal (D84)', () => {
     const { db, env, repartidor } = await entorno();
     for (let i = 0; i < 2; i++) expect((await marcar(env, repartidor, 'P261113-AAAAA', { cobrado: true })).status).toBe(200);
     expect(db.sql("SELECT estado, vacios_retirados, cobrado_en_entrega, estado_pago, entregado_en FROM pedidos WHERE id = 'P261113-AAAAA'")).toEqual([
-      { estado: 'Entregado', vacios_retirados: 3, cobrado_en_entrega: 9900, estado_pago: 'pagado', entregado_en: AHORA },
+      { estado: 'Entregado', vacios_retirados: 3, cobrado_en_entrega: 9900, estado_pago: 'informado', entregado_en: AHORA },
     ]);
+    // Repetir la marca no duplica el cobro (D107).
+    expect(db.sql("SELECT COUNT(*) AS n FROM pagos WHERE pedido_id = 'P261113-AAAAA'")).toEqual([{ n: 1 }]);
   });
 });
 
