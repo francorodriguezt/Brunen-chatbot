@@ -12,10 +12,14 @@
  *  - Clientes en espera. Con el número compartido, el bot calla mientras una persona atiende a un cliente (`relevo.ts`).
  *    Si esa pausa termina y el cliente había escrito algo que nadie respondió, deja un aviso para una persona.
  *
+ *  - Reparto (D98): avisa en el panel si el teléfono del repartidor deja de mandar su ubicación con la jornada abierta,
+ *    o si a media mañana hay entregas y nadie inició la ruta (`alertasReparto.ts`).
+ *
  * Corre aparte de la atención a los clientes: si esta tarea falla o se corta, ningún cliente se queda sin respuesta.
  */
 
 import type { Alerta } from './alertas';
+import { UMBRALES_POR_DEFECTO, vigilarReparto } from './alertasReparto';
 import { AlmacenD1, type BaseDatos } from './almacen';
 import { FALLA_DEL_TOKEN, avisarFalla, type EntornoAtencion } from './atencion';
 import { leerConfiguracion } from './configuracion';
@@ -244,6 +248,12 @@ export async function tareaProgramada(env: EntornoAtencion, ahora: Date): Promis
       }
     }
     const local = fechaHoraLocal(ahora);
+    if (env.DB) {
+      // Sin planilla (o si no se puede leer) valen los umbrales por defecto: 20 minutos y 10:30.
+      const hayPlanilla = Boolean(env.GOOGLE_SERVICE_ACCOUNT_JSON && env.GOOGLE_SHEET_ID);
+      const umbrales = (hayPlanilla ? (await leerConfiguracion(env))?.reparto : undefined) ?? UMBRALES_POR_DEFECTO;
+      await vigilarReparto(env.DB, umbrales, local, Math.floor(ahora.getTime() / 1000));
+    }
     await respaldar(env, ahora, local);
     if (local.hora === 7 && local.minuto >= 30 && local.minuto < 35) await revisionDiaria(env, ahora);
   } catch (error) {

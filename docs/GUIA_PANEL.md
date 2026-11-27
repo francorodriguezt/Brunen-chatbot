@@ -87,6 +87,8 @@ Lo que el bot no resuelve solo y deja para una persona: reclamos, facturas, comp
 | "Sin conexión con el panel" | Se cayó el internet de tu equipo | Revisa tu conexión. El bot sigue anotando pedidos: aparecen cuando vuelvas |
 | Aviso "El bot no terminó de atender un mensaje" | El bot se interrumpió antes de responder | Abre el chat de ese cliente y respóndele |
 | Aviso "El token de WhatsApp venció" | El bot no puede responderle a nadie | Avisa a Franco de inmediato y atiende a mano mientras tanto |
+| Aviso "No llega la ubicación del repartidor hace … minutos" | Con la ruta iniciada, su teléfono dejó de mandar la ubicación (sin señal, app cerrada o teléfono apagado) | Llámalo. El tiempo se cambia en CONFIGURACION con `ALERTA_SIN_SENAL_MINUTOS` (por defecto 20; `NO` la apaga) |
+| Aviso "nadie tocó Iniciar ruta" | Son más de las 10:30, hay entregas para hoy y la ruta no empezó en la app | Pregúntale al repartidor si ya salió. La hora se cambia con `ALERTA_RUTA_NO_INICIADA` (por defecto 10:30; `NO` la apaga) |
 | Aviso "No se pudo leer la planilla" | El bot no ve clientes ni precios y deja todo para una persona | Avisa a Franco y revisa que la planilla siga compartida |
 | El bot responde cosas equivocadas | Hay que detenerlo | En la hoja CONFIGURACION pon `BOT_ACTIVO` en `NO` (tarda un minuto). Para encenderlo, `SI` |
 | Hay una falla en el reparto | Los clientes tienen que saberlo | En CONFIGURACION pon `ESTADO_SERVICIO` en `reducido` y escribe el aviso en `MENSAJE_EXCEPCION`: el bot lo agrega a sus respuestas |

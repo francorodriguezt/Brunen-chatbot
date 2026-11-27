@@ -130,7 +130,7 @@ describe('parsearConfiguracion', () => {
       ['ESTADO_SERVICIO', 'reducido'],
       ['MENSAJE_EXCEPCION', '  Hoy hay retrasos.  '],
     ]);
-    expect(r).toEqual({ botActivo: true, servicio: { reducido: true, mensajeExcepcion: 'Hoy hay retrasos.' } });
+    expect(r).toEqual({ botActivo: true, servicio: { reducido: true, mensajeExcepcion: 'Hoy hay retrasos.' }, reparto: { sinSenalMinutos: 20, rutaNoIniciada: { hora: 10, minuto: 30 } } });
   });
 
   it('el servicio es normal salvo que diga reducido (sin importar mayúsculas)', () => {
