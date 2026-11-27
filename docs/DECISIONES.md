@@ -828,7 +828,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Se cambian sin tocar código,** en la hoja CONFIGURACION: `ALERTA_SIN_SENAL_MINUTOS` (de 5 a 240; por defecto 20) y `ALERTA_RUTA_NO_INICIADA` ("10:30", "11" o "11.15"; por defecto 10:30). Con `NO` se apaga cada una. Un valor que no se entiende deja el por defecto. Sin planilla, valen los por defecto.
 - **Solo en el panel, no por Telegram:** no son reclamos ni fallas del sistema (D32). Si en el día de prueba resultan urgentes, se suman a Telegram.
 - Las revisa el vigía cada 5 minutos (`src/alertasReparto.ts`); el origen del aviso evita repetirlo. Sin las tablas de seguimiento, no avisa y no rompe la tarea.
-- Sin migración. Verificado: 1.618 pruebas (11 nuevas, con la base SQLite de prueba). **Sin publicar.**
+- Sin migración. Verificado: 1.618 pruebas (11 nuevas, con la base SQLite de prueba). Publicado el 2026-11-27 (ver D105).
 
 ### D99 · 2026-11-27 · "Avisar al cliente" cuando la oficina cancela o cambia un pedido
 **Franco aceptó la recomendación de la pregunta 5.** Hasta hoy, si la operadora cancelaba o cambiaba un pedido en el panel, al cliente no se le decía nada.
@@ -836,7 +836,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Por qué no lo manda el bot:** sería un mensaje más por pedido (regla 13) y, pasadas las 24 horas, una plantilla pagada de Meta. Desde la app es gratis, y una persona ve lo que se envía.
 - **Textos:** "Hola Ana, te escribimos de Brunen. Tu pedido de 3 de 20 L para el jueves 19 de noviembre quedó cancelado. Si quieres volver a pedir, escríbenos por aquí." y "… Cambiamos tu pedido: se entrega el viernes 20 de noviembre. Si algo no te calza, respóndenos por aquí." El motivo de la cancelación no va: es una nota interna. Un cambio de notas, de pago o de envases no ofrece avisar.
 - Con el número compartido (D46), lo que la persona escribe desde la app pausa al bot una hora con ese cliente, como siempre.
-- Código: `panel/admin/avisar-cliente.js` (funciones puras, 3 pruebas en `tests/avisar-cliente.test.mjs`) y `panel/admin/app.js`. Verificado en el navegador a 375 px con datos ficticios: cambio de fecha, cancelación y la tarjeta cancelada abren `wa.me` con el texto correcto. **Sin publicar.**
+- Código: `panel/admin/avisar-cliente.js` (funciones puras, 3 pruebas en `tests/avisar-cliente.test.mjs`) y `panel/admin/app.js`. Verificado en el navegador a 375 px con datos ficticios: cambio de fecha, cancelación y la tarjeta cancelada abren `wa.me` con el texto correcto. Publicado el 2026-11-27 (ver D105).
 
 ### D100 · 2026-11-27 · Un comprobante se asocia al pedido sin pagar más antiguo
 **Franco aceptó la recomendación de la pregunta 6.** Antes, el aviso de un comprobante (foto o PDF) no decía de qué pedido era.
@@ -844,7 +844,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - Si tiene más de uno, el aviso lo dice: "Lo asocié a su pedido sin pagar más antiguo. También tiene sin pagar: P…, P…. Marca pagado el que corresponda." Así la operadora elige el correcto (D100 no marca nada pagado solo: lo verifica una persona, regla 2).
 - Sin pedidos por pagar, el aviso queda suelto, como antes. Si la consulta falla, el aviso se guarda igual, sin pedido.
 - Solo para comprobantes (imagen o PDF). "Ya te transferí" por texto sigue como aviso de pago sin asociar: no siempre es de un pedido (puede ser una deuda o un abono). Cuando se construyan los cobros (propuesta 2), esto pasa a ser "informado".
-- Sin migración (la columna `id_pedido` de los avisos ya existía). Verificado: 2 pruebas nuevas en `tests/atencion.test.ts`. **Sin publicar.**
+- Sin migración (la columna `id_pedido` de los avisos ya existía). Verificado: 2 pruebas nuevas en `tests/atencion.test.ts`. Publicado el 2026-11-27 (ver D105).
 
 ### D101 · 2026-11-27 · Aviso al elegir un domingo o un día sin reparto en el panel
 **Mejora encontrada al probar D99:** al cambiar un pedido en el panel se podía pasar la entrega a un domingo sin que nada lo dijera (el servidor lo aceptaba). El bot nunca ofrece esos días, pero a mano sí se podía.
@@ -852,7 +852,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **No bloquea:** puede haber una excepción a sabiendas (una empresa que recibe el domingo). Solo lo dice.
 - Los feriados no los conoce: viven en la planilla y el panel no la lee. Un feriado importante se puede marcar como día sin reparto (D74).
 - `/api/opciones` trae los días sin reparto próximos; al marcar o quitar uno en Reparto, el aviso se actualiza sin recargar.
-- Código: `panel/admin/aviso-de-fecha.js` (función pura, 3 pruebas). Verificado en el navegador a 375 px: domingo, sábado, fecha pasada y un día marcado sin reparto. **Sin publicar.**
+- Código: `panel/admin/aviso-de-fecha.js` (función pura, 3 pruebas). Verificado en el navegador a 375 px: domingo, sábado, fecha pasada y un día marcado sin reparto. Publicado el 2026-11-27 (ver D105).
 
 ### D102 · 2026-11-27 · La app del repartidor avisa cuando la ruta cambia sin volver a publicarla
 **Lo anotó la revisión de D97 (riesgo A21):** si después de publicar la ruta se confirmaba un pedido nuevo o se cancelaba uno, la lista del repartidor cambiaba sin aviso; D94 solo avisa cuando se vuelve a publicar.
@@ -860,7 +860,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **App del repartidor:** "Cambió la ruta. Se agregó Ana (Ñuñoa) al final. Ya no va Pedro (Macul)." con "Entendido". Lo visto se guarda en el teléfono: si después cambia otra cosa, el aviso vuelve. Si la oficina vuelve a publicar, manda el aviso de D94.
 - **Panel (Reparto):** "Desde que publicaste la ruta, se agregó 1 parada y se quitó 1. … Las nuevas van al final: vuelve a publicar para ponerlas en orden."
 - Sin viajes guardados (una ruta publicada antes de D86) no se compara.
-- Nuevo archivo `panel/repartidor/cambios.js` (en la copia sin señal: pasa a `brunen-v4`). Pruebas: 3 en `tests/reparto.test.ts` y 2 en `tests/cambios-ruta.test.mjs`. Verificado de punta a punta en local con datos ficticios: publicar, cancelar una parada, aviso en el panel y en la app, "Entendido" y recargar. **Sin publicar.**
+- Nuevo archivo `panel/repartidor/cambios.js` (en la copia sin señal: pasa a `brunen-v4`). Pruebas: 3 en `tests/reparto.test.ts` y 2 en `tests/cambios-ruta.test.mjs`. Verificado de punta a punta en local con datos ficticios: publicar, cancelar una parada, aviso en el panel y en la app, "Entendido" y recargar. Publicado el 2026-11-27 (ver D105).
 
 ### D103 · 2026-11-27 · El bot aprende de los primeros chats reales
 **Franco mandó 6 chats reales exportados desde el iPhone del negocio.** Se midieron en un computador aparte con `npm run medir-bot`, que oculta los datos personales; los chats no entran al repositorio. Los ejemplos nuevos de `tests/mensajes.json` están reescritos con datos ficticios.
@@ -874,7 +874,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
   - **"¿cuándo llega?"** también con "¿ya pasaron?", "¿habrán pasado ya?", "¿pasarían durante la mañana?" (solo con un pedido vivo, D78);
   - **saludos y cierres:** "disculpen la demora", "Sí, gracias", "No hay problema", "Recargas recibidas", y un cierre con saludo delante ("Hola, buenos días! Ok, gracias"). No se responden (cupo de mensajes).
 - **Lo que sigue sin entenderse, a propósito:** respuestas sueltas a una pregunta que hizo una persona ("Sí / 4", "6 / por ahora"), "El total de hoy y lo anterior" (cuánto debe: lo ve una persona), "en efectivo le entrego" y frases sin contexto. Para medir más, hacen falta más chats (D96).
-- Verificado: 1.651 pruebas (14 casos nuevos en `tests/mensajes.json`, 2 en el flujo, 2 en el medidor, 3 en "¿cuándo llega?"). **Sin publicar.**
+- Verificado: 1.651 pruebas (14 casos nuevos en `tests/mensajes.json`, 2 en el flujo, 2 en el medidor, 3 en "¿cuándo llega?"). Publicado el 2026-11-27 (ver D105).
 
 ### D104 · 2026-11-27 · Clientes en un solo lugar: el bot cotiza con la ficha del panel
 **Franco respondió la pregunta 12:** todo minimarket paga precio mayorista, salvo un cliente minimarket con un precio propio de $1.311 por bidón (no se sabe por qué). Con eso se construyó la propuesta 1 (pregunta 3).
@@ -891,7 +891,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Lo que hay que hacer a mano:** en el panel, abrir la ficha del cliente de $1.311, elegir Minimarket y escribir 1311 en el precio especial (el nombre no va en el repositorio). Los minimarket que ya figuran como tales en sus pedidos quedan como mayoristas solos; revisar en Clientes los que falten.
 - **Costo:** una consulta más a la base por mensaje (en paralelo con la hoja). Sin costo mensual.
 - **Lo que no cambia:** un precio especial sigue definido solo para 20 L (pregunta 15): en 12 L y 10 L se cotiza con tramos y va a revisión.
-- Pruebas: 4 en `tests/fichas.test.ts` (guardar, rechazar, unir y base sin la 0018) y 7 en `tests/clientes.test.ts` (combinar y la ficha caída). Verificado en el navegador a 375 px: la ficha guarda minimarket, $1.311 y 2 vacíos, y rechaza un precio de $5. **Sin publicar; la migración 0018 no está aplicada en la base real.**
+- Pruebas: 4 en `tests/fichas.test.ts` (guardar, rechazar, unir y base sin la 0018) y 7 en `tests/clientes.test.ts` (combinar y la ficha caída). Verificado en el navegador a 375 px: la ficha guarda minimarket, $1.311 y 2 vacíos, y rechaza un precio de $5. Publicado el 2026-11-27 con la migración 0018 (ver D105).
 
 ### D105 · 2026-11-27 · Lo que encontró la revisión del pull request del Proyecto (D98 a D104)
 **Antes de unir el pull request, un revisor en Opus lo revisó (superpowers:requesting-code-review). Pasaban las 1.661 pruebas; había 3 problemas críticos y 4 importantes. Franco pidió corregir lo recomendado.**
@@ -911,3 +911,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - Avisos urgentes a la operadora: notificaciones del panel instalado en el iPhone, en vez de Telegram (por construir).
 - La entrega el mismo día sigue; la salida del repartidor se toma a las 10:00.
 - La carpeta `datos/` (historial real) quedó autorizada para que Claude la revise y trabaje con ella.
+- **Publicado el 2026-11-27** con permiso de Franco, junto con D98 a D104:
+  - migración `0018_condiciones_del_cliente` aplicada en la base real; punto de restauración previo `00001269-00000000-00005130-5d37b955b05529f55cbce281c7d6cae0`;
+  - administración `94785954`, pública `9e1f0429`, bot `11fc003b`;
+  - `npm run comprobar`: 9 de 9. La app publicada trae `cambios.js` (copia `brunen-v4`) y la base tiene las columnas nuevas de la ficha.

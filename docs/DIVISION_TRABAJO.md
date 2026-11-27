@@ -13,7 +13,7 @@ Al 2026-11-27. Los números son los de [LO_QUE_FALTA.md](LO_QUE_FALTA.md); las r
 
 | Qué | Punto | Estado |
 |---|---|---|
-| Publicar lo del pull request 1, con la migración 0018 | 26–29, 36 | Espera el visto bueno |
+| Publicar lo del pull request 1, con la migración 0018 | 26–29, 36 | Hecho el 2026-11-27 |
 | Reescribir el historial (nombre y correo en los commits antiguos) | 31 | Espera el visto bueno |
 | Publicar cada entrega del Proyecto y correr `npm run comprobar` | 118 | Cada vez |
 | Cargar el historial del Excel | 21 | Cuando Franco lo pida |
