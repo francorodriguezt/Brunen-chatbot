@@ -937,3 +937,15 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Antes de publicar:** hay que aplicar la migración `0019_cobros` (agrega dos tablas y tres columnas). Sin ella, el panel y el repartidor no pueden anotar cobros.
 - **No se hizo:** libro de envases, gastos y panel de análisis (puntos 99 a 102 de LO_QUE_FALTA); el pago de una factura no se concilia con el banco.
 
+### D108 · 2026-11-27 · Un vacío que falta queda como deuda y se retira la próxima vez (respuesta 53, punto 72)
+**Franco respondió (53): "un vacío que falta queda como deuda y se retira la próxima vez". Se construyó sobre lo que ya había: la ficha del cliente ya guarda `vacios_pendientes` (D104) y el bot ya la usa para el "vacíos extra" del pedido.**
+- **Al entregar** (`RepositorioEntregas.entregar`), el repartidor ya anotaba cuántos vacíos retiró. Ahora la diferencia con los bidones que dejó pasa a la ficha: deja 3 y retira 1, la ficha suma 2; si trae de más, resta (nunca baja de 0). La cuenta es `ficha + bidones dejados − vacíos retirados`, así que no depende de lo que decía el pedido cuando se creó.
+- **Marcar de nuevo no duplica:** la columna `pedidos.vacios_a_deuda` (migración `0020_vacios_a_deuda`) guarda lo que ya se le aplicó a la ficha por ese pedido. Si el repartidor corrige el mismo día, o la cola sin señal (D84) reenvía la marca, solo se aplica la diferencia.
+- **El historial del pedido dice lo que quedó:** "Retiró 1 vacío. Le quedan 2 vacíos por retirar."
+- **Llenar solos los vacíos por retirar (punto 72):** el bot ya lo hacía al anotar un pedido; ahora también el pedido fijo (D59) nace con los vacíos que debe, y el formulario de "Nuevo pedido" los llena al reconocer el teléfono (la persona puede cambiarlos).
+- **Estadísticas:** la lista "Vacíos por retirar" ahora sale de las fichas (quienes deben hoy), no de sumar faltantes de cada entrega: baja sola cuando el cliente devuelve. Si la base no tiene la columna, se usa el cálculo anterior.
+- **Un cliente sin entregas anteriores no queda debiendo:** es una carga inicial (no tiene vacíos que devolver). **Es una suposición mía:** un cliente antiguo cuyo historial aún no está cargado (el Excel) tampoco queda con deuda en su primera entrega. Si prefieren lo contrario, se cambia en `vaciosQueQuedanDebiendo`. Pregunta para Franco en PREGUNTAS_ABIERTAS (36).
+- **La entrega nunca falla por esto:** si la ficha o la columna no están, el pedido queda entregado igual.
+- **Antes de publicar:** aplicar la migración `0020_vacios_a_deuda` (una columna). Sin ella, entregar sigue funcionando, pero no se anota la deuda.
+- **No se hizo:** cobrar el vacío que falta (Franco eligió la deuda), ni el libro de envases por formato (punto 99).
+

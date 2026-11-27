@@ -3,6 +3,7 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Próxima sesión
+ACTUALIZACIÓN 2026-11-27 (D108, sin publicar): **vacíos que faltan como deuda** (respuesta 53): al entregar, lo que falta pasa a la ficha y el próximo pedido lo retira. **Antes de publicar hay que aplicar la migración `0020_vacios_a_deuda`.**
 ACTUALIZACIÓN 2026-11-27 (D107, sin publicar): **cobros** (respuesta 45): pagos por pedido, abonos, verificación, rendición del efectivo con bencina y clientes a crédito, en la pestaña nueva *Cobros*. **Antes de publicar hay que aplicar la migración `0019_cobros`.** Franco publica desde su computador.
 ACTUALIZACIÓN 2026-11-27 (D106): historial de git reescrito sin el nombre de la operadora ni el correo personal. El Excel se carga cuando se pruebe o cerca del lanzamiento. Falta pasarle al Proyecto el mensaje de [DIVISION_TRABAJO.md](DIVISION_TRABAJO.md) y, si se quiere, pedir a GitHub que borre los commits viejos.
 ACTUALIZACIÓN 2026-11-27: **publicados D98 a D105** con la migración 0018 (administración `94785954`, pública `9e1f0429`, bot `11fc003b`; `npm run comprobar` 9 de 9). Falta: reescribir el historial de git (nombre y correo en commits antiguos), el nombre exacto del Excel para cargar el historial y pasarle al Proyecto el mensaje de [DIVISION_TRABAJO.md](DIVISION_TRABAJO.md).

@@ -49,7 +49,7 @@ Las preguntas vienen de [PENDIENTES.md](PENDIENTES.md), [PROPUESTA_SIGUIENTES_PA
 33. **¿Acepta que su nombre y su horario figuren en el repositorio público?** Si no, los saco.
 34. **Empresas con plan mensual:** ¿cuáles son, qué reciben y cada cuánto? Con eso cargo sus pedidos fijos.
 35. **¿Qué significan "plan", "abono" y "debe"** en la forma de pago del Excel? ¿Y qué controlan las hojas CONTROL EFECTIVO, CONTROL BIDONES, CUOTAS y DETALLE HOTEL?
-36. **Un vacío que falta** después de justificarlo: ¿se retira al día siguiente, queda como deuda del cliente o se cobra?
+36. **Un vacío que falta** después de justificarlo: ¿se retira al día siguiente, queda como deuda del cliente o se cobra? **Respondida (deuda, D108).** Queda una duda: en la *primera* entrega de un cliente (carga inicial) no se anota deuda, porque no tiene vacíos que devolver; ¿está bien así, aunque un cliente antiguo con historial sin cargar quede sin deuda en esa primera entrega?
 37. **¿Cuánto tiempo al día les toma hoy** anotar los pedidos, armar la ruta y escribirle al repartidor? Sirve para medir cuánto se ahorra.
 
 ## Agregadas después

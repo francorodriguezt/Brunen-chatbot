@@ -359,6 +359,39 @@ export class RepositorioClientes {
   }
 
   /**
+   * Suma (o resta, con un número negativo) vacíos a la deuda del cliente, sin bajar de 0 (D108). Devuelve cuántos debe
+   * después, o null si la ficha no existe o la base todavía no tiene la columna (migración 0018).
+   */
+  async ajustarVacios(clienteId: number, delta: number): Promise<number | null> {
+    try {
+      if (Number.isInteger(delta) && delta !== 0) {
+        if ((await this.cambios('UPDATE clientes SET vacios_pendientes = MAX(0, vacios_pendientes + ?2) WHERE id = ?1', clienteId, delta)) === 0) return null;
+      }
+      const [fila] = await this.filas('SELECT * FROM clientes WHERE id = ?1', clienteId);
+      return fila ? Math.max(0, numero(fila.vacios_pendientes)) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Los clientes que deben vacíos (D108), de más a menos, con su primer teléfono y el último día que se les entregó. */
+  async conVaciosPendientes(limite = 200): Promise<Array<{ telefono: string; nombre: string; faltan: number; ultimoDia: string }> | null> {
+    try {
+      const filas = await this.filas(
+        `SELECT c.nombre, c.vacios_pendientes AS faltan,
+                (SELECT t.telefono FROM telefonos_cliente t WHERE t.cliente_id = c.id ORDER BY t.agregado_en, t.telefono LIMIT 1) AS telefono,
+                (SELECT MAX(COALESCE(p.fecha_confirmada, p.fecha_entrega)) FROM pedidos p WHERE p.cliente_id = c.id AND p.estado = 'Entregado') AS ultimo_dia
+         FROM clientes c WHERE c.vacios_pendientes > 0
+         ORDER BY c.vacios_pendientes DESC, ultimo_dia DESC LIMIT ?1`,
+        limite,
+      );
+      return filas.map((f) => ({ telefono: texto(f.telefono), nombre: texto(f.nombre), faltan: numero(f.faltan), ultimoDia: texto(f.ultimo_dia) }));
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * La ficha de un teléfono para el bot (D104), en una sola consulta: su tipo, sus condiciones y su dirección vigente.
    * null si el teléfono no es de ninguna ficha.
    */

@@ -4,7 +4,8 @@
  *
  * Cuenta solo los pedidos entregados, por su día de entrega. Los vacíos que faltan son la diferencia entre los que había
  * que retirar y los que el repartidor marcó al entregar (D61): los pedidos entregados a mano en el panel, sin esa marca,
- * no cuentan como faltantes.
+ * no cuentan como faltantes. Desde D108 el panel reemplaza esa lista por la de las fichas (quienes deben hoy); este
+ * cálculo queda como respaldo si la base no tiene la columna.
  */
 
 import { diaSemana, sumarDias } from './despacho';

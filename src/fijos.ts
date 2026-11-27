@@ -131,7 +131,7 @@ export class RepositorioFijos {
   async crearLosQueTocan(hoy: string, ahora: number, limite = FIJOS_POR_PASADA): Promise<number> {
     const hasta = sumarDias(hoy, DIAS_DE_ANTICIPACION);
     const fijos = await this.filas(
-      `SELECT f.*, c.nombre AS nombre, d.direccion AS direccion, d.comuna AS comuna, d.notas_repartidor AS notas_repartidor
+      `SELECT f.*, c.nombre AS nombre, c.vacios_pendientes AS vacios_pendientes, d.direccion AS direccion, d.comuna AS comuna, d.notas_repartidor AS notas_repartidor
        FROM pedidos_fijos f
        JOIN clientes c ON c.id = f.cliente_id
        LEFT JOIN direcciones_cliente d ON d.id = (
@@ -166,7 +166,8 @@ export class RepositorioFijos {
           comuna: texto(fila.comuna),
           direccion: texto(fila.direccion),
           notasRepartidor: texto(fila.notas_repartidor),
-          envasesARetirar: 0,
+          // Los vacíos que el cliente debe de antes se retiran en esta entrega (D108).
+          envasesARetirar: Math.max(0, Math.min(999, numero(fila.vacios_pendientes))),
           observaciones: `Pedido fijo (cada ${fijo.cadaDias} días): lo creó el sistema. Confirmar el precio y la entrega.${movidoDe ? ` Se pasó del ${movidoDe} porque ese día no hay reparto.` : ''}${fijo.notas ? ` ${fijo.notas}` : ''}`,
         };
         if (await repositorio.guardarPedido(pedido, ahora)) creados += 1;

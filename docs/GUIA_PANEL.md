@@ -71,6 +71,7 @@ Para una llamada, un audio o una empresa con plan mensual. Toca "+ Nuevo pedido"
 - **Cierre del día**: cuánto efectivo cobró el repartidor contra lo que debía, las entregas sin cobrar, los vacíos que retiró y las paradas que no se pudieron entregar. Lo que sale en color hay que preguntárselo.
 - **Bidones entregados y vacíos por retirar**: los bidones del día, la semana y el mes, un gráfico de los últimos 14 días y los clientes a los que les quedaron vacíos sin retirar.
 - **Copiar mensaje** (el botón azul de cada parada): el mensaje de esa parada, igual al que hoy se le escribe al repartidor, para pegarlo en su chat en el orden de la ruta. "Entregado" lo marca el repartidor desde su teléfono; aquí queda para cuando avisa por llamada.
+- **Vacíos que faltan (D108):** si el cliente entrega menos vacíos que bidones recibe, lo que falta queda como deuda en su ficha ("Vacíos que debe") y el próximo pedido dice cuántos retirar. Baja solo cuando los devuelve; puedes corregirlo a mano en la ficha. La lista "Vacíos por retirar" de Reparto sale de ahí.
 - **Vacíos**: se espera un vacío por cada bidón que se deja. "Vacíos extra" son los que el cliente debía de antes. En el cierre del día, lo retirado se compara con las paradas ya entregadas.
 - **Copiar lista**: el texto para mandarle al repartidor por WhatsApp.
 - **Copiar para Excel**: para pegar en Excel o en la app de rutas.

@@ -989,8 +989,11 @@ async function reconocerCliente() {
   const telefono = formulario.elements.telefono.value.trim();
   if (soloDigitos(telefono).length < 8) return;
   try {
-    const { datos } = await api('/api/clientes/anterior', { telefono });
-    if (!datos || !anotandoNuevo || formulario.elements.telefono.value.trim() !== telefono) return;
+    const { datos, vaciosPendientes } = await api('/api/clientes/anterior', { telefono });
+    if (!anotandoNuevo || formulario.elements.telefono.value.trim() !== telefono) return;
+    // Los vacíos que debe de antes se retiran en esta entrega (D108): se llenan solos y la persona puede cambiarlos.
+    if (vaciosPendientes > 0 && Number(formulario.elements.envases.value || 0) === 0) formulario.elements.envases.value = vaciosPendientes;
+    if (!datos) return;
     const completados = [['nombre', datos.nombre], ['direccion', datos.direccion], ['comuna', datos.comuna], ['notas', datos.notasRepartidor]].filter(
       ([campo, valor]) => valor && formulario.elements[campo].value.trim() === '',
     );

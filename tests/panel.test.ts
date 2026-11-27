@@ -5,6 +5,7 @@ import panel, { type EntornoPanel } from '../src/panel';
 import { manejarApi } from '../src/panel/api';
 import { Cuentas } from '../src/panel/cuentas';
 import { TABLA_PRECIOS } from '../src/precios';
+import { RepositorioClientes } from '../src/fichas';
 import { RepositorioPuntos } from '../src/puntos';
 import { RepositorioD1 } from '../src/repositorio';
 import { AUD, DOMINIO, crearAccesoFalso, type AccesoFalso } from './acceso-falso';
@@ -703,14 +704,23 @@ describe('la API: reconocer al cliente por su teléfono', () => {
     const { env } = await entornoPanel();
     const r = await anterior(env, '+56 9 1111 1111');
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ datos: { idPedido: 'P261028-BBBBB', nombre: '', direccion: 'Calle Falsa 123', comuna: 'Ñuñoa', notasRepartidor: '', tipoCliente: '' } });
+    expect(await r.json()).toEqual({ datos: { idPedido: 'P261028-BBBBB', nombre: '', direccion: 'Calle Falsa 123', comuna: 'Ñuñoa', notasRepartidor: '', tipoCliente: '' }, vaciosPendientes: 0 });
   });
 
   it('si ese teléfono no tiene pedidos, o no se entiende, no hay datos', async () => {
     const { env } = await entornoPanel();
-    expect(await (await anterior(env, '56999999999')).json()).toEqual({ datos: null });
-    expect(await (await anterior(env, 'hola')).json()).toEqual({ datos: null });
-    expect(await (await anterior(env, undefined)).json()).toEqual({ datos: null });
+    expect(await (await anterior(env, '56999999999')).json()).toEqual({ datos: null, vaciosPendientes: 0 });
+    expect(await (await anterior(env, 'hola')).json()).toEqual({ datos: null, vaciosPendientes: 0 });
+    expect(await (await anterior(env, undefined)).json()).toEqual({ datos: null, vaciosPendientes: 0 });
+  });
+
+  it('dice cuántos vacíos debe de antes, para llenarlos en el pedido nuevo (D108)', async () => {
+    const { env, db } = await entornoPanel();
+    const fichas = new RepositorioClientes(db);
+    for (let i = 0; i < 5; i++) await fichas.vincularPendientes(AHORA);
+    const ana = (await fichas.clienteDeTelefono('56911111111')) as number;
+    await fichas.ajustarVacios(ana, 4);
+    expect(((await (await anterior(env, '56911111111')).json()) as { vaciosPendientes: number }).vaciosPendientes).toBe(4);
   });
 
   it('el teléfono viaja en el cuerpo, no en la dirección', async () => {

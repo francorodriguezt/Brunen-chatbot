@@ -10,6 +10,7 @@
 import type { BaseDatos } from './almacen';
 import { fechaHoraLocal } from './despacho';
 import { RepositorioCobros } from './cobros';
+import { RepositorioClientes } from './fichas';
 import { RepositorioD1, type EstadoDePedido, type PedidoGuardado } from './repositorio';
 
 /** Motivos de "No se pudo", con el texto que ve el repartidor y que llega en el aviso. */
@@ -65,10 +66,12 @@ const numeroONulo = (v: unknown): number | null => (typeof v === 'number' ? v : 
 export class RepositorioEntregas {
   private readonly repositorio: RepositorioD1;
   private readonly cobros: RepositorioCobros;
+  private readonly clientes: RepositorioClientes;
 
   constructor(private readonly db: BaseDatos) {
     this.repositorio = new RepositorioD1(db);
     this.cobros = new RepositorioCobros(db);
+    this.clientes = new RepositorioClientes(db);
   }
 
   private async cambios(sql: string, ...valores: unknown[]): Promise<number> {
@@ -123,8 +126,41 @@ export class RepositorioEntregas {
     );
     const vacios = `Retiró ${datos.vacios} ${datos.vacios === 1 ? 'vacío' : 'vacíos'}`;
     const detalle = cobrado !== null ? `${vacios}; cobró $${cobrado.toLocaleString('es-CL')}.` : `${vacios}.`;
-    await this.historial(id, o, 'entrega', detalle + (observacion ? ` Nota: ${observacion}` : '') + textoDeAtraso(o));
+    const deuda = await this.vaciosQueQuedanDebiendo(pedido, datos.vacios);
+    const textoDeDeuda = deuda !== null && deuda > 0 ? ` Le quedan ${deuda} ${deuda === 1 ? 'vacío' : 'vacíos'} por retirar.` : '';
+    await this.historial(id, o, 'entrega', detalle + textoDeDeuda + (observacion ? ` Nota: ${observacion}` : '') + textoDeAtraso(o));
     return { ok: true };
+  }
+
+  /**
+   * Los vacíos que faltan quedan como deuda del cliente y se retiran la próxima vez (D108). El cliente recibió `bidones`
+   * y entregó `vacios`: la diferencia se suma a su ficha (o se resta, si trajo de más), sin bajar de 0. Así el siguiente
+   * pedido ya dice cuántos vacíos extra retirar. Lo que ya se le sumó por este pedido (`vacios_a_deuda`) se descuenta,
+   * para que marcar de nuevo la entrega (una corrección, o la cola sin señal) no lo cuente dos veces.
+   *
+   * Un cliente sin entregas anteriores no tiene vacíos que devolver (es una carga inicial): no se le anota deuda.
+   * Nunca falla la entrega: si algo no se puede, el pedido queda entregado igual. Devuelve lo que la ficha debe ahora.
+   */
+  private async vaciosQueQuedanDebiendo(pedido: PedidoGuardado, vacios: number): Promise<number | null> {
+    try {
+      const [fila] = ((await this.db.prepare('SELECT cliente_id, vacios_a_deuda FROM pedidos WHERE id = ?1').bind(pedido.id).run()).results ?? []) as Array<Record<string, unknown>>;
+      const clienteId = typeof fila?.cliente_id === 'number' ? fila.cliente_id : await this.clientes.clienteDeTelefono(pedido.telefono);
+      if (clienteId === null) return null;
+      const yaAplicado = Number(fila?.vacios_a_deuda) || 0;
+      const [previas] = ((
+        await this.db
+          .prepare("SELECT COUNT(*) AS n FROM pedidos WHERE estado = 'Entregado' AND id != ?1 AND (cliente_id = ?2 OR telefono = ?3)")
+          .bind(pedido.id, clienteId, pedido.telefono)
+          .run()
+      ).results ?? []) as Array<Record<string, unknown>>;
+      const bidones = pedido.lineas.reduce((suma, l) => suma + (Number.isFinite(l.cantidad) ? l.cantidad : 0), 0);
+      const nuevo = Number(previas?.n) > 0 ? bidones - vacios : 0;
+      const deuda = await this.clientes.ajustarVacios(clienteId, nuevo - yaAplicado);
+      if (nuevo !== yaAplicado) await this.cambios('UPDATE pedidos SET vacios_a_deuda = ?2 WHERE id = ?1', pedido.id, nuevo);
+      return deuda;
+    } catch {
+      return null;
+    }
   }
 
   /** "No se pudo": el pedido sigue abierto y una persona lo reagenda. El aviso sale una vez por pedido y día. */

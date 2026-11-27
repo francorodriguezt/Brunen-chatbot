@@ -245,7 +245,11 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
     if (ruta === '/api/estadisticas' && metodo === 'GET') {
       const hasta = url.searchParams.get('hasta') ?? fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha;
       if (!esFecha(hasta) || Number.isNaN(Date.parse(`${hasta}T00:00:00Z`))) return error(400, 'Fecha no válida.');
-      return json(resumirEntregas(await repositorio.entregadosEntre(desdeParaEstadisticas(hasta), hasta), hasta));
+      const estadisticas = resumirEntregas(await repositorio.entregadosEntre(desdeParaEstadisticas(hasta), hasta), hasta);
+      // Los vacíos que faltan salen de las fichas (D108): bajan solos cuando el cliente los devuelve.
+      const deudores = ctx.clientes ? await ctx.clientes.conVaciosPendientes() : null;
+      if (deudores) estadisticas.vacios = deudores;
+      return json(estadisticas);
     }
 
     if ((ruta === '/api/reparto' || ruta === '/api/reparto.csv') && metodo === 'GET') {
@@ -288,7 +292,9 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       if (ruta === '/api/clientes/anterior') {
         // Para no volver a escribir los datos de alguien que ya pidió: los de su último pedido con dirección (D40).
         const telefono = esTexto(cuerpo.telefono) ? normalizarTelefono(cuerpo.telefono) : null;
-        return json({ datos: telefono ? await repositorio.datosDelUltimoPedido(telefono) : null });
+        // También cuántos vacíos debe de antes (D108): el pedido nuevo los retira en esta entrega.
+        const ficha = telefono && ctx.clientes ? await ctx.clientes.paraBot(telefono) : null;
+        return json({ datos: telefono ? await repositorio.datosDelUltimoPedido(telefono) : null, vaciosPendientes: ficha?.vaciosPendientes ?? 0 });
       }
       if (!esTexto(cuerpo.texto) || cuerpo.texto.trim().length < 2) return error(400, 'Escribe al menos 2 letras o números para buscar.');
       return json({ pedidos: await repositorio.buscarPedidos(cuerpo.texto) });

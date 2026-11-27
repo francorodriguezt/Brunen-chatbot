@@ -81,7 +81,7 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
 50. **Dominio propio** para el panel (P30).
 51. **El celular del repartidor**: ¿de la empresa o personal? (P31). Cambia cómo se pide su consentimiento.
 52. **La plataforma de rutas actual** (Optiroute): nombre exacto, plan, cuánto pagan y qué funciones usan. Es la lista de lo que el reemplazo tiene que cubrir antes de cancelarla.
-53. **Un vacío que falta** después de justificarlo: ¿se retira mañana, queda como deuda o se cobra? (también en P36).
+53. **Un vacío que falta** después de justificarlo: ¿se retira mañana, queda como deuda o se cobra? (también en P36). ✅ Respondida (deuda) y construida en D108.
 
 ## 5. Preguntas para la operadora
 
@@ -109,7 +109,7 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
 69. **Alertas "sin señal" y "ruta no iniciada"** en Hoy y por Telegram. — Espera P4.
 70. **Avisar al cliente un cambio o una cancelación** con un botón que abre su chat. — Espera P5.
 71. **Asociar comprobantes a un pedido** cuando hay varios sin pagar. — Espera P6.
-72. **Llenar solos los vacíos por retirar** al reconocer al cliente. — Espera la regla del saldo de envases (P36, punto 53).
+72. **Llenar solos los vacíos por retirar** al reconocer al cliente. — ✅ Hecho en D108 (bot, pedidos fijos y Nuevo pedido).
 73. **Incidencias sin parada** (furgón, diferencias) en la app del repartidor. — Espera la lista de Felipe y la operadora (punto 60).
 74. **Precio de todo el pedido en la app del repartidor**. Hoy ve solo lo que cobra en efectivo; mostrar más es decisión del negocio.
 75. **Promociones** que el bot cotiza solo y que se arman desde el panel. — Espera a Felipe.
