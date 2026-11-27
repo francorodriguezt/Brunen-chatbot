@@ -46,7 +46,7 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 ## 4. Clientes con condiciones especiales
 - Dos clientes con precio especial por bidón de 20 L ($3.500 y $3.000). Teléfonos PENDIENTES (se cargan en CLIENTES, no aquí).
 - Mayoristas: todo minimarket paga precio mayorista (Franco, 2026-11-27). Un cliente minimarket tiene un precio propio de $1.311 por bidón (no se sabe por qué); se carga como precio especial en su ficha (D104).
-- Las condiciones de cada cliente (tipo, precio especial, vacíos que debe, bloqueo) se cambian en la ficha del panel; la hoja CLIENTES queda de respaldo (D104).
+- Las condiciones de cada cliente (tipo, precio especial, vacíos que debe, bloqueo) se cambian en la ficha del panel; la hoja CLIENTES queda de respaldo (D104). "Hogar" en una ficha no tapa lo que diga la hoja, y con la hoja caída no se promete precio (D105).
 - ~20 empresas con plan mensual: condiciones PENDIENTES; el bot registra y escala.
 - Casi todos los clientes piden la misma cantidad; varían los días.
 - Algunos clientes piden aviso de hora aproximada de entrega.
@@ -58,7 +58,8 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 
 ## 6. Horarios, cobertura y entregas
 - Despacho: lunes a viernes 10:00–18:00 · sábado 10:00–15:00 · domingos y festivos no.
-- Corte: pedidos **hasta las 9:00 (inclusive)** salen el mismo día; posteriores, el siguiente día de despacho (lunes a sábado sin festivos). Implementado en `src/despacho.ts`.
+- Corte: pedidos **hasta las 9:00 (inclusive)** salen el mismo día; posteriores, el siguiente día de despacho (lunes a sábado sin festivos). Implementado en `src/despacho.ts`. Confirmado el 2026-11-27: la entrega el mismo día sigue.
+- Salida del repartidor: puede variar; se toma las 10:00 (Franco, 2026-11-27).
 - Comunas (12): Ñuñoa, Macul, San Joaquín, Peñalolén, Santiago Centro, Providencia, Las Condes, Vitacura, Lo Barnechea, Recoleta, Huechuraba, La Reina.
 - Cliente ausente: se llama; si no puede recibir, se reagenda al día siguiente.
 - Reclamos: respuesta inmediata, solución al día siguiente; bidón defectuoso se cambia sin costo.

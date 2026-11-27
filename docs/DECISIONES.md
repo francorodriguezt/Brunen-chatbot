@@ -887,8 +887,27 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
   - Una ficha sin condiciones no cambia nada: la hoja sigue de respaldo, como antes. Si la base falla al leer la ficha, también.
   - Los vacíos de la ficha, si tiene, pasan a las notas del repartidor (si no, los de la hoja).
 - **Al unir fichas:** manda el precio especial de la que queda (si no tiene, toma el de la otra), los vacíos se suman y el bloqueo pasa.
-- **Sin la migración 0018 todo funciona como antes:** la ficha se lee con `SELECT *` y las condiciones solo se escriben si cambian. Probado con una base sin la 0018.
+- **Sin la migración 0018 nada se rompe:** la ficha se lee con `SELECT *` y las condiciones solo se escriben si cambian. Probado con una base sin la 0018. (La revisión mostró que sí cambiaba cómo cotizaba; corregido en D105.)
 - **Lo que hay que hacer a mano:** en el panel, abrir la ficha del cliente de $1.311, elegir Minimarket y escribir 1311 en el precio especial (el nombre no va en el repositorio). Los minimarket que ya figuran como tales en sus pedidos quedan como mayoristas solos; revisar en Clientes los que falten.
 - **Costo:** una consulta más a la base por mensaje (en paralelo con la hoja). Sin costo mensual.
 - **Lo que no cambia:** un precio especial sigue definido solo para 20 L (pregunta 15): en 12 L y 10 L se cotiza con tramos y va a revisión.
 - Pruebas: 4 en `tests/fichas.test.ts` (guardar, rechazar, unir y base sin la 0018) y 7 en `tests/clientes.test.ts` (combinar y la ficha caída). Verificado en el navegador a 375 px: la ficha guarda minimarket, $1.311 y 2 vacíos, y rechaza un precio de $5. **Sin publicar; la migración 0018 no está aplicada en la base real.**
+
+### D105 · 2026-11-27 · Lo que encontró la revisión del pull request del Proyecto (D98 a D104)
+**Antes de unir el pull request, un revisor en Opus lo revisó (superpowers:requesting-code-review). Pasaban las 1.661 pruebas; había 3 problemas críticos y 4 importantes. Franco pidió corregir lo recomendado.**
+- **Un "hogar" llenado solo le ganaba a la hoja CLIENTES:** casi todas las fichas importadas dicen "hogar", así que los clientes con precio especial y las empresas se habrían cotizado a precio normal. Ahora mandan solo las condiciones que alguien puso (minimarket, empresa, precio especial o bloqueo); si no, manda la hoja.
+- **Con la hoja caída se prometía precio** a quien la hoja tenía bloqueado o con precio especial. Ahora la ficha sirve para anotar el pedido, pero queda un aviso y no se promete precio (como D57).
+- **"5 para retirar" o "2 para devolver" creaban un pedido.** Sin una comuna, "para" solo cuenta con un lugar (sucursal, local, casa, oficina, depto...).
+- **"¿A qué cuenta le transfiero?" se tomaba como "ya pagué".** Es una pregunta sobre el pago.
+- **Vacíos que tragan quejas:** Franco decidió dejarlo (los bidones se retiran igual); solo "nadie vino" o "no vinieron" ahora son reclamo, porque un reclamo siempre lo ve una persona (principio 3).
+- **El aviso "sin señal" se acumulaba:** ahora se cierra solo cuando vuelve la ubicación y dice a qué hora. Con Optiroute no aparece, porque nadie toca "Iniciar ruta".
+- **Guardar una ficha antes de la 0018 quedaba a medias:** ahora no guarda nada y lo dice.
+- **Menores:** el tamaño supuesto sale del último pedido y así lo dice; "ruta no iniciada" hasta las 15:00 los sábados; "sí, ya pasaron, gracias" no es una pregunta; un comprobante no se asocia a un pedido en efectivo; el aviso al cliente sin productos no dice "Sin productos".
+- Verificado: pruebas que fallaron primero; 1.668 en verde.
+
+**Decisiones de Franco del 2026-11-27, para construir o seguir:**
+- Conectar el número actual sin pagar: Brunen como su propio Tech Provider (docs/INVESTIGACION_2026-11-27.md).
+- IA: mantener Groq y sumar Workers AI de Cloudflare como respaldo (por construir).
+- Avisos urgentes a la operadora: notificaciones del panel instalado en el iPhone, en vez de Telegram (por construir).
+- La entrega el mismo día sigue; la salida del repartidor se toma a las 10:00.
+- La carpeta `datos/` (historial real) quedó autorizada para que Claude la revise y trabaje con ella.
