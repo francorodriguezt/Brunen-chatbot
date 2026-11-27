@@ -97,6 +97,29 @@ interface Efectos {
   alerta?: Alerta;
   /** Lo que escribió el cliente: contexto para el aviso de error si D1 falla. */
   textoDelCliente: string;
+  /** Un comprobante: el aviso se asocia a su pedido más antiguo sin pagar (D100). */
+  esComprobante?: boolean;
+}
+
+/**
+ * Comprobante de un cliente con pedidos sin pagar (D100, pregunta 6): se asocia al más antiguo, que es el que casi
+ * siempre se paga primero. Si tiene otros, el aviso los nombra para que la persona marque pagado el que corresponde.
+ * Si la consulta falla, el aviso queda igual, sin pedido: nunca se pierde por esto.
+ */
+async function asociarComprobante(repositorio: RepositorioD1, alerta: Alerta, ahoraSegundos: number): Promise<Alerta> {
+  try {
+    const [primero, ...otros] = await repositorio.idsSinPagar(alerta.telefono, ahoraSegundos);
+    if (!primero) return alerta;
+    const motivos = [
+      otros.length === 0
+        ? `Es su único pedido sin pagar: si el comprobante está bien, márcalo pagado.`
+        : `Lo asocié a su pedido sin pagar más antiguo. También tiene sin pagar: ${otros.join(', ')}. Marca pagado el que corresponda.`,
+    ];
+    return { ...alerta, idPedido: primero, motivos: [...alerta.motivos, ...motivos] };
+  } catch (error) {
+    console.error('No se pudo buscar el pedido del comprobante:', error instanceof Error ? error.message : error);
+    return alerta;
+  }
 }
 
 /** Guarda, avisa y devuelve lo que finalmente se le debe responder al cliente (null = nada). */
@@ -110,6 +133,7 @@ async function aplicarEfectos(env: EntornoAtencion, mensaje: MensajeEntrante, ef
       if (efectos.completarPedido && !(await repositorio.completarDatos(efectos.completarPedido, ahoraSegundos))) {
         throw new Error('El pedido que se estaba completando ya no existe o está cerrado');
       }
+      if (alerta && efectos.esComprobante && !alerta.idPedido) alerta = await asociarComprobante(repositorio, alerta, ahoraSegundos);
       if (alerta) await repositorio.guardarAviso(alerta, mensaje.id, ahoraSegundos);
     } catch (error) {
       const detalle = error instanceof Error ? error.message : String(error);
@@ -226,6 +250,7 @@ export async function atenderNoTexto(mensaje: MensajeEntrante, env: EntornoAtenc
         ...(mensaje.pie && { texto: mensaje.pie }),
       },
       textoDelCliente: mensaje.pie ?? '',
+      esComprobante: true,
     };
   } else {
     efectos = { respuesta: textos.recibidoEscalar(), alerta: aviso('escalamiento', `Envió un mensaje de tipo "${mensaje.tipo}"`), textoDelCliente: '' };
