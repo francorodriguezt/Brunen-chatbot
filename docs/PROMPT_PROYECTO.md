@@ -239,6 +239,8 @@ Ejemplo del tono esperado (al terminar una tarea):
 
 ## 5. Lo que falta (futuro inmediato), en orden — ver `docs/PREGUNTAS_ABIERTAS.md` y `docs/PASOS_FRANCO.md`
 
+**Todo lo que falta, en una sola lista de 124 puntos con quién y dónde: `docs/LO_QUE_FALTA.md`.**
+
 **Lo primero:** Franco responde `docs/PREGUNTAS_ABIERTAS.md` por número ("3 sí", "4 20 min y 10:30"). Cada respuesta se anota en `DECISIONES.md` y se marca ahí. Las que destraban trabajo de la IA:
 - la 3 (clientes en un solo lugar, después de la 12 de Felipe);
 - la 4 (umbrales de las alertas "sin señal" y "ruta no iniciada");

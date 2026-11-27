@@ -2,7 +2,7 @@
 
 Actualizada el 2026-11-26. Responde con el número, por ejemplo: "1 sí", "4 20 min y 10:30", "12 se lo pregunto a Felipe". Cada pregunta trae mi recomendación. Lo que respondas se anota en `DECISIONES.md` y la pregunta se marca aquí.
 
-Las preguntas vienen de [PENDIENTES.md](PENDIENTES.md), [PROPUESTA_SIGUIENTES_PASOS.md](PROPUESTA_SIGUIENTES_PASOS.md), [PASOS_FRANCO.md](PASOS_FRANCO.md) y [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md). Saqué las que ya están resueltas.
+Las preguntas vienen de [PENDIENTES.md](PENDIENTES.md), [PROPUESTA_SIGUIENTES_PASOS.md](PROPUESTA_SIGUIENTES_PASOS.md), [PASOS_FRANCO.md](PASOS_FRANCO.md) y [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md). Saqué las que ya están resueltas. La lista completa de lo que falta hacer, con estas preguntas incluidas, está en [LO_QUE_FALTA.md](LO_QUE_FALTA.md).
 
 ## Decides tú (Franco)
 
