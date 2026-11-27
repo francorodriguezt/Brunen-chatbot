@@ -847,6 +847,11 @@ export class RepositorioD1 {
     );
   }
 
+  /** Deshace "Marcar resuelto": el aviso vuelve a la bandeja. */
+  async reabrirAviso(id: number): Promise<boolean> {
+    return (await this.cambios("UPDATE avisos SET estado = 'abierto', resuelto_por = NULL, resuelto_en = NULL WHERE id = ?1 AND estado = 'resuelto'", id)) > 0;
+  }
+
   async resumen(): Promise<ResumenDelPanel> {
     const [fila] = await this.filas(SQL_RESUMEN);
     return {

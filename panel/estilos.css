@@ -83,6 +83,9 @@ main { padding-top: 1rem; padding-bottom: 4rem; }
 .filtros button[aria-pressed="true"] { background: var(--acento); border-color: var(--acento); color: var(--acento-texto); font-weight: 600; }
 
 .lista { display: grid; gap: 0.9rem; }
+#vista-equipo .barra-acciones { margin: 0.75rem 0 1rem; }
+#vista-cobros > .tarjeta, #vista-equipo > .tarjeta { margin-top: 0.9rem; }
+.resumen-lista { margin: 0 0 0.75rem; color: var(--suave); font-size: 0.9rem; }
 .vacio { text-align: center; color: var(--suave); padding: 3rem 1rem; border: 1px dashed var(--borde); border-radius: 14px; }
 
 .tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: 14px; box-shadow: var(--sombra); padding: 1rem; display: grid; gap: 0.7rem; }
@@ -422,10 +425,15 @@ label.casilla input { width: 1.3rem; height: 1.3rem; }
   #filtros-pedidos .filtro-fecha { margin-left: 0; }
 }
 
-/* Computador: dos columnas de pedidos, para ver varios a la vez (D73) */
+/* Computador: varias columnas de pedidos, clientes y avisos, para ver varios a la vez (D73). El reparto queda en una sola:
+   su orden de paradas se lee de arriba abajo. */
 @media (min-width: 56rem) {
-  #lista-pedidos { grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); align-items: start; }
-  #lista-pedidos > .vacio { grid-column: 1 / -1; }
+  #lista-pedidos, #lista-clientes, #lista-avisos { grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); align-items: start; }
+  #lista-pedidos > .vacio, #lista-clientes > .vacio, #lista-avisos > .vacio { grid-column: 1 / -1; }
+}
+/* Pantallas anchas: el panel usa más de la ventana. */
+@media (min-width: 80rem) {
+  .barra-contenido, .pestanas, main { max-width: 72rem; }
 }
 
 /* Días sin reparto (D74) */

@@ -1204,7 +1204,9 @@ function cierreDelDia(caja) {
     vacios.esperados > 0 || vacios.retirados > 0
       ? fila(
           empezo
-            ? `Vacíos: retiró ${vacios.retirados} de ${vacios.esperadosEntregadas ?? vacios.esperados}${caja.pendientes > 0 ? ` (del día: ${vacios.esperados})` : ''}`
+            ? caja.pendientes > 0
+              ? `Vacíos retirados en lo ya entregado: ${vacios.retirados} de ${vacios.esperadosEntregadas ?? vacios.esperados}. En todo el día se esperan ${vacios.esperados}.`
+              : `Vacíos retirados: ${vacios.retirados} de ${vacios.esperadosEntregadas ?? vacios.esperados}`
             : `Vacíos por retirar: ${vacios.esperados}`,
         )
       : null,
@@ -1544,6 +1546,7 @@ function tarjetaDeAviso(aviso) {
     aviso.estado === 'abierto'
       ? h('div', { clase: 'acciones' }, boton('Marcar resuelto', 'boton boton-principal', (evento) => resolverAviso(aviso, evento.currentTarget)))
       : h('p', { clase: 'suave' }, ['Resuelto', aviso.resueltoPor ? `por ${aviso.resueltoPor}` : '', cuando(aviso.resueltoEn)].filter(Boolean).join(' · ')),
+    aviso.estado === 'abierto' ? null : h('div', { clase: 'acciones' }, boton('Reabrir', 'boton', (evento) => void reabrirAviso(aviso, evento.currentTarget))),
   );
 }
 
@@ -1568,9 +1571,22 @@ async function resolverAviso(aviso, elementoBoton) {
   elementoBoton.disabled = true;
   try {
     await api(`/api/avisos/${aviso.id}/resolver`, {});
-    avisar('Aviso resuelto.');
+    avisar('Aviso resuelto.', false, { texto: 'Deshacer', alHacerClic: () => void reabrirAviso(aviso) });
   } catch (falla) {
     elementoBoton.disabled = false; // igual que con los pedidos: si nada cambia, el botón no se vuelve a dibujar
+    avisar(falla.message, true);
+  }
+  await refrescar();
+}
+
+/** "Deshacer" o "Reabrir": el aviso vuelve a la bandeja de abiertos. */
+async function reabrirAviso(aviso, elementoBoton) {
+  if (elementoBoton) elementoBoton.disabled = true;
+  try {
+    await api(`/api/avisos/${aviso.id}/reabrir`, {});
+    avisar('Aviso reabierto: está en Abiertos.');
+  } catch (falla) {
+    if (elementoBoton) elementoBoton.disabled = false;
     avisar(falla.message, true);
   }
   await refrescar();
@@ -2014,7 +2030,13 @@ function tarjetaDeCliente(cliente) {
 }
 
 async function cargarClientes() {
-  const { clientes } = busquedaDeClientes ? await api('/api/clientes/buscar', { texto: busquedaDeClientes }) : await api('/api/clientes');
+  const { clientes, total } = busquedaDeClientes ? await api('/api/clientes/buscar', { texto: busquedaDeClientes }) : await api('/api/clientes');
+  const resumen = $('resumen-clientes');
+  // La lista se corta en 50: sin decirlo, parecería que faltan clientes.
+  resumen.hidden = !(total > clientes.length);
+  resumen.textContent = busquedaDeClientes
+    ? `Calzan ${total} fichas y se muestran ${clientes.length}. Escribe algo más preciso para ver las demás.`
+    : `Se muestran ${clientes.length} de ${total} fichas: las que pidieron hace menos. Usa el buscador para las demás.`;
   const lista = $('lista-clientes');
   if (clientes.length === 0) lista.replaceChildren(h('p', { clase: 'vacio' }, busquedaDeClientes ? 'No encontré clientes con ese texto.' : 'Todavía no hay clientes. Aparecen solos con los pedidos.'));
   else lista.replaceChildren(...clientes.map(tarjetaDeCliente));

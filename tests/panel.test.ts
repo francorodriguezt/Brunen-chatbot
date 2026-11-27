@@ -481,6 +481,26 @@ describe('la API: cambios', () => {
   });
 });
 
+describe('la API: reabrir un aviso y contar clientes', () => {
+  it('un aviso resuelto se puede reabrir y vuelve a la bandeja; reabrir uno abierto: 409', async () => {
+    const { env } = await entornoPanel();
+    const abiertos = async () => ((await (await pedir(env, '/api/avisos')).json()) as { avisos: Array<{ id: number }> }).avisos.map((a) => a.id);
+    const [id] = await abiertos();
+    expect((await pedir(env, `/api/avisos/${id}/reabrir`, { metodo: 'POST' })).status).toBe(409);
+    await pedir(env, `/api/avisos/${id}/resolver`, { metodo: 'POST' });
+    expect(await abiertos()).not.toContain(id);
+    expect((await pedir(env, `/api/avisos/${id}/reabrir`, { metodo: 'POST' })).status).toBe(200);
+    expect(await abiertos()).toContain(id);
+  });
+
+  it('la lista de clientes dice cuántas fichas hay en total', async () => {
+    const { env } = await entornoPanel();
+    const datos = (await (await pedir(env, '/api/clientes')).json()) as { clientes: unknown[]; total: number };
+    expect(datos.total).toBe(datos.clientes.length);
+    expect(datos.total).toBeGreaterThan(0);
+  });
+});
+
 describe('la API: protección de las escrituras', () => {
   it('sin la cabecera X-Panel o sin JSON, se rechaza (un formulario de otra página no puede cumplirlo)', async () => {
     const { env, repositorio } = await entornoPanel();

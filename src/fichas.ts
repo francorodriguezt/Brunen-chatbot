@@ -327,26 +327,37 @@ export class RepositorioClientes {
     return filas.map((f) => ({ id: Number(f.id), nombre: String(f.nombre ?? ''), direccion: String(f.direccion ?? ''), comuna: String(f.comuna ?? '') }));
   }
 
+  /** El filtro de una búsqueda por nombre, teléfono o dirección; null si el texto es muy corto para buscar. */
+  private filtroDeBusqueda(buscar: string): { donde: string; valores: [string, string] } | null {
+    const limpio = buscar.trim().slice(0, 60);
+    if (limpio.length < 2) return null;
+    const patron = `%${limpio.replace(/[\\%_]/g, '\\$&')}%`;
+    const digitos = limpio.replace(/\D/g, '');
+    return {
+      donde: `WHERE c.nombre LIKE ?1 ESCAPE '\\'
+            OR (?2 != '' AND EXISTS (SELECT 1 FROM telefonos_cliente t WHERE t.cliente_id = c.id AND t.telefono LIKE ?2))
+            OR EXISTS (SELECT 1 FROM direcciones_cliente x WHERE x.cliente_id = c.id AND (x.direccion LIKE ?1 ESCAPE '\\' OR x.comuna LIKE ?1 ESCAPE '\\'))`,
+      valores: [patron, digitos.length >= 3 ? `%${digitos}%` : ''],
+    };
+  }
+
   /** Los clientes con su dirección vigente. Con `buscar`, por nombre, teléfono o dirección; si no, los que pidieron hace menos. */
   async listar(buscar = '', limite = 50): Promise<ResumenDeCliente[]> {
     const tope = Math.max(1, Math.min(Math.trunc(limite), 100));
-    const limpio = buscar.trim().slice(0, 60);
-    if (limpio.length >= 2) {
-      const patron = `%${limpio.replace(/[\\%_]/g, '\\$&')}%`;
-      const digitos = limpio.replace(/\D/g, '');
-      const filas = await this.filas(
-        `${SQL_RESUMEN}
-         WHERE c.nombre LIKE ?1 ESCAPE '\\'
-            OR (?2 != '' AND EXISTS (SELECT 1 FROM telefonos_cliente t WHERE t.cliente_id = c.id AND t.telefono LIKE ?2))
-            OR EXISTS (SELECT 1 FROM direcciones_cliente x WHERE x.cliente_id = c.id AND (x.direccion LIKE ?1 ESCAPE '\\' OR x.comuna LIKE ?1 ESCAPE '\\'))
-         ORDER BY c.nombre COLLATE NOCASE LIMIT ${tope}`,
-        patron,
-        digitos.length >= 3 ? `%${digitos}%` : '',
-      );
-      return filas.map(aResumen);
-    }
-    const filas = await this.filas(`${SQL_RESUMEN} ORDER BY ultimo_pedido IS NULL, ultimo_pedido DESC, c.id DESC LIMIT ${tope}`);
+    const filtro = this.filtroDeBusqueda(buscar);
+    const filas = filtro
+      ? await this.filas(`${SQL_RESUMEN} ${filtro.donde} ORDER BY c.nombre COLLATE NOCASE LIMIT ${tope}`, ...filtro.valores)
+      : await this.filas(`${SQL_RESUMEN} ORDER BY ultimo_pedido IS NULL, ultimo_pedido DESC, c.id DESC LIMIT ${tope}`);
     return filas.map(aResumen);
+  }
+
+  /** Cuántas fichas hay (o cuántas calzan con la búsqueda): la lista muestra solo las primeras y el panel lo dice. */
+  async contar(buscar = ''): Promise<number> {
+    const filtro = this.filtroDeBusqueda(buscar);
+    const [fila] = filtro
+      ? await this.filas(`SELECT COUNT(*) AS n FROM clientes c ${filtro.donde}`, ...filtro.valores)
+      : await this.filas('SELECT COUNT(*) AS n FROM clientes');
+    return numero(fila?.n);
   }
 
   async ficha(id: number): Promise<FichaDeCliente | null> {

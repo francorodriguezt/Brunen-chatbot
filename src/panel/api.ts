@@ -427,10 +427,14 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       return json({ avisos: await repositorio.listarAvisos(estado) });
     }
 
-    const aviso = /^\/api\/avisos\/(\d{1,12})\/resolver$/.exec(ruta);
+    const aviso = /^\/api\/avisos\/(\d{1,12})\/(resolver|reabrir)$/.exec(ruta);
     if (aviso && metodo === 'POST') {
       const rechazo = esperadoComoEscritura(request, url);
       if (rechazo) return rechazo;
+      if (aviso[2] === 'reabrir') {
+        const reabierto = await repositorio.reabrirAviso(Number(aviso[1]));
+        return reabierto ? json({ ok: true }) : error(409, 'Ese aviso ya estaba abierto o no existe.');
+      }
       const resuelto = await repositorio.resolverAviso(Number(aviso[1]), correo, ahoraSegundos);
       return resuelto ? json({ ok: true }) : error(409, 'Ese aviso ya estaba resuelto o no existe.');
     }

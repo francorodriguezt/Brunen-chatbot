@@ -373,3 +373,17 @@ describe('borrar los datos de un cliente que lo pide (D87)', () => {
     expect(await clientes.olvidar(999, 'x', AHORA)).toEqual({ ok: false, error: 'no_existe' });
   });
 });
+
+describe('cuántas fichas hay (la lista muestra 50)', () => {
+  it('cuenta todas, y con búsqueda las que calzan, aunque la lista se corte', async () => {
+    const { db, clientes } = await base();
+    for (let i = 1; i <= 55; i++) {
+      db.sql('INSERT INTO clientes (id, nombre, creado_en, actualizado_en) VALUES (?, ?, 1, 1)', i, i <= 52 ? `Vecino ${i}` : `Otra ${i}`);
+    }
+    expect(await clientes.listar()).toHaveLength(50);
+    expect(await clientes.contar()).toBe(55);
+    expect(await clientes.listar('vecino')).toHaveLength(50);
+    expect(await clientes.contar('vecino')).toBe(52);
+    expect(await clientes.contar('nadie')).toBe(0);
+  });
+});

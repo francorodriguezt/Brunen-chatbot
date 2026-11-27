@@ -62,7 +62,7 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
 
   if (ruta === '/api/clientes' && request.method === 'GET') {
     await vincularSinFallar(clientes, ahoraSegundos);
-    return json({ clientes: await clientes.listar() });
+    return json({ clientes: await clientes.listar(), total: await clientes.contar() });
   }
 
   // A quién le toca pedir según su ritmo (D58). Lee los pedidos una vez: se pide con un botón, no al abrir la pestaña.
@@ -107,7 +107,7 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
   if (ruta === '/api/clientes/buscar') {
     if (typeof cuerpo.texto !== 'string') return error(400, 'Solicitud no válida.');
     await vincularSinFallar(clientes, ahoraSegundos);
-    return json({ clientes: await clientes.listar(cuerpo.texto) });
+    return json({ clientes: await clientes.listar(cuerpo.texto), total: await clientes.contar(cuerpo.texto) });
   }
 
   const accion = /^\/api\/clientes\/(\d{1,9})\/(editar|telefonos|unir|fijo|olvidar)$/.exec(ruta);
