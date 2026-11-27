@@ -19,6 +19,7 @@ import {
   anotarClienteSinRespuesta,
   atenderConFlujo,
   avisarFalla,
+  avisarUrgente,
   esperaDeAgrupador,
   flujoActivo,
   limpiezasDelLote,
@@ -35,6 +36,8 @@ import { almacenDe, esMensajeNuevo, liberarMensaje, limpiarAlmacen, marcarAtendi
 import { igualesTiempoConstante, verificarFirma } from './firma';
 import type { Intencion } from './interprete';
 import { interpretarConRespaldo } from './llm';
+import { RepositorioD1 } from './repositorio';
+import { avisoDeCambioDeCuenta, extraerCambiosDeCuenta, type CambioDeCuenta } from './cuentaWhatsApp';
 import { planillaDe, type RegistroMensaje } from './planilla';
 import { anotarEsperaDelCliente, conversacionTomada, necesitaRespuesta, pausaPorPersona, registrarEcos } from './relevo';
 import { describirInterpretacion } from './resumen';
@@ -138,6 +141,22 @@ async function atiendeUnaPersona(mensaje: MensajeEntrante, env: Env): Promise<bo
 }
 
 /** Anota que una persona escribió desde la app: el bot calla con esos clientes durante la pausa. */
+/** Si Meta desconecta el número de la API (D116), el bot queda mudo: se avisa como urgente. Nunca lanza errores. */
+async function avisarCambiosDeCuenta(cambios: readonly CambioDeCuenta[], env: Env): Promise<void> {
+  try {
+    const ahora = new Date();
+    for (const cambio of cambios) {
+      const aviso = avisoDeCambioDeCuenta(cambio);
+      console.log(`Cambio en la cuenta de WhatsApp: ${cambio.evento}${cambio.motivo ? ` (${cambio.motivo})` : ''}`);
+      if (!aviso || !env.DB) continue;
+      const nuevo = await new RepositorioD1(env.DB).guardarAviso(aviso.alerta, aviso.origen, Math.floor(ahora.getTime() / 1000));
+      if (nuevo && aviso.urgente) await avisarUrgente(env, aviso.alerta, ahora);
+    }
+  } catch (error) {
+    console.error('No se pudo avisar del cambio en la cuenta de WhatsApp:', error instanceof Error ? error.message : error);
+  }
+}
+
 async function anotarRelevo(ecos: readonly EcoDePersona[], env: Env): Promise<void> {
   const pausa = pausaPorPersona(env);
   if (!env.DB || pausa === 0) return;
@@ -351,6 +370,12 @@ export default {
         if (ecos.length > 0) ctx.waitUntil(anotarRelevo(ecos, env));
       } catch (error) {
         console.error('No se pudieron leer los ecos:', error instanceof Error ? error.message : error);
+      }
+      try {
+        const avisos = extraerCambiosDeCuenta(payload);
+        if (avisos.length > 0) ctx.waitUntil(avisarCambiosDeCuenta(avisos, env));
+      } catch (error) {
+        console.error('No se pudieron leer los cambios de la cuenta:', error instanceof Error ? error.message : error);
       }
       let mensajes: MensajeEntrante[] = [];
       try {

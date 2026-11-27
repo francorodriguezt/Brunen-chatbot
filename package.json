@@ -25,7 +25,8 @@
     "comprobar": "node scripts/comprobar.mjs",
     "medir-bot": "node scripts/medir-bot.mjs",
     "comparar-ia": "node scripts/comparar-ia.mjs",
-    "generar-vapid": "node scripts/generar-vapid.mjs"
+    "generar-vapid": "node scripts/generar-vapid.mjs",
+    "conectar-numero": "node scripts/conectar-numero.mjs"
   },
   "engines": {
     "node": ">=22.18"

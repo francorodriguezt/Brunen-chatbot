@@ -17,7 +17,7 @@ Foto al **2026-11-26** (noche). Todo lo construido hasta D97 está publicado. Es
 
 Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este orden:
 
-1. **Conectar el número actual de WhatsApp a la API** (coexistencia). Es el bloqueo más grande: Meta exige hacerlo por un proveedor autorizado o con Brunen como su propio Tech Provider. — Felipe decide (P10), Franco tramita.
+1. **Conectar el número actual de WhatsApp a la API** (coexistencia). Es el bloqueo más grande. **Decidido (respuesta 35): Brunen como su propio Tech Provider.** Construido en D116; faltan los trámites: verificar la empresa en Meta y agregar el medio de pago (Felipe), RUT, correo y aprobación de la política de privacidad (Felipe), y App Review y el día de la conexión (Franco). Pasos en [TECH_PROVIDER.md](TECH_PROVIDER.md).
    - Averiguar cuánto cobra un proveedor al mes, o los requisitos de ser Tech Provider (D45, D48).
    - Saber si hoy usan listas de difusión: la coexistencia las desactiva y obliga a abrir la app al menos cada 14 días.
    - Confirmar con el proveedor que la coexistencia está disponible en Chile.

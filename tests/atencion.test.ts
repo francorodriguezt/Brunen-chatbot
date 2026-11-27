@@ -175,6 +175,28 @@ describe('el flujo de pedido conectado al Worker', () => {
     expect(mundo.telegram).toHaveLength(0); // sin Telegram configurado, solo el teléfono
   });
 
+  it('si Meta desconecta el número de la API, deja un aviso urgente una sola vez, aunque reintente (D116)', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const env = await entorno({ TELEGRAM_BOT_TOKEN: '1:TOKEN', TELEGRAM_CHAT_ID: '777' });
+    const aviso = { object: 'whatsapp_business_account', entry: [{ id: '1', time: 1794582000, changes: [{ field: 'account_update', value: { event: 'PARTNER_REMOVED', disconnection_info: { reason: 'BUSINESS_DOWNGRADE', initiated_by: 'USER' } } }] }] };
+    const cuerpo = JSON.stringify(aviso);
+    const firma = await firmarHmacSha256(cuerpo, SECRETO);
+    for (let i = 0; i < 2; i++) {
+      const pendientes: Promise<unknown>[] = [];
+      const r = await worker.fetch(
+        new Request('https://bot.example/webhook', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub-signature-256': `sha256=${firma}` }, body: cuerpo }),
+        env,
+        { waitUntil: (p) => pendientes.push(p) },
+      );
+      await Promise.all(pendientes);
+      expect(r.status).toBe(200);
+    }
+    expect(avisosEn(env)).toEqual([{ tipo: 'error', telefono: '', estado: 'abierto' }]);
+    expect(mundo.telegram).toHaveLength(1);
+    expect(String(mundo.telegram[0]?.cuerpo.text)).toContain('desconectó el número');
+    expect(mundo.enviados).toEqual([]); // no es un mensaje de un cliente: no se le responde a nadie
+  });
+
   it('sin Telegram configurado, un reclamo igual se guarda y se responde', async () => {
     const mundo = stubMundo({ hojas: HOJAS });
     const env = await entorno();

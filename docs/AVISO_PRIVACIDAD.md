@@ -62,7 +62,7 @@ Para no gastar mensajes (un solo mensaje por pedido), irían dos líneas al fina
 
 > Usamos tus datos solo para tus pedidos. Más información: [PENDIENTE: enlace al aviso].
 
-Propuesta técnica, para cuando el dueño apruebe el texto: publicar este aviso en la dirección pública (`/privacidad` en `brunen-panel`) y agregar esa línea en `src/textos.ts`. No se construye antes de la aprobación.
+**Hecho (D116, 2026-11-27):** el aviso se publica en la dirección pública (`/privacidad` en `brunen-panel`, texto en `panel/privacidad.html`) cuando se completan `PRIVACIDAD_PUBLICADA`, `PRIVACIDAD_RUT`, `PRIVACIDAD_CORREO` y `PRIVACIDAD_FECHA` en `wrangler.panel.toml`; mientras falte alguna, la página no existe. Si cambia el texto de la §1, cambiar también esa plantilla y la fecha. Falta agregar la línea corta de arriba en `src/textos.ts`: espera que el dueño apruebe el texto y se publique la página.
 
 ---
 

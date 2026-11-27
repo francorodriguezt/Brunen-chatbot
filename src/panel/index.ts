@@ -32,10 +32,12 @@ import { RepositorioPuntos } from '../puntos';
 import { RepositorioRespaldo } from '../respaldo';
 import { RepositorioDiasSinReparto } from '../diasSinReparto';
 import { RepositorioSeguimiento } from '../seguimiento';
+import { datosDeConexion, pintarConexion, POLITICA_CONECTAR, type EntornoConectar } from '../conectar';
+import { datosDePrivacidad, pintarPrivacidad, type EntornoPrivacidad } from '../privacidad';
 import { Cuentas } from './cuentas';
 import { cookieDeSesion, esDelAdministrador, manejarSesionAdmin, manejarSesionPublica, manejarUsuarios, tokenDeCookie, type ContextoDeIngreso } from './ingreso';
 
-export interface EntornoPanel extends EntornoAcceso, EntornoPush {
+export interface EntornoPanel extends EntornoAcceso, EntornoPush, EntornoPrivacidad, EntornoConectar {
   DB?: BaseDatos;
   /** Archivos de la pantalla (carpeta `panel/`). */
   ASSETS: { fetch(request: Request): Promise<Response> };
@@ -99,6 +101,7 @@ function conCabeceras(respuesta: Response, ruta: string): Response {
   const protegida = new Response(respuesta.body, respuesta); // copia con cabeceras que se pueden cambiar
   for (const [nombre, valor] of Object.entries(CABECERAS_DE_SEGURIDAD)) protegida.headers.set(nombre, valor);
   if (esDeZona(ruta, '/admin')) protegida.headers.set('content-security-policy', POLITICA_ADMIN);
+  if (ruta === '/conectar') protegida.headers.set('content-security-policy', POLITICA_CONECTAR);
   if (esDeZona(ruta, '/repartidor')) protegida.headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=(self)');
   return protegida;
 }
@@ -183,6 +186,35 @@ async function apiDeAdministracion(request: Request, url: URL, env: EntornoPanel
   }
 }
 
+/** El aviso de privacidad (D116): solo existe cuando el dueño lo publicó y sus datos están completos; si no, 404. */
+async function paginaDePrivacidad(url: URL, env: EntornoPanel): Promise<Response> {
+  const datos = datosDePrivacidad(env);
+  if (!datos) return texto(404, 'No existe.');
+  const plantilla = await archivo(env, url, '/privacidad');
+  if (!plantilla.ok) return texto(404, 'No existe.');
+  return new Response(pintarPrivacidad(await plantilla.text(), datos), {
+    headers: { 'content-type': 'text/html; charset=utf-8' },
+  });
+}
+
+/** Un archivo del servidor de archivos, siguiendo una redirección (`/x.html` → `/x`) una sola vez. */
+async function archivo(env: EntornoPanel, url: URL, ruta: string): Promise<Response> {
+  let respuesta = await env.ASSETS.fetch(new Request(new URL(ruta, url)));
+  const destino = respuesta.headers.get('location');
+  if (respuesta.status >= 300 && respuesta.status < 400 && destino) respuesta = await env.ASSETS.fetch(new Request(new URL(destino, url)));
+  return respuesta;
+}
+
+/** La página para conectar el número de WhatsApp (D116): solo existe el día de la conexión; el resto del tiempo, 404. */
+async function paginaDeConexion(url: URL, env: EntornoPanel): Promise<Response> {
+  const datos = datosDeConexion(env);
+  if (!datos) return texto(404, 'No existe.');
+  if (url.pathname === '/conectar.js') return archivo(env, url, '/conectar.js');
+  const plantilla = await archivo(env, url, '/conectar');
+  if (!plantilla.ok) return texto(404, 'No existe.');
+  return new Response(pintarConexion(await plantilla.text(), datos), { headers: { 'content-type': 'text/html; charset=utf-8' } });
+}
+
 async function atender(request: Request, env: EntornoPanel): Promise<Response> {
   const url = new URL(request.url);
   const ruta = url.pathname;
@@ -206,6 +238,8 @@ async function atender(request: Request, env: EntornoPanel): Promise<Response> {
   if (ruta.startsWith('/api/')) return apiPublica(request, url, env, ahoraSegundos);
   if (!esLectura(request)) return texto(405, 'Método no permitido.');
   if (ESTATICOS_PUBLICOS.has(ruta) || ES_ICONO.test(ruta)) return env.ASSETS.fetch(request);
+  if (ruta === '/privacidad') return paginaDePrivacidad(url, env);
+  if (ruta === '/conectar' || ruta === '/conectar.js') return paginaDeConexion(url, env);
   return texto(404, 'No existe.');
 }
 

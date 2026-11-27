@@ -3,6 +3,7 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Próxima sesión
+ACTUALIZACIÓN 2026-11-27 (D116, sin publicar): **Brunen como su propio Tech Provider** (respuesta 35): política de privacidad pública en `/privacidad` (404 hasta que se completen `PRIVACIDAD_*`), página `/conectar` para el registro de Meta, comando local `npm run conectar-numero` y aviso urgente si Meta desconecta el número (`account_update`). Sin migración. **Lo hace Franco, con Felipe:** [TECH_PROVIDER.md](TECH_PROVIDER.md) (verificar la empresa, medio de pago, App Review, publicar la política una vez aprobada y el día de la conexión).
 ACTUALIZACIÓN 2026-11-27 (D115, sin publicar): avisos urgentes como notificación en el teléfono (iPhone con el panel en la pantalla de inicio). **Antes de publicar: migración `0022_suscripciones_push`, `npm run generar-vapid`, cargar las claves en los dos Workers y probar con el botón "Mandar una prueba" (Equipo).** Telegram sigue igual.
 ACTUALIZACIÓN 2026-11-27 (D113 y D114, sin publicar): contador de mensajes salientes con aviso a los 800 y Workers AI como respaldo de Groq. **Antes de publicar hay que aplicar la migración `0021_uso_mensajes_e_ia`.** Franco corre `npm run comparar-ia` para ver si Workers AI acierta como Groq.
 ACTUALIZACIÓN 2026-11-27 (D111 y D112, sin publicar): el furgón cuenta solo los bidones de 20 L, la app del repartidor dice con claridad cuánto cobrar y la lista "por pedir" tiene el botón "Escribirle". Sin migración.
@@ -102,7 +103,7 @@ Respondió el cuestionario el 2026-10-29 (D36). Marcadas las que quedaron resuel
 - [ ] Pasar a Franco el Excel de clientes, los teléfonos de los dos clientes con precio especial y la lista de mayoristas. No subirlos al repositorio.
 - [ ] Decir qué app de rutas usan (¿OptimoRoute?) y mandar un archivo de importación de ejemplo.
 - [ ] Autorizar que los servicios queden a nombre de Brunen y dar acceso al correo contactobrunen@gmail.com (o pasar los códigos de verificación).
-- [ ] Aprobar el aviso de privacidad cuando Franco lo redacte.
+- [ ] Aprobar el aviso de privacidad (D116 ya lo muestra en `/privacidad` cuando se completen `PRIVACIDAD_*`; falta el RUT, el correo y la aprobación del dueño).
 
 ## Técnicos
 - [ ] **La tabla de pasos para publicar y probar todo está en [PASOS_FRANCO.md](PASOS_FRANCO.md).**
