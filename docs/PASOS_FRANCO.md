@@ -1,6 +1,6 @@
 # Lo que falta hacer para usar todo (actualizado 2026-11-26)
 
-**Las preguntas y acciones pendientes, numeradas para responderlas una por una, están en [PREGUNTAS_ABIERTAS.md](PREGUNTAS_ABIERTAS.md).** **Publicado el 2026-11-26:** el arreglo de D87 y D90 a D97, con la migración 0017 en la base real (administración `c72a7d8f`, pública `483501b2`, bot `948e4dbf`; `npm run comprobar` 9 de 9). **Publicado el 2026-11-27:** D98 a D105 con la migración 0018 (administración `94785954`, pública `9e1f0429`, bot `11fc003b`).
+**Las preguntas y acciones pendientes, numeradas para responderlas una por una, están en [PREGUNTAS_ABIERTAS.md](PREGUNTAS_ABIERTAS.md).** **Publicado el 2026-11-26:** el arreglo de D87 y D90 a D97, con la migración 0017 en la base real (administración `c72a7d8f`, pública `483501b2`, bot `948e4dbf`; `npm run comprobar` 9 de 9). **Publicado también el 2026-11-27:** D107 a D115 y D117 con las migraciones 0019 a 0022 (administración `44628b24`, pública `c2ecdb73`, bot `634ff28a`; `npm run comprobar` 9 de 9; punto de restauración previo `00001271-00000012-00005130-ad83c11aaf093107c1d4442d87e5e560`). **Publicado el 2026-11-27:** D98 a D105 con la migración 0018 (administración `94785954`, pública `9e1f0429`, bot `11fc003b`).
 
 Los que dicen "Claude" los hago yo cuando me des permiso; los demás son tuyos (o de Felipe), porque piden tu tarjeta, tus claves o el teléfono del repartidor.
 
