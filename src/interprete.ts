@@ -279,6 +279,7 @@ const palabras = (...frases: string[]): RegExp => new RegExp(String.raw`\b(?:${f
 // Principio 3: reclamos, facturas y pagos a proveedores se derivan siempre a una persona.
 // Ante la duda se escala (principio 4), por eso estas listas son generosas.
 const RECLAMO = palabras(
+  'nadie vino', 'no vino nadie', 'no vinieron',
   'reclamo', 'reclamos', 'reclamar', 'queja', 'quejas', 'quejarme', 'defectuoso', 'defectuosa',
   'roto', 'rota', 'rotos', 'rotas', 'sucio', 'sucia', 'sucios', 'sucias', 'danado', 'danada',
   'danados', 'danadas', 'sello abierto', 'sin sello', 'derramado', 'derramada', 'gotea', 'goteando',
@@ -372,7 +373,8 @@ const HORARIO_POR_DIA = new RegExp(
 );
 const PREGUNTA_PAGO = palabras(
   'como se paga', 'como pago', 'como pagar', 'como puedo pagar', 'medio de pago', 'medios de pago',
-  'forma de pago', 'formas de pago', 'datos de la cuenta', 'datos para la transferencia',
+  'forma de pago', 'formas de pago', 'datos de la cuenta', 'datos para la transferencia', 'a que cuenta', 'a donde transfiero',
+  'donde transfiero', 'como transfiero', 'como le transfiero', 'como les transfiero', 'donde le transfiero', 'le transfiero o',
   'datos de transferencia', 'datos para transferir', 'numero de cuenta', 'cuenta bancaria',
   'aceptan tarjeta', 'aceptan efectivo', 'aceptan transferencia', 'se puede pagar', 'puedo pagar',
   'como cancelo', 'como puedo cancelar', 'como se cancela', 'donde cancelo', 'forma de cancelar',
@@ -387,8 +389,9 @@ const PALABRA_ZONA = palabras('cobertura', 'zona', 'zonas', 'comunas', 'sector',
 const MENCION_PAGO = palabras(
   'transferi', 'transferimos', 'transferido', 'pague', 'pagamos', 'pagado', 'deposite', 'abone',
   // Chats reales (D103): "acabo de transferir las 2 recargas", "ya le transfiero", "aquí le dejo pago de las dos recargas".
+  // "Le transfiero" sin "ya" suele ser una pregunta ("¿a qué cuenta le transfiero?"): no es un aviso de pago (D105).
   'acabo de transferir', 'acabamos de transferir', 'ya le transfiero', 'ya les transfiero', 'ya te transfiero',
-  'le transfiero', 'les transfiero', 'le dejo pago', 'le dejo el pago', 'les dejo el pago', 'te dejo el pago', 'dejo el pago',
+  'le dejo pago', 'le dejo el pago', 'les dejo el pago', 'te dejo el pago', 'dejo el pago',
   'aqui esta el pago', 'ahi va el pago', 'envio el pago',
   'comprobante', 'voucher', 'cancele', 'ya cancele', 'esta cancelado', 'ya esta cancelado',
 );
@@ -450,14 +453,17 @@ const VACIOS_LISTOS = new RegExp(
  * cantidad y para dónde. Es un pedido sin tamaño. Exige "para" o una comuna, para no confundir "5 minutos" o "3 cuadras".
  */
 const CANTIDAD_PARA_LUGAR = /^(?:y )?(\d{1,2}) (?:para (?:el |la |los )?)?([a-z][a-z ]{2,30})$/;
+// Sin una comuna, "para" solo cuenta con un lugar donde se deja agua: "5 para retirar" o "2 para el repartidor" no (D105).
+const LUGAR_DE_ENTREGA = /^(?:otr[oa] )?(?:sucursal|local|casa|oficina|depto|departamento|bodega|tienda|negocio|restaurante?|cafe|otr[oa])\b/;
 
 function cantidadParaLugar(t: string, hayComuna: boolean): number | null {
+  if (t.includes('?') || DEVOLUCION.test(t)) return null;
   const limpio = t.replace(SALUDOS, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const m = CANTIDAD_PARA_LUGAR.exec(limpio);
   if (!m) return null;
   const cantidad = Number(m[1]);
-  const conPara = /^(?:y )?\d{1,2} para /.test(limpio);
-  return cantidad >= 1 && (conPara || hayComuna) ? cantidad : null;
+  const conLugar = /^(?:y )?\d{1,2} para /.test(limpio) && LUGAR_DE_ENTREGA.test(m[2] ?? '');
+  return cantidad >= 1 && (conLugar || hayComuna) ? cantidad : null;
 }
 
 /**
