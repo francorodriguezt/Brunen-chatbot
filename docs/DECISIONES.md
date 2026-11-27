@@ -829,3 +829,11 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Solo en el panel, no por Telegram:** no son reclamos ni fallas del sistema (D32). Si en el día de prueba resultan urgentes, se suman a Telegram.
 - Las revisa el vigía cada 5 minutos (`src/alertasReparto.ts`); el origen del aviso evita repetirlo. Sin las tablas de seguimiento, no avisa y no rompe la tarea.
 - Sin migración. Verificado: 1.618 pruebas (11 nuevas, con la base SQLite de prueba). **Sin publicar.**
+
+### D99 · 2026-11-27 · "Avisar al cliente" cuando la oficina cancela o cambia un pedido
+**Franco aceptó la recomendación de la pregunta 5.** Hasta hoy, si la operadora cancelaba o cambiaba un pedido en el panel, al cliente no se le decía nada.
+- **Qué hace:** después de cancelar, o de guardar un cambio que el cliente nota (el día, los bidones o el total), el aviso de abajo trae el botón **"Avisar al cliente"**. Abre el chat de ese cliente en WhatsApp con el texto listo; la persona lo revisa, lo cambia si quiere y lo envía desde la app del negocio. La tarjeta de un pedido cancelado conserva el botón, por si el aviso de abajo ya se fue.
+- **Por qué no lo manda el bot:** sería un mensaje más por pedido (regla 13) y, pasadas las 24 horas, una plantilla pagada de Meta. Desde la app es gratis, y una persona ve lo que se envía.
+- **Textos:** "Hola Ana, te escribimos de Brunen. Tu pedido de 3 de 20 L para el jueves 19 de noviembre quedó cancelado. Si quieres volver a pedir, escríbenos por aquí." y "… Cambiamos tu pedido: se entrega el viernes 20 de noviembre. Si algo no te calza, respóndenos por aquí." El motivo de la cancelación no va: es una nota interna. Un cambio de notas, de pago o de envases no ofrece avisar.
+- Con el número compartido (D46), lo que la persona escribe desde la app pausa al bot una hora con ese cliente, como siempre.
+- Código: `panel/admin/avisar-cliente.js` (funciones puras, 3 pruebas en `tests/avisar-cliente.test.mjs`) y `panel/admin/app.js`. Verificado en el navegador a 375 px con datos ficticios: cambio de fecha, cancelación y la tarjeta cancelada abren `wa.me` con el texto correcto. **Sin publicar.**

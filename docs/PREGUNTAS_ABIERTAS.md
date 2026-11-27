@@ -12,7 +12,7 @@ Las preguntas vienen de [PENDIENTES.md](PENDIENTES.md), [PROPUESTA_SIGUIENTES_PA
 4. ~~**Alertas del reparto:**~~ 20 minutos y 10:30 (Franco, 2026-11-27; D98, construido). Se cambian en CONFIGURACION. ¿cuándo avisa el panel?
    - "Sin señal": la jornada está abierta y no llega su ubicación hace más de ___ minutos. **Recomiendo: 20.**
    - "Ruta no iniciada": a las ___ hay entregas y no tocó Iniciar ruta. **Recomiendo: 10:30.**
-5. **Cuando la operadora cambia o cancela un pedido en el panel,** ¿qué se le dice al cliente? Hoy no se le escribe nada. **Recomiendo:** un botón "Avisar al cliente" que abre su chat de WhatsApp con el texto listo, y lo envía la operadora.
+5. ~~**Cuando la operadora cambia o cancela un pedido en el panel,**~~ Hecho (Franco aceptó la recomendación, 2026-11-27; D99). ¿qué se le dice al cliente? Hoy no se le escribe nada. **Recomiendo:** un botón "Avisar al cliente" que abre su chat de WhatsApp con el texto listo, y lo envía la operadora.
 6. **Comprobante de un cliente con varios pedidos sin pagar:** ¿a cuál se asocia? **Recomiendo:** al más antiguo, y que la operadora lo pueda cambiar.
 7. **Distancia real de calle para la ruta** (Mapbox, plan gratis, solo coordenadas; D62): ¿la usamos? **Recomiendo: esperar al día de prueba real** y ver si la ruta en línea recta se equivoca.
 8. **Historial de git:** ¿lo reescribimos para quitar tu correo personal y el apellido de la operadora de los commits antiguos? Hay que forzar la subida. **Recomiendo: solo si la operadora no acepta figurar (pregunta 33).**
