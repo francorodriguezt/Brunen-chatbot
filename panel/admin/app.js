@@ -7,6 +7,7 @@
 import { darFormatoAlRut, mostrarIngreso, pedir, registrarAplicacion } from '/ingreso.js';
 import { crearRutaDelDia } from '/admin/mapa.js';
 import { crearMapaDeClientes } from '/admin/mapa-clientes.js';
+import { avisoDeFecha } from '/admin/aviso-de-fecha.js';
 import { enlaceParaAvisar, textoDeCambio, textoDeCancelacion } from '/admin/avisar-cliente.js';
 
 // Cada consulta es una solicitud al Worker (el plan gratis permite 100.000 al día): con la pestaña a la vista se consulta
@@ -856,6 +857,7 @@ function prepararFormulario(esNuevo, titulo, textoDelBoton) {
   for (const campo of document.querySelectorAll('#dialogo-editar .solo-nuevo')) campo.hidden = !esNuevo;
   $('cliente-reconocido').hidden = true;
   $('aviso-borrador').hidden = true;
+  $('pista-fecha').hidden = true;
   $('titulo-editar').textContent = titulo;
   $('guardar-editar').textContent = textoDelBoton;
   mostrarErrorDelEditor('');
@@ -877,6 +879,7 @@ function abrirEditor(pedido) {
   // Al cambiar un pedido lo de pago se toca seguido (marcarlo pagado, la factura): queda abierto.
   $('mas-datos').open = true;
   resumirMasDatos();
+  revisarFechaDelEditor();
   $('dialogo-editar').showModal();
 }
 
@@ -896,6 +899,7 @@ function abrirNuevoPedido({ sinBorrador = false } = {}) {
   $('avisos-pegado').hidden = true;
   $('mas-datos').open = false; // en un pedido nuevo casi nunca se tocan: van plegados
   resumirMasDatos();
+  revisarFechaDelEditor();
   if (!$('dialogo-editar').open) $('dialogo-editar').showModal();
   // El camino corto es pegar el mensaje del cliente; quien prefiera escribir, baja al teléfono.
   if (!borrador) $('texto-pegado').focus();
@@ -924,7 +928,10 @@ async function llenarConMensaje() {
   const campos = formulario.elements;
   if (leido.telefono && !campos.telefono.value.trim()) campos.telefono.value = leido.telefono.replace(/^56/, '');
   if (leido.nombre && !campos.nombre.value.trim()) campos.nombre.value = leido.nombre;
-  if (leido.fecha) campos.fecha.value = leido.fecha;
+  if (leido.fecha) {
+    campos.fecha.value = leido.fecha;
+    revisarFechaDelEditor();
+  }
   if (leido.formaPago) campos.formaPago.value = leido.formaPago;
   if (leido.lineas.length > 0) {
     // Sin litros se propone el de 20 L (19 de cada 20 pedidos), y el aviso pide revisarlo.
@@ -1385,6 +1392,7 @@ async function cargarDiasSinReparto() {
   const lista = $('lista-dias-sin-reparto');
   try {
     const { dias } = await api('/api/dias-sin-reparto');
+    estado.opciones.diasSinReparto = Object.fromEntries(dias.map((dia) => [dia.fecha, dia.motivo ?? '']));
     $('cuenta-dias-sin-reparto').textContent = dias.length > 0 ? `· ${dias.length} ${dias.length === 1 ? 'marcado' : 'marcados'}` : '';
     lista.replaceChildren(
       ...(dias.length === 0
@@ -2424,11 +2432,24 @@ function llenarListasDePago(opciones = {}) {
 }
 
 /** Las comunas que se atienden (para escribirlas siempre igual) y la fecha de entrega sugerida para un pedido nuevo. */
+/** Bajo la fecha del pedido: domingo, sábado corto, fecha pasada o día sin reparto (D101). No impide guardar. */
+function revisarFechaDelEditor() {
+  const pista = $('pista-fecha');
+  const aviso = avisoDeFecha($('formulario-editar').elements.fecha.value, hoyEnSantiago(), estado.opciones.diasSinReparto ?? {});
+  pista.textContent = aviso;
+  pista.hidden = !aviso;
+}
+
 async function cargarOpciones() {
   try {
     const opciones = await api('/api/opciones');
     const { comunas, fechaSugerida } = opciones;
-    estado.opciones = { comunas: comunas ?? [], fechaSugerida: fechaSugerida ?? '', precios: Array.isArray(opciones.precios) ? opciones.precios : [] };
+    estado.opciones = {
+      comunas: comunas ?? [],
+      fechaSugerida: fechaSugerida ?? '',
+      precios: Array.isArray(opciones.precios) ? opciones.precios : [],
+      diasSinReparto: opciones.diasSinReparto && typeof opciones.diasSinReparto === 'object' ? opciones.diasSinReparto : {},
+    };
     llenarListasDePago(opciones);
     $('lista-comunas').replaceChildren(...estado.opciones.comunas.map((comuna) => h('option', { value: comuna })));
   } catch {
@@ -2524,6 +2545,7 @@ function iniciar() {
   $('activar-avisos').addEventListener('click', () => void activarAvisosDelNavegador());
   $('formulario-editar').addEventListener('submit', (evento) => void guardarEdicion(evento));
   $('cancelar-editar').addEventListener('click', () => $('dialogo-editar').close());
+  $('formulario-editar').elements.fecha.addEventListener('change', revisarFechaDelEditor);
   $('agregar-linea').addEventListener('click', () => {
     $('editar-lineas').append(filaDeLinea());
     actualizarTotalDelEditor();

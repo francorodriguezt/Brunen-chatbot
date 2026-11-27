@@ -211,10 +211,12 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       // planilla y el panel no tiene acceso a Google): la persona la revisa antes de guardar.
       // Los días marcados sin reparto (D74) sí los conoce: están en la base.
       // Lecturas que nunca lanzan: si la tabla falla (o falta la migración 0014), el panel carga igual, sin días cerrados.
-      const cerrados = new Set((await cargarDiasSinReparto(ctx.dias?.db, fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha)).keys());
+      const proximos = await cargarDiasSinReparto(ctx.dias?.db, fechaHoraLocal(new Date(ahoraSegundos * 1000)).fecha);
+      const cerrados = new Set(proximos.keys());
       const sugerida = calcularFechaEntrega(new Date(ahoraSegundos * 1000), { feriados: cerrados });
       // `precios`: la lista por tramos para sugerir el precio de un pedido (D71). La persona lo acepta o lo cambia.
-      return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha, precios: TABLA_PRECIOS, ...OPCIONES_DE_PEDIDO });
+      // `diasSinReparto`: para avisar al elegir uno de esos días al anotar o cambiar un pedido (D101).
+      return json({ comunas: COMUNAS_ATENDIDAS, fechaSugerida: sugerida.fecha, precios: TABLA_PRECIOS, diasSinReparto: Object.fromEntries(proximos), ...OPCIONES_DE_PEDIDO });
     }
 
     // Respaldo (D66): todos los pedidos por páginas, para que la pantalla arme el Excel (así ninguna solicitud se pasa
