@@ -106,6 +106,26 @@
       "esperado": { "intencion": "pregunta", "tipo_pregunta": "envases" }
     },
     {
+      "mensaje": "hola, tengo que devolver 2 envases",
+      "esperado": { "intencion": "envases", "items": [] }
+    },
+    {
+      "mensaje": "tengo que devolver unos bidones, pueden pasar?",
+      "esperado": { "intencion": "envases", "items": [] }
+    },
+    {
+      "mensaje": "mañana debo devolver 4 bidones vacios",
+      "esperado": { "intencion": "envases", "items": [], "envases_a_retirar": 4 }
+    },
+    {
+      "mensaje": "hay que devolver los bidones que dejaron ayer",
+      "esperado": { "intencion": "envases", "items": [] }
+    },
+    {
+      "mensaje": "tengo que devolver el envase?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "envases" }
+    },
+    {
       "mensaje": "que es la carga inicial?",
       "esperado": { "intencion": "pregunta", "tipo_pregunta": "envases" }
     },

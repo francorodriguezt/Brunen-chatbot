@@ -363,7 +363,7 @@ const PREGUNTA_MINIMO = palabras(
 // "quiero devolver 3 envases" es otra cosa (intención envases) y "no tengo envases" dentro de un pedido es carga inicial.
 const PREGUNTA_ENVASES = palabras(
   'son retornables', 'son desechables', 'es retornable', 'es desechable', 'son de ustedes', 'son de brunen', 'bidones retornables',
-  'tengo que devolver', 'hay que devolver', 'debo devolver', 'tengo que tener bidones', 'tengo que tener envases',
+  'tengo que tener bidones', 'tengo que tener envases',
   'tengo que comprar el envase', 'tengo que comprar el bidon', 'tengo que comprar los bidones', 'cobran el envase', 'cobran los envases', 'cobran el bidon',
   'cuanto cuesta el envase', 'cuanto cuesta el bidon vacio', 'cuanto sale el envase', 'cuanto vale el envase', 'precio del envase', 'precio del bidon vacio',
   'que es la carga inicial', 'que es carga inicial', 'como funciona la carga inicial', 'como funcionan los envases', 'como funcionan los bidones', 'como funciona la recarga',
@@ -443,10 +443,16 @@ function esSoloCierre(t: string): boolean {
   return /[a-z0-9]/.test(sinSaludo) && sinSaludo.replace(PALABRAS_CIERRE, ' ').replace(/[\s?/!.,]+/g, '') === '';
 }
 
+// "¿Tengo que devolver el envase?" es una duda. "Tengo que devolver 2 envases" o "..., ¿pueden pasar?" es un retiro: si se
+// contestara como pregunta, no quedaría aviso para que una persona lo agende.
+const DUDA_DE_DEVOLUCION = palabras('tengo que devolver', 'hay que devolver', 'debo devolver');
+const PIDE_QUE_PASEN = palabras('pasar', 'pasan', 'pasen', 'retirar', 'retiran', 'retiren', 'buscar', 'buscan', 'venir', 'vienen');
+const esDudaDeDevolucion = (t: string): boolean => DUDA_DE_DEVOLUCION.test(t) && t.includes('?') && !/\d/.test(t) && !PIDE_QUE_PASEN.test(t);
+
 function tipoDePregunta(t: string, hayComuna: boolean): TipoPregunta | undefined {
   if ((hayComuna && VERBO_ZONA.test(t)) || PALABRA_ZONA.test(t)) return 'zona';
   if (PREGUNTA_MINIMO.test(t)) return 'minimo';
-  if (PREGUNTA_ENVASES.test(t)) return 'envases';
+  if (PREGUNTA_ENVASES.test(t) || esDudaDeDevolucion(t)) return 'envases';
   if (PREGUNTA_PRECIO.test(t)) return 'precio';
   if (PREGUNTA_HORARIO.test(t) || HORARIO_POR_DIA.test(t)) return 'horario';
   if (PREGUNTA_PAGO.test(t)) return 'pago';
