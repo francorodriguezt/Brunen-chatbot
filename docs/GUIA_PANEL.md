@@ -94,4 +94,4 @@ Lo que el bot no resuelve solo y deja para una persona: reclamos, facturas, comp
 | Hay una falla en el reparto | Los clientes tienen que saberlo | En CONFIGURACION pon `ESTADO_SERVICIO` en `reducido` y escribe el aviso en `MENSAJE_EXCEPCION`: el bot lo agrega a sus respuestas |
 
 ## Lo que el panel todavía no hace
-No le escribe al cliente, no guarda las imágenes de los comprobantes y no tiene los precios, que siguen en la planilla. La ruta que calcula es aproximada (en línea recta): sirve para ordenar las paradas, no para prometer horas.
+No le escribe solo al cliente (al cancelar o cambiar un pedido, "Avisar al cliente" abre su chat con el texto listo y lo envías tú, D99), no guarda las imágenes de los comprobantes y no tiene los precios, que siguen en la planilla. La ruta que calcula es aproximada (en línea recta): sirve para ordenar las paradas, no para prometer horas.

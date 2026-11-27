@@ -7,6 +7,7 @@
 import { darFormatoAlRut, mostrarIngreso, pedir, registrarAplicacion } from '/ingreso.js';
 import { crearRutaDelDia } from '/admin/mapa.js';
 import { crearMapaDeClientes } from '/admin/mapa-clientes.js';
+import { enlaceParaAvisar, textoDeCambio, textoDeCancelacion } from '/admin/avisar-cliente.js';
 
 // Cada consulta es una solicitud al Worker (el plan gratis permite 100.000 al día): con la pestaña a la vista se consulta
 // seguido para enterarse rápido de un pedido, y con la pestaña oculta o la ventana tapada, más espaciado.
@@ -369,8 +370,10 @@ function accionesDe(pedido) {
       return [pasarA('En_Ruta', 'En ruta', 'boton boton-principal'), boton('Entregado', 'boton', () => entregarPedido(pedido)), cambiar, cancelar];
     case 'En_Ruta':
       return [boton('Entregado', 'boton boton-principal', () => entregarPedido(pedido)), cambiar, cancelar];
-    case 'Cancelado':
-      return [pasarA('Pendiente_Confirmacion', 'Reabrir')];
+    case 'Cancelado': {
+      const avisarCancelacion = accionDeAvisar(pedido.telefono, textoDeCancelacion(datosParaAvisar(pedido)));
+      return [pasarA('Pendiente_Confirmacion', 'Reabrir'), avisarCancelacion && boton(avisarCancelacion.texto, 'boton', avisarCancelacion.alHacerClic)].filter(Boolean);
+    }
     default:
       return [];
   }
@@ -594,6 +597,26 @@ function bloquearTarjeta(idDePedido, bloqueada) {
 
 const versionDe = (pedido) => (Number.isInteger(pedido.actualizadoEn) ? { actualizadoEn: pedido.actualizadoEn } : {});
 
+// ---- Avisar al cliente (D99): el panel abre su chat con el texto listo y lo envía una persona ----
+
+/** Lo que el cliente reconoce de su pedido, en palabras. */
+function datosParaAvisar(pedido) {
+  return {
+    nombre: pedido.nombre,
+    bidones: bidonesEnCorto(pedido),
+    fecha: fechaLarga(pedido.fechaConfirmada ?? pedido.fechaEntrega),
+    total: pedido.total === null ? '' : pesos.format(pedido.total),
+  };
+}
+
+/** El botón "Avisar al cliente" para un aviso o una tarjeta, o null si no hay teléfono o no hay nada que avisar. */
+function accionDeAvisar(telefono, texto) {
+  const enlace = enlaceParaAvisar(telefono, texto);
+  if (!enlace) return null;
+  return { texto: 'Avisar al cliente', alHacerClic: () => window.open(enlace, '_blank', 'noopener,noreferrer') };
+}
+
+/** Devuelve true si el servidor aceptó el cambio. */
 async function cambiarEstado(pedido, nuevo, motivo = '') {
   bloquearTarjeta(pedido.id, true); // para que un segundo toque no mande el mismo cambio dos veces
   try {
@@ -603,8 +626,11 @@ async function cambiarEstado(pedido, nuevo, motivo = '') {
   } catch (falla) {
     bloquearTarjeta(pedido.id, false); // si la lista no cambia, la tarjeta no se vuelve a dibujar y los botones quedarían apagados
     avisar(falla.message, true);
+    await refrescar();
+    return false;
   }
   await refrescar();
+  return true;
 }
 
 async function cancelarPedido(pedido) {
@@ -615,7 +641,10 @@ async function cancelarPedido(pedido) {
     clase: 'boton-peligro',
     conMotivo: true,
   });
-  if (respuesta) await cambiarEstado(pedido, 'Cancelado', respuesta.motivo);
+  if (!respuesta || !(await cambiarEstado(pedido, 'Cancelado', respuesta.motivo))) return;
+  // El bot no le escribe: se ofrece abrir su chat con el texto listo. El botón también queda en la tarjeta cancelada.
+  const accion = accionDeAvisar(pedido.telefono, textoDeCancelacion(datosParaAvisar(pedido)));
+  if (accion) avisar(MENSAJE_DE_CAMBIO.Cancelado ?? 'Pedido cancelado.', false, accion);
 }
 
 async function entregarPedido(pedido) {
@@ -1031,7 +1060,10 @@ async function guardarEdicion(evento) {
     const { pedido: guardado } = await api(`/api/pedidos/${encodeURIComponent(pedido.id)}/editar`, { ...cambios, ...versionDe(pedido) });
     $('dialogo-editar').close();
     const yaSePuedeConfirmar = pedido.total === null && guardado.total !== null && (guardado.estado === 'Pendiente_Confirmacion' || guardado.estado === 'Fuera_de_zona');
-    avisar(yaSePuedeConfirmar ? 'Guardado. Ya puedes confirmar el pedido.' : 'Cambios guardados.');
+    // Si cambió algo que el cliente nota (el día, los bidones o el total), se ofrece avisarle (D99).
+    const antes = datosParaAvisar(pedido);
+    const accion = accionDeAvisar(guardado.telefono, textoDeCambio({ nombre: guardado.nombre, antes, despues: datosParaAvisar(guardado) }));
+    avisar(yaSePuedeConfirmar ? 'Guardado. Ya puedes confirmar el pedido.' : 'Cambios guardados.', false, accion);
   } catch (falla) {
     mostrarErrorDelEditor(falla.message);
     if (falla.codigo === 409) $('dialogo-editar').close(); // otra persona lo cambió: se recarga con lo último
