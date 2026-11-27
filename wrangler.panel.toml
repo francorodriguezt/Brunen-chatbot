@@ -48,6 +48,10 @@ preview_urls = false
 ACCESS_TEAM_DOMAIN = "raspy-mode-40d3.cloudflareaccess.com"
 ACCESS_AUD = "1278cea26a8dfd094c03e4445a3138554f7ced1f25e7bd97836f19072bd91ce6"
 PANEL_ADMIN_URL = ""
+# Avisos urgentes al teléfono (D115): los mismos valores que en wrangler.toml. La clave privada es un secreto:
+# `wrangler secret put VAPID_PRIVATE_KEY -c wrangler.panel.toml --env admin`.
+VAPID_PUBLIC_KEY = ""
+VAPID_SUBJECT = ""
 
 [[env.admin.d1_databases]]
 binding = "DB"

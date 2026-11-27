@@ -9,6 +9,7 @@ import { RepositorioClientes } from '../src/fichas';
 import { RepositorioPuntos } from '../src/puntos';
 import { RepositorioD1 } from '../src/repositorio';
 import { AUD, DOMINIO, crearAccesoFalso, type AccesoFalso } from './acceso-falso';
+import { aBase64Url } from '../src/push';
 import { crearBaseSqlite } from './ayudas';
 
 const AHORA = 1793000000;
@@ -1065,5 +1066,84 @@ describe('la API: la versión de la ruta publicada en el reparto (D94)', () => {
     expect(await repositorio.confirmarPublicacion('2026-10-29', 1, AHORA)).toBe(true);
     const datos = (await (await pedir(env, '/api/reparto?fecha=2026-10-29')).json()) as { publicacion: unknown };
     expect(datos.publicacion).toEqual({ version: 2, publicadaEn: AHORA - 60, vistaVersion: 1, vistaEn: AHORA });
+  });
+});
+
+describe('la API: avisos en el teléfono (D115)', () => {
+  const ENDPOINT = 'https://web.push.apple.com/abc123';
+
+  async function entornoConPush() {
+    const par = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign'])) as CryptoKeyPair;
+    const jwk = await crypto.subtle.exportKey('jwk', par.privateKey);
+    const publica = new Uint8Array((await crypto.subtle.exportKey('raw', par.publicKey)) as ArrayBuffer);
+    const telefono = (await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits'])) as CryptoKeyPair;
+    const claves = {
+      p256dh: aBase64Url(new Uint8Array((await crypto.subtle.exportKey('raw', telefono.publicKey)) as ArrayBuffer)),
+      auth: aBase64Url(crypto.getRandomValues(new Uint8Array(16))),
+    };
+    const { env, db } = await entornoPanel({ VAPID_PUBLIC_KEY: aBase64Url(publica), VAPID_PRIVATE_KEY: jwk.d as string, VAPID_SUBJECT: 'mailto:avisos@brunen.test' });
+    return { env, db, claves };
+  }
+
+  it('sin las claves del servidor dice que no está disponible y no deja suscribir', async () => {
+    const { env } = await entornoPanel();
+    expect(await (await pedir(env, '/api/push')).json()).toEqual({ disponible: false, clavePublica: null, dispositivos: 0 });
+    const r = await pedir(env, '/api/push/suscribir', { metodo: 'POST', cuerpo: { endpoint: ENDPOINT, keys: { p256dh: 'x', auth: 'y' } } });
+    expect(r.status).toBe(503);
+  });
+
+  it('con las claves entrega la pública, suscribe un dispositivo y lo da de baja', async () => {
+    const { env, db, claves } = await entornoConPush();
+    const info = (await (await pedir(env, '/api/push')).json()) as { disponible: boolean; clavePublica: string; dispositivos: number };
+    expect(info).toMatchObject({ disponible: true, dispositivos: 0 });
+    expect(info.clavePublica).toBe(env.VAPID_PUBLIC_KEY);
+
+    const alta = await pedir(env, '/api/push/suscribir', { metodo: 'POST', cuerpo: { endpoint: ENDPOINT, expirationTime: null, keys: claves } });
+    expect(alta.status).toBe(201);
+    expect(db.sql('SELECT endpoint, correo FROM suscripciones_push')).toEqual([{ endpoint: ENDPOINT, correo: 'operadora@brunen.test' }]);
+    expect(((await (await pedir(env, '/api/push')).json()) as { dispositivos: number }).dispositivos).toBe(1);
+
+    expect((await pedir(env, '/api/push/baja', { metodo: 'POST', cuerpo: { endpoint: ENDPOINT } })).status).toBe(200);
+    expect(db.sql('SELECT endpoint FROM suscripciones_push')).toEqual([]);
+  });
+
+  it('rechaza direcciones que no son de un servicio de envío y claves mal formadas', async () => {
+    const { env, db, claves } = await entornoConPush();
+    for (const cuerpo of [
+      { endpoint: 'https://ejemplo.test/x', keys: claves },
+      { endpoint: 'http://web.push.apple.com/x', keys: claves },
+      { endpoint: ENDPOINT, keys: { p256dh: 'corta', auth: claves.auth } },
+      { endpoint: ENDPOINT },
+      { keys: claves },
+    ]) {
+      expect((await pedir(env, '/api/push/suscribir', { metodo: 'POST', cuerpo })).status).toBe(422);
+    }
+    expect(db.sql('SELECT endpoint FROM suscripciones_push')).toEqual([]);
+  });
+
+  it('exige la sesión de Access y marca de escritura, como el resto de la API', async () => {
+    const { env, claves } = await entornoConPush();
+    expect((await pedir(env, '/api/push', { token: null })).status).toBe(401);
+    const sinMarca = await pedir(env, '/api/push/suscribir', { metodo: 'POST', cuerpo: { endpoint: ENDPOINT, keys: claves }, cabeceras: { 'x-panel': '0' } });
+    expect(sinMarca.status).toBe(400);
+  });
+
+  it('la prueba avisa solo a los dispositivos de quien la pide', async () => {
+    const { env, db, claves } = await entornoConPush();
+    await pedir(env, '/api/push/suscribir', { metodo: 'POST', cuerpo: { endpoint: ENDPOINT, keys: claves } });
+    db.sql("INSERT INTO suscripciones_push (endpoint, p256dh, auth, correo, creado_en) VALUES ('https://web.push.apple.com/otro', 'p', 'a', 'otra@brunen.test', 1)");
+    const f = vi.fn(async () => new Response(null, { status: 201 }));
+    vi.stubGlobal('fetch', f);
+    const r = await pedir(env, '/api/push/prueba', { metodo: 'POST' });
+    expect(await r.json()).toEqual({ ok: true, enviados: 1 });
+    expect(f.mock.calls.map((c) => (c as unknown as [string])[0])).toEqual([ENDPOINT]);
+    vi.unstubAllGlobals();
+  });
+
+  it('el service worker de los avisos se sirve solo con sesión, desde /admin/', async () => {
+    const { env, archivos } = await entornoPanel();
+    expect((await pedir(env, '/sw.js', { token: null })).status).toBe(401);
+    expect((await pedir(env, '/sw.js')).status).toBe(200);
+    expect(archivos).toEqual(['/admin/sw.js']);
   });
 });

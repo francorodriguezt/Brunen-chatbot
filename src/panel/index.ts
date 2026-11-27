@@ -22,6 +22,8 @@ import { RepositorioClientes } from '../fichas';
 import { RepositorioFijos } from '../fijos';
 import { manejarClientes } from './clientes-api';
 import { manejarCobros } from './cobros-api';
+import { manejarPush } from './push-api';
+import type { EntornoPush } from '../push';
 import { RepositorioCobros } from '../cobros';
 import { RepositorioEntregas } from '../entregas';
 import { manejarRepartidor } from './repartidor-api';
@@ -33,7 +35,7 @@ import { RepositorioSeguimiento } from '../seguimiento';
 import { Cuentas } from './cuentas';
 import { cookieDeSesion, esDelAdministrador, manejarSesionAdmin, manejarSesionPublica, manejarUsuarios, tokenDeCookie, type ContextoDeIngreso } from './ingreso';
 
-export interface EntornoPanel extends EntornoAcceso {
+export interface EntornoPanel extends EntornoAcceso, EntornoPush {
   DB?: BaseDatos;
   /** Archivos de la pantalla (carpeta `panel/`). */
   ASSETS: { fetch(request: Request): Promise<Response> };
@@ -170,6 +172,7 @@ async function apiDeAdministracion(request: Request, url: URL, env: EntornoPanel
       (await manejarUsuarios(request, interna, { ...ctx, yo: sesion.usuario })) ??
       (await manejarRuta(request, interna, { repositorio: ctx.repositorio, puntos: new RepositorioPuntos(env.DB as BaseDatos), seguimiento: new RepositorioSeguimiento(env.DB as BaseDatos), ahoraSegundos })) ??
       (await manejarClientes(request, interna, { clientes, repositorio: ctx.repositorio, fijos: new RepositorioFijos(env.DB as BaseDatos), puntos: new RepositorioPuntos(env.DB as BaseDatos), ahoraSegundos, correo })) ??
+      (await manejarPush(request, interna, { db: env.DB as BaseDatos, entorno: env, correo, ahoraSegundos })) ??
       (await manejarCobros(request, interna, { cobros: new RepositorioCobros(env.DB as BaseDatos), repositorio: ctx.repositorio, ahoraSegundos, correo })) ??
       (await manejarApi(request, interna, { repositorio: ctx.repositorio, correo, ahoraSegundos, clientes, cobros: new RepositorioCobros(env.DB as BaseDatos), entregas: new RepositorioEntregas(env.DB as BaseDatos), respaldo: new RepositorioRespaldo(env.DB as BaseDatos), dias: new RepositorioDiasSinReparto(env.DB as BaseDatos), seguimiento: new RepositorioSeguimiento(env.DB as BaseDatos), baseDeMensajes: env.DB as BaseDatos }));
     if (sesion?.renovada && token) respuesta.headers.append('set-cookie', cookieDeSesion(token, true, ctx.cookieSegura));

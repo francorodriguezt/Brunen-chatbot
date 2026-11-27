@@ -10,6 +10,10 @@ compatibility_date = "2026-09-01"
 # de tu app en developers.facebook.com (formato vNN.N). No adivinarla.
 GRAPH_API_VERSION = "v25.0"
 BOT_ACTIVO = "SI"
+# Avisos urgentes al teléfono (D115). Vacíos = apagado. Se llenan con `npm run generar-vapid` (la clave privada va como secreto:
+# `wrangler secret put VAPID_PRIVATE_KEY`). El contacto es un correo del negocio, no personal.
+VAPID_PUBLIC_KEY = ""
+VAPID_SUBJECT = ""
 # Flujo de pedido completo (D33): ficha, precio, entrega y pedido guardado en D1 para el panel. Apagado, el bot responde
 # en modo prueba. Encendido el 2026-10-30, con las migraciones 0003 y 0004 ya aplicadas en D1 (pasos en docs/ETAPAS.md):
 # solo atiende a los números de NUMEROS_PERMITIDOS, los demás se ignoran.

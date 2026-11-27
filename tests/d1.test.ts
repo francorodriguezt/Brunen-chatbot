@@ -92,6 +92,7 @@ describe('migraciones', () => {
       { name: 'respaldos' },
       { name: 'rutas_publicadas' },
       { name: 'sesiones' },
+      { name: 'suscripciones_push' },
       { name: 'telefonos_cliente' },
       { name: 'ultimos_pedidos' },
       { name: 'uso_llm' },

@@ -3,6 +3,7 @@
 Separados por quién decide o actúa. Franco decide lo que no es de dinero, de número ni de cómo se presenta Brunen; al dueño solo se le consulta lo muy importante, en un documento que Franco le envía ("Chatbot de WhatsApp de Brunen: lo que necesito de ti", en Claude Docs; no vive en este repositorio).
 
 ## Próxima sesión
+ACTUALIZACIÓN 2026-11-27 (D115, sin publicar): avisos urgentes como notificación en el teléfono (iPhone con el panel en la pantalla de inicio). **Antes de publicar: migración `0022_suscripciones_push`, `npm run generar-vapid`, cargar las claves en los dos Workers y probar con el botón "Mandar una prueba" (Equipo).** Telegram sigue igual.
 ACTUALIZACIÓN 2026-11-27 (D113 y D114, sin publicar): contador de mensajes salientes con aviso a los 800 y Workers AI como respaldo de Groq. **Antes de publicar hay que aplicar la migración `0021_uso_mensajes_e_ia`.** Franco corre `npm run comparar-ia` para ver si Workers AI acierta como Groq.
 ACTUALIZACIÓN 2026-11-27 (D111 y D112, sin publicar): el furgón cuenta solo los bidones de 20 L, la app del repartidor dice con claridad cuánto cobrar y la lista "por pedir" tiene el botón "Escribirle". Sin migración.
 ACTUALIZACIÓN 2026-11-27 (D110, sin publicar): textos y preguntas frecuentes desde los chats reales: "¿son retornables?" / carga inicial, y el recordatorio de dejar los vacíos listos en la respuesta del pedido. Sin migración. Franco decide los textos guiándose por los chats; **si quiere, avisarle a Felipe que cambió la respuesta del pedido** (punto 10).

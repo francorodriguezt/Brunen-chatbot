@@ -86,7 +86,7 @@ Una pestaña con tres cosas, de arriba abajo (D107):
 - En cada pedido, el botón **Pagos** muestra lo que se ha pagado y deja anotar otro (un abono, una transferencia). Un pedido puede quedar *Pendiente*, *Abonado* (pagó una parte), *Por verificar* (pagó todo y falta ver el dinero) o *Pagado*.
 
 ## Avisos
-Lo que el bot no resuelve solo y deja para una persona: reclamos, facturas, comprobantes de pago, audios, mensajes que no entendió y fallas del sistema. Atiende el caso por WhatsApp y toca "Marcar resuelto". Los de borde rojo son urgentes y llegan también por Telegram.
+Lo que el bot no resuelve solo y deja para una persona: reclamos, facturas, comprobantes de pago, audios, mensajes que no entendió y fallas del sistema. Atiende el caso por WhatsApp y toca "Marcar resuelto". Los de borde rojo son urgentes y llegan también por Telegram y, si lo activaste, como notificación en tu teléfono (D115): en **Equipo ▸ Avisos en este teléfono** toca "Activar en este dispositivo" y luego "Mandar una prueba". En iPhone, primero agrega el panel a la pantalla de inicio y ábrelo desde ese ícono. La notificación solo dice el tipo de aviso; el detalle lo ves aquí.
 
 ## Si algo falla
 | Qué ves | Qué significa | Qué hacer |

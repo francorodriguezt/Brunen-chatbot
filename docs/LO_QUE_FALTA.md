@@ -22,7 +22,7 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
    - Saber si hoy usan listas de difusión: la coexistencia las desactiva y obliga a abrir la app al menos cada 14 días.
    - Confirmar con el proveedor que la coexistencia está disponible en Chile.
 2. **Crear el bot de Telegram** y cargar `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID`. Sin él, los reclamos y las fallas urgentes solo quedan en el panel, donde nadie los ve al instante. — Franco, Aquí ([PASOS_FRANCO.md](PASOS_FRANCO.md), punto 2).
-3. **Que la operadora acepte recibir los avisos por Telegram** (P32).
+3. **Que la operadora acepte recibir los avisos por Telegram** (P32). — Franco prefiere la notificación del panel en el iPhone: construida (D115); falta cargar las claves y probarla en su teléfono. Telegram queda como segundo canal.
 4. **Aviso de privacidad** aprobado ([AVISO_PRIVACIDAD.md](AVISO_PRIVACIDAD.md)) y **cuánto tiempo se guardan** pedidos y fichas. La ley rige desde el 15-oct-2027, pero conviene tenerlo antes de abrir. — Felipe (P20).
 5. **Monitoreo de `/salud`** con una cuenta gratis de UptimeRobot que avise al correo. — Franco.
 6. **Borrar los pedidos de prueba** de la base real, para que no se mezclen con los de verdad. — Claude con permiso, Aquí.

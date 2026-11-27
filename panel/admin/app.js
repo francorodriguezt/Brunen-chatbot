@@ -2281,6 +2281,7 @@ async function cargarEquipo() {
   const { usuarios } = await api('/api/usuarios');
   $('lista-equipo').replaceChildren(...usuarios.map(tarjetaDePersona));
   void mostrarEstadoDelRespaldo();
+  void pintarPush();
 }
 
 // ---- Cobros (D107) ----
@@ -2708,6 +2709,109 @@ async function activarAvisosDelNavegador() {
     /* el navegador no lo permite */
   }
   mostrarBotonDeAvisos();
+  // Con el permiso dado, el mismo botón deja también los avisos al teléfono (D115) si el servidor los tiene.
+  if (Notification.permission === 'granted') await activarPush({ silencioso: true });
+}
+
+// ---- Avisos en el teléfono (D115) ----
+
+const SOPORTA_PUSH = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+let infoPush = null; // lo que dice el servidor: { disponible, clavePublica, dispositivos }
+
+function bytesDeBase64Url(texto) {
+  const limpio = texto.replace(/-/g, '+').replace(/_/g, '/');
+  const binario = atob(limpio + '='.repeat((4 - (limpio.length % 4)) % 4));
+  return Uint8Array.from(binario, (c) => c.charCodeAt(0));
+}
+
+async function suscripcionDeEsteDispositivo() {
+  if (!SOPORTA_PUSH) return null;
+  try {
+    const registro = await navigator.serviceWorker.getRegistration('/admin/');
+    return registro ? await registro.pushManager.getSubscription() : null;
+  } catch {
+    return null;
+  }
+}
+
+async function pintarPush() {
+  const texto = $('estado-push');
+  const botones = { activar: $('activar-push'), probar: $('probar-push'), desactivar: $('desactivar-push') };
+  for (const boton of Object.values(botones)) boton.hidden = true;
+  if (!SOPORTA_PUSH) {
+    texto.textContent = 'Este navegador no puede recibir notificaciones. En iPhone, abre el panel desde el ícono de la pantalla de inicio.';
+    return;
+  }
+  try {
+    infoPush = await api('/api/push');
+  } catch (falla) {
+    texto.textContent = falla.message;
+    return;
+  }
+  if (!infoPush.disponible) {
+    texto.textContent = 'Los avisos al teléfono todavía no están configurados en el servidor: avisa a Franco.';
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    texto.textContent = 'Bloqueaste las notificaciones de este panel. Actívalas en los ajustes del teléfono o del navegador y vuelve aquí.';
+    return;
+  }
+  const suscripcion = await suscripcionDeEsteDispositivo();
+  if (suscripcion) {
+    texto.textContent = `Activados en este dispositivo. Tu correo tiene ${infoPush.dispositivos} ${infoPush.dispositivos === 1 ? 'dispositivo' : 'dispositivos'} con avisos.`;
+    botones.probar.hidden = false;
+    botones.desactivar.hidden = false;
+  } else {
+    texto.textContent = 'Desactivados en este dispositivo.';
+    botones.activar.hidden = false;
+  }
+}
+
+async function activarPush({ silencioso = false } = {}) {
+  const texto = $('estado-push');
+  try {
+    infoPush ||= await api('/api/push');
+    if (!SOPORTA_PUSH || !infoPush.disponible) return;
+    if (Notification.permission !== 'granted' && (await Notification.requestPermission()) !== 'granted') {
+      await pintarPush();
+      return;
+    }
+    await navigator.serviceWorker.register('/admin/sw.js', { scope: '/admin/' });
+    const registro = await navigator.serviceWorker.ready;
+    const suscripcion =
+      (await registro.pushManager.getSubscription()) ??
+      (await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytesDeBase64Url(infoPush.clavePublica) }));
+    await api('/api/push/suscribir', suscripcion.toJSON());
+    infoPush = null;
+    await pintarPush();
+  } catch (falla) {
+    if (!silencioso) texto.textContent = falla.message || 'No se pudieron activar los avisos en este dispositivo.';
+  }
+}
+
+async function desactivarPush() {
+  try {
+    const suscripcion = await suscripcionDeEsteDispositivo();
+    if (suscripcion) {
+      await api('/api/push/baja', { endpoint: suscripcion.endpoint });
+      await suscripcion.unsubscribe();
+    }
+  } catch (falla) {
+    $('estado-push').textContent = falla.message || 'No se pudieron desactivar.';
+    return;
+  }
+  infoPush = null;
+  await pintarPush();
+}
+
+async function probarPush() {
+  const texto = $('estado-push');
+  try {
+    const { enviados } = await api('/api/push/prueba', {});
+    texto.textContent = enviados > 0 ? 'Listo: te mandamos un aviso de prueba. Si no lo ves en unos segundos, revisa los ajustes de notificaciones del teléfono.' : 'No se pudo enviar el aviso de prueba. Prueba desactivar y activar de nuevo.';
+  } catch (falla) {
+    texto.textContent = falla.message;
+  }
 }
 
 function mostrarBotonDeAvisos() {
@@ -2847,6 +2951,9 @@ function iniciar() {
   void cargarOpciones();
 
   $('activar-avisos').addEventListener('click', () => void activarAvisosDelNavegador());
+  $('activar-push').addEventListener('click', () => void activarPush());
+  $('desactivar-push').addEventListener('click', () => void desactivarPush());
+  $('probar-push').addEventListener('click', () => void probarPush());
   $('formulario-editar').addEventListener('submit', (evento) => void guardarEdicion(evento));
   $('cancelar-editar').addEventListener('click', () => $('dialogo-editar').close());
   $('formulario-editar').elements.fecha.addEventListener('change', revisarFechaDelEditor);

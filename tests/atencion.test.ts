@@ -139,6 +139,42 @@ describe('el flujo de pedido conectado al Worker', () => {
     expect(String(mundo.telegram[0]?.cuerpo.text)).toContain('el bidón de ayer venía con el sello roto');
   });
 
+  it('un reclamo también llega como notificación al teléfono, con texto genérico, y un pedido normal no (D115)', async () => {
+    const mundo = stubMundo({ hojas: HOJAS });
+    const par = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign'])) as CryptoKeyPair;
+    const telefono = (await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits'])) as CryptoKeyPair;
+    const base64url = (b: ArrayBuffer | Uint8Array) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const env = await entorno({
+      VAPID_PUBLIC_KEY: base64url((await crypto.subtle.exportKey('raw', par.publicKey)) as ArrayBuffer),
+      VAPID_PRIVATE_KEY: (await crypto.subtle.exportKey('jwk', par.privateKey)).d as string,
+      VAPID_SUBJECT: 'mailto:avisos@brunen.test',
+    });
+    env.DB.sql(
+      "INSERT INTO suscripciones_push (endpoint, p256dh, auth, correo, creado_en) VALUES ('https://web.push.apple.com/tel', ?1, ?2, 'ana@brunen.test', 1)",
+      base64url((await crypto.subtle.exportKey('raw', telefono.publicKey)) as ArrayBuffer),
+      base64url(crypto.getRandomValues(new Uint8Array(16))),
+    );
+    const base = globalThis.fetch;
+    const enviadosAlTelefono: Array<{ cuerpo: Uint8Array; cabeceras: Record<string, string> }> = [];
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      if (url.startsWith('https://web.push.apple.com')) {
+        enviadosAlTelefono.push({ cuerpo: init?.body as Uint8Array, cabeceras: init?.headers as Record<string, string> });
+        return new Response(null, { status: 201 });
+      }
+      return base(url, init);
+    });
+
+    await enviarAviso(env, texto('quiero 2 de 20 para el viernes'));
+    expect(enviadosAlTelefono).toHaveLength(0); // un pedido normal no es urgente
+
+    await enviarAviso(env, texto('el bidón de ayer venía con el sello roto'));
+    expect(enviadosAlTelefono).toHaveLength(1);
+    expect(enviadosAlTelefono[0]?.cabeceras.Authorization).toMatch(/^vapid t=/);
+    // Va cifrado: lo que escribió el cliente no se puede leer en lo que viaja.
+    expect(new TextDecoder('latin1').decode(enviadosAlTelefono[0]?.cuerpo)).not.toContain('sello');
+    expect(mundo.telegram).toHaveLength(0); // sin Telegram configurado, solo el teléfono
+  });
+
   it('sin Telegram configurado, un reclamo igual se guarda y se responde', async () => {
     const mundo = stubMundo({ hojas: HOJAS });
     const env = await entorno();

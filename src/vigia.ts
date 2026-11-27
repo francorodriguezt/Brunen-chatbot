@@ -21,7 +21,7 @@
 import type { Alerta } from './alertas';
 import { UMBRALES_POR_DEFECTO, vigilarReparto } from './alertasReparto';
 import { AlmacenD1, type BaseDatos } from './almacen';
-import { FALLA_DEL_TOKEN, avisarFalla, type EntornoAtencion } from './atencion';
+import { FALLA_DEL_TOKEN, avisarFalla, avisarUrgente, type EntornoAtencion } from './atencion';
 import { leerConfiguracion } from './configuracion';
 import { fechaHoraLocal } from './despacho';
 import { RepositorioClientes } from './fichas';
@@ -32,7 +32,6 @@ import { cargarTablaPrecios } from './preciosHoja';
 import { RepositorioD1 } from './repositorio';
 import { RepositorioSeguimiento } from './seguimiento';
 import { hojasDeRespaldo, respaldarClientes, respaldarPedidos, respaldoAtrasado } from './respaldo';
-import { configTelegram, enviarAlerta } from './telegram';
 import { revisarToken } from './whatsapp';
 
 /** Atender un mensaje tarda, como mucho, la espera del agrupador más los 30 s que da Cloudflare: pasado esto, ya no va a terminar. */
@@ -94,11 +93,10 @@ export async function vigilar(env: EntornoAtencion, ahora: Date = new Date()): P
     }
     await new AlmacenD1(db).marcarAtendidos(colgados.map((mensaje) => mensaje.wamid), ahoraSegundos);
 
-    const telegram = configTelegram(env);
-    for (const alerta of nuevos.slice(0, MAXIMO_POR_TELEGRAM)) await enviarAlerta(telegram, alerta);
+    for (const alerta of nuevos.slice(0, MAXIMO_POR_TELEGRAM)) await avisarUrgente(env, alerta, ahora);
     const resto = nuevos.length - MAXIMO_POR_TELEGRAM;
     if (resto > 0) {
-      await enviarAlerta(telegram, { tipo: 'error', telefono: '', resumen: `El bot tampoco terminó de atender a ${resto} clientes más: están en los avisos del panel.`, motivos: [] });
+      await avisarUrgente(env, { tipo: 'error', telefono: '', resumen: `El bot tampoco terminó de atender a ${resto} clientes más: están en los avisos del panel.`, motivos: [] }, ahora);
     }
     return nuevos.length;
   } catch (error) {

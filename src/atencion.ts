@@ -19,6 +19,7 @@ import { buscarClienteConFicha } from './clientes';
 import { RepositorioClientes } from './fichas';
 import { leerServicio } from './configuracion';
 import { registrarMensajeEnviado } from './mensajesSalientes';
+import { avisarPorPush, type EntornoPush } from './push';
 import { MemoriaConversaciones } from './conversacion';
 import { fechaHoraLocal } from './despacho';
 import { cargarDiasSinReparto } from './diasSinReparto';
@@ -37,7 +38,7 @@ import * as textos from './textos';
 import { MAXIMO_AUDIO_BYTES, pistaDePedido, reenviarComprobante, transcribir, type IA } from './medios';
 import { descargarMedio, enviarTexto, type ConfigWhatsApp, type MensajeEntrante } from './whatsapp';
 
-export interface EntornoAtencion extends EntornoHojas, EntornoLlm, EntornoTelegram {
+export interface EntornoAtencion extends EntornoHojas, EntornoLlm, EntornoTelegram, EntornoPush {
   WHATSAPP_TOKEN: string;
   WHATSAPP_PHONE_NUMBER_ID: string;
   GRAPH_API_VERSION: string;
@@ -67,6 +68,15 @@ export function esperaDeAgrupador(env: Pick<EntornoAtencion, 'ESPERA_AGRUPADOR_M
 }
 
 /**
+ * Un aviso urgente le llega a la operadora y al dueño por Telegram (D68) y por una notificación en el teléfono con el panel
+ * instalado (D115). Cada canal se salta solo si no está configurado, y ninguno lanza errores.
+ */
+export async function avisarUrgente(env: EntornoAtencion, alerta: Alerta, ahora: Date = new Date()): Promise<void> {
+  await enviarAlerta(configTelegram(env), alerta);
+  await avisarPorPush(env, alerta, Math.floor(ahora.getTime() / 1000));
+}
+
+/**
  * Envía la respuesta al cliente y la cuenta en el contador del mes (D113). Si el envío falla, lanza el error y no cuenta;
  * si contar falla, el cliente igual recibe su respuesta. Al cruzar el 800 avisa también por Telegram.
  */
@@ -74,7 +84,7 @@ export async function responderAlCliente(env: EntornoAtencion, para: string, cue
   await enviarTexto(configWhatsApp(env), para, cuerpo);
   if (!env.DB) return;
   const alerta = await registrarMensajeEnviado(env.DB, Math.floor(ahora.getTime() / 1000));
-  if (alerta) await enviarAlerta(configTelegram(env), alerta);
+  if (alerta) await avisarUrgente(env, alerta, ahora);
 }
 
 const configWhatsApp = (env: EntornoAtencion): ConfigWhatsApp => ({
@@ -162,7 +172,7 @@ async function aplicarEfectos(env: EntornoAtencion, mensaje: MensajeEntrante, ef
       console.error('No se pudo limpiar los avisos viejos:', error instanceof Error ? error.message : error);
     }
   }
-  if (alerta && esUrgente(alerta)) await enviarAlerta(configTelegram(env), alerta);
+  if (alerta && esUrgente(alerta)) await avisarUrgente(env, alerta, ahora);
   return respuesta;
 }
 
@@ -352,5 +362,5 @@ export async function avisarFalla(env: EntornoAtencion, clave: string, resumen: 
       console.error('No se pudo guardar el aviso de falla:', error instanceof Error ? error.message : error);
     }
   }
-  await enviarAlerta(configTelegram(env), alerta);
+  await avisarUrgente(env, alerta, ahora);
 }
