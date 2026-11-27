@@ -837,3 +837,11 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Textos:** "Hola Ana, te escribimos de Brunen. Tu pedido de 3 de 20 L para el jueves 19 de noviembre quedó cancelado. Si quieres volver a pedir, escríbenos por aquí." y "… Cambiamos tu pedido: se entrega el viernes 20 de noviembre. Si algo no te calza, respóndenos por aquí." El motivo de la cancelación no va: es una nota interna. Un cambio de notas, de pago o de envases no ofrece avisar.
 - Con el número compartido (D46), lo que la persona escribe desde la app pausa al bot una hora con ese cliente, como siempre.
 - Código: `panel/admin/avisar-cliente.js` (funciones puras, 3 pruebas en `tests/avisar-cliente.test.mjs`) y `panel/admin/app.js`. Verificado en el navegador a 375 px con datos ficticios: cambio de fecha, cancelación y la tarjeta cancelada abren `wa.me` con el texto correcto. **Sin publicar.**
+
+### D100 · 2026-11-27 · Un comprobante se asocia al pedido sin pagar más antiguo
+**Franco aceptó la recomendación de la pregunta 6.** Antes, el aviso de un comprobante (foto o PDF) no decía de qué pedido era.
+- Si el cliente tiene pedidos sin pagar de los últimos 90 días (sin contar los cancelados), el aviso se asocia al **más antiguo** por fecha de entrega: es el que casi siempre se paga primero. El aviso muestra "Ver pedido".
+- Si tiene más de uno, el aviso lo dice: "Lo asocié a su pedido sin pagar más antiguo. También tiene sin pagar: P…, P…. Marca pagado el que corresponda." Así Coni elige el correcto (D100 no marca nada pagado solo: lo verifica una persona, regla 2).
+- Sin pedidos por pagar, el aviso queda suelto, como antes. Si la consulta falla, el aviso se guarda igual, sin pedido.
+- Solo para comprobantes (imagen o PDF). "Ya te transferí" por texto sigue como aviso de pago sin asociar: no siempre es de un pedido (puede ser una deuda o un abono). Cuando se construyan los cobros (propuesta 2), esto pasa a ser "informado".
+- Sin migración (la columna `id_pedido` de los avisos ya existía). Verificado: 2 pruebas nuevas en `tests/atencion.test.ts`. **Sin publicar.**

@@ -300,6 +300,32 @@ describe('lo que no es texto', () => {
     expect(avisosEn(env)).toEqual([{ tipo: 'pago', telefono: CLIENTE, estado: 'abierto' }]);
   });
 
+  it('un comprobante se asocia al pedido sin pagar más antiguo y nombra los otros (D100)', async () => {
+    stubMundo({ hojas: HOJAS });
+    const env = await entorno();
+    const repositorio = new RepositorioD1(env.DB);
+    const ahora = Math.floor(HORA.getTime() / 1000);
+    const pedido = (idPedido: string, fechaEntrega: string) => ({
+      idPedido, telefono: CLIENTE, nombre: 'Ana Prueba', lineas: [{ tipo: '20L' as const, cantidad: 2, precioUnitario: 3300, subtotal: 6600 }],
+      fechaEntrega, estado: 'Pendiente_Confirmacion' as const, comuna: 'Ñuñoa', direccion: 'Calle Uno 1', notasRepartidor: '', envasesARetirar: 0, observaciones: '',
+    });
+    await repositorio.guardarPedido(pedido('P261020-PAGAD', '2026-10-20'), ahora - 8 * 86400);
+    await repositorio.guardarPedido(pedido('P261022-VIEJO', '2026-10-22'), ahora - 6 * 86400);
+    await repositorio.guardarPedido(pedido('P261027-NUEVO', '2026-10-27'), ahora - 86400);
+    env.DB.sql("UPDATE pedidos SET estado_pago = 'pagado' WHERE id = 'P261020-PAGAD'");
+    await enviarAviso(env, { id: 'wamid.IM2', from: CLIENTE, timestamp: '1793000000', type: 'image' });
+    const [aviso] = env.DB.sql("SELECT id_pedido, motivos FROM avisos WHERE tipo = 'pago'") as Array<{ id_pedido: string; motivos: string }>;
+    expect(aviso?.id_pedido).toBe('P261022-VIEJO');
+    expect(aviso?.motivos).toContain('También tiene sin pagar: P261027-NUEVO');
+  });
+
+  it('un comprobante sin pedidos por pagar queda como aviso suelto', async () => {
+    stubMundo({ hojas: HOJAS });
+    const env = await entorno();
+    await enviarAviso(env, { id: 'wamid.IM3', from: CLIENTE, timestamp: '1793000000', type: 'image' });
+    expect(env.DB.sql("SELECT id_pedido FROM avisos WHERE tipo = 'pago'")).toEqual([{ id_pedido: null }]);
+  });
+
   it('un aviso de sistema de WhatsApp (el cliente cambió de número) no se le responde al cliente: queda para revisar su ficha', async () => {
     const mundo = stubMundo({ hojas: HOJAS });
     const env = await entorno();

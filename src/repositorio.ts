@@ -606,6 +606,21 @@ export class RepositorioD1 {
     return (await this.filas(sql, ...valores)).map(aPedido);
   }
 
+  /**
+   * Los pedidos de un teléfono que no están pagados, del más antiguo al más nuevo (D100): a cuál corresponde un
+   * comprobante. Sin los cancelados y solo de los últimos 90 días: un pedido más viejo sin pagar ya es una deuda que
+   * revisa una persona, no el destino probable de una transferencia de hoy.
+   */
+  async idsSinPagar(telefono: string, ahoraSegundos: number, limite = 5): Promise<string[]> {
+    const filas = await this.filas(
+      `SELECT id FROM pedidos WHERE telefono = ?1 AND estado_pago != 'pagado' AND estado != 'Cancelado' AND creado_en >= ?2
+       ORDER BY COALESCE(fecha_confirmada, fecha_entrega), creado_en, rowid LIMIT ${Math.min(Math.max(Math.trunc(limite), 1), 20)}`,
+      telefono,
+      ahoraSegundos - 90 * 86400,
+    );
+    return filas.map((fila) => String(fila.id));
+  }
+
   /** Los pedidos de una ficha de cliente (D53), del más nuevo al más antiguo. */
   async pedidosDeCliente(clienteId: number, limite = 30): Promise<PedidoGuardado[]> {
     const tope = Math.min(Math.max(Math.trunc(limite), 1), 100);
