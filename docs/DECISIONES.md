@@ -1009,7 +1009,7 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Para activarlo (lo hace Franco, una sola vez):** `npm run generar-vapid`; poner la clave pública y un correo de contacto del negocio (no personal) en `wrangler.toml` y en `[env.admin.vars]` de `wrangler.panel.toml`; cargar la clave privada como secreto en los dos Workers; publicar; y en cada teléfono, abrir el panel desde el ícono de la pantalla de inicio, ir a Equipo y tocar "Activar en este dispositivo" y "Mandar una prueba". Sin las claves, la pantalla dice que falta configurarlo y el resto sigue igual.
 - **Sin probar en un iPhone real:** desde aquí no hay iPhone ni acceso a Apple. Se probó el cifrado contra el RFC, la firma, el envío con un servicio simulado y el `sw.js` con un `self` de mentira. **La prueba de verdad es el botón "Mandar una prueba" en el teléfono de la operadora**; si no llega, lo más probable es la instalación en pantalla de inicio o el permiso de notificaciones de iOS.
 
-### D116 · 2026-11-27 · Revisión de D107 a D115 y mejoras del panel
+### D117 · 2026-11-27 · Revisión de D107 a D115 y mejoras del panel
 **Antes de unir los PR del Proyecto se revisaron (las pruebas pasaban) y aparecieron dos fallas, corregidas con prueba:**
 - **Cobros:** al cambiar los bidones de un pedido ya pagado, seguía como "pagado": el repartidor veía "No cobrar" y la diferencia se perdía. Ahora el estado de pago se recalcula al cambiar las líneas.
 - **Vacíos:** "tengo que devolver 2 envases, ¿pueden pasar?" se contestaba como pregunta y no quedaba aviso. Ahora esas frases son pregunta solo con "?", sin cantidad y sin pedir que pasen.
