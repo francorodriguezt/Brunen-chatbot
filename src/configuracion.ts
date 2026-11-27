@@ -6,12 +6,15 @@
  *  - ESTADO_SERVICIO: normal o reducido. Con reducido el bot agrega MENSAJE_EXCEPCION a sus respuestas
  *    (regla 11: por ejemplo, cuando hay una falla operativa).
  *  - MENSAJE_EXCEPCION: el texto de ese aviso.
+ *  - ALERTA_SIN_SENAL_MINUTOS y ALERTA_RUTA_NO_INICIADA: cuándo avisa el panel del reparto (D98, `alertasReparto.ts`).
+ *    Por defecto 20 minutos y 10:30; con NO se apaga cada una.
  *
  * Se lee cada minuto (la caché está en `hojas.ts`). Si la hoja no se puede leer, se usa lo último que se
  * leyó; si nunca se leyó, `leerBotActivo` no decide (null) y manda la variable BOT_ACTIVO del Worker:
  * una caída de Google nunca apaga el bot.
  */
 
+import { parsearRutaNoIniciada, parsearSinSenal, type UmbralesReparto } from './alertasReparto';
 import { leerHoja, type EntornoHojas } from './hojas';
 import { normalizar } from './texto';
 
@@ -27,6 +30,8 @@ export interface Configuracion {
   /** true = SI, false = NO, null = la hoja no dice nada válido. */
   botActivo: boolean | null;
   servicio: Servicio;
+  /** Umbrales de las alertas del reparto (D98). */
+  reparto: UmbralesReparto;
 }
 
 /** Valor de una variable de la hoja (nombre sin importar mayúsculas, tildes ni guiones bajos). */
@@ -53,6 +58,10 @@ export function parsearConfiguracion(filas: ReadonlyArray<ReadonlyArray<string>>
     servicio: {
       reducido: normalizar(valorDe(filas, 'ESTADO_SERVICIO') ?? '') === 'reducido',
       mensajeExcepcion: (valorDe(filas, 'MENSAJE_EXCEPCION') ?? '').trim(),
+    },
+    reparto: {
+      sinSenalMinutos: parsearSinSenal(valorDe(filas, 'ALERTA_SIN_SENAL_MINUTOS')),
+      rutaNoIniciada: parsearRutaNoIniciada(valorDe(filas, 'ALERTA_RUTA_NO_INICIADA')),
     },
   };
 }

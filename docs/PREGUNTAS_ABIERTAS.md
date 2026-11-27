@@ -9,7 +9,7 @@ Las preguntas vienen de [PENDIENTES.md](PENDIENTES.md), [PROPUESTA_SIGUIENTES_PA
 1. ~~**¿Publico lo que está listo?**~~ Sí, publicado el 2026-11-26 (D97). Son el arreglo de D87 y D90 a D93: en la app del repartidor, la siguiente parada y la observación al entregar; en el panel, al repartidor en Hoy; y la marca vieja que ya no cae en el pedido de hoy. No necesita migraciones. **Recomiendo: sí.**
 2. ~~**Versiones de la ruta (D94):**~~ Sí, migración 0017 aplicada y publicada el 2026-11-26 (D97). cuando esté terminada, ¿aplico la migración 0017 en la base real (con su punto de restauración) y la publico? **Recomiendo: sí.**
 3. **Clientes en un solo lugar** (propuesta 1): ¿la construyo? Cambia cómo cotiza el bot. **Recomiendo: sí, después de la respuesta de Felipe a la 12.**
-4. **Alertas del reparto:** ¿cuándo avisa el panel?
+4. ~~**Alertas del reparto:**~~ 20 minutos y 10:30 (Franco, 2026-11-27; D98, construido). Se cambian en CONFIGURACION. ¿cuándo avisa el panel?
    - "Sin señal": la jornada está abierta y no llega su ubicación hace más de ___ minutos. **Recomiendo: 20.**
    - "Ruta no iniciada": a las ___ hay entregas y no tocó Iniciar ruta. **Recomiendo: 10:30.**
 5. **Cuando Coni cambia o cancela un pedido en el panel,** ¿qué se le dice al cliente? Hoy no se le escribe nada. **Recomiendo:** un botón "Avisar al cliente" que abre su chat de WhatsApp con el texto listo, y lo envía Coni.

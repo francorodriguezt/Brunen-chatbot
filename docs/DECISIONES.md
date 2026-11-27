@@ -820,3 +820,12 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
   - migración `0017_rutas_publicadas` aplicada en la base real; punto de restauración previo `0000122f-00000000-0000512f-a7bccb9f313f5206c3cd89086a0b6acd`;
   - administración `c72a7d8f`, pública `483501b2`, bot `948e4dbf` (al primer intento falló la conexión; el segundo salió bien);
   - `npm run comprobar`: 9 de 9 bien. Además, `/api/repartidor/ruta/vista` sin sesión responde 401 y la app publicada trae el aviso de cambio de ruta.
+
+### D98 · 2026-11-27 · Alertas del reparto: "sin señal" y "ruta no iniciada"
+**Franco dio los umbrales recomendados (pregunta 4): 20 minutos y 10:30.** También dejó dicho que tiene el consentimiento de Felipe para decidir los cambios y mejoras del sistema; a Felipe van solo las cosas de vital importancia, y eso lo decide Franco.
+- **Sin señal:** con la jornada abierta, si el teléfono del repartidor no manda su ubicación hace 20 minutos o más, queda un aviso "Para una persona" en el panel: puede estar sin señal, con la app cerrada o con el teléfono apagado, y la oficina lo llama. Si nunca llegó una posición, se cuenta desde "Iniciar ruta". Un aviso por cada corte: si vuelve la señal y se corta de nuevo, es otro aviso. No avisa sin su consentimiento (nunca llegarían posiciones) ni fuera de 6:00 a 22:00, el horario del seguimiento (D80).
+- **Ruta no iniciada:** desde las 10:30 y hasta las 18:00, si hay entregas confirmadas para hoy sin entregar y nadie tocó "Iniciar ruta", un aviso al día. **Solo si la app del repartidor se usó en los últimos 14 días:** mientras el reparto siga por Optiroute (D49), nadie toca "Iniciar ruta" y el aviso saldría todos los días.
+- **Se cambian sin tocar código,** en la hoja CONFIGURACION: `ALERTA_SIN_SENAL_MINUTOS` (de 5 a 240; por defecto 20) y `ALERTA_RUTA_NO_INICIADA` ("10:30", "11" o "11.15"; por defecto 10:30). Con `NO` se apaga cada una. Un valor que no se entiende deja el por defecto. Sin planilla, valen los por defecto.
+- **Solo en el panel, no por Telegram:** no son reclamos ni fallas del sistema (D32). Si en el día de prueba resultan urgentes, se suman a Telegram.
+- Las revisa el vigía cada 5 minutos (`src/alertasReparto.ts`); el origen del aviso evita repetirlo. Sin las tablas de seguimiento, no avisa y no rompe la tarea.
+- Sin migración. Verificado: 1.618 pruebas (11 nuevas, con la base SQLite de prueba). **Sin publicar.**
