@@ -213,6 +213,9 @@ describe('condiciones del cliente en la ficha (D104)', () => {
     expect(await clientes.editar(ana, { nombre: 'Ana P.', precioEspecial20L: null, vaciosPendientes: 0, bloqueado: false }, AHORA)).toEqual({ ok: true, valor: true });
     expect(await clientes.ficha(ana)).toMatchObject({ nombre: 'Ana P.', precioEspecial20L: null, vaciosPendientes: 0, bloqueado: false });
     expect(await clientes.paraBot('56911111111')).toMatchObject({ precioEspecial20L: null, bloqueado: false });
+    // Cambiar una condición sin la migración no deja nada a medias y lo dice (D105).
+    expect(await clientes.editar(ana, { nombre: 'Otro Nombre', precioEspecial20L: 1311 }, AHORA)).toEqual({ ok: false, error: 'falta_migracion' });
+    expect(await clientes.ficha(ana)).toMatchObject({ nombre: 'Ana P.', precioEspecial20L: null });
   });
 });
 

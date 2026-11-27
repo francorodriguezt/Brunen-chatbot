@@ -14,6 +14,7 @@
 
 import type { Alerta } from './alertas';
 import type { BaseDatos } from './almacen';
+import { fechaHoraLocal } from './despacho';
 import { armarReparto } from './reparto';
 import { RepositorioD1 } from './repositorio';
 import { VERSION_DEL_CONSENTIMIENTO } from './seguimiento';
@@ -174,6 +175,24 @@ export async function estadoDelDia(db: BaseDatos, hoy: string, ahoraSegundos: nu
 }
 
 /**
+ * Cierra el aviso "sin señal" cuando la ubicación volvió a llegar (D105): no se acumulan avisos viejos en el panel y
+ * queda dicho a qué hora volvió.
+ */
+async function cerrarSiVolvio(db: BaseDatos, jornadas: readonly JornadaAbierta[], umbrales: UmbralesReparto, ahoraSegundos: number): Promise<void> {
+  const minutos = umbrales.sinSenalMinutos;
+  if (minutos === null) return;
+  for (const jornada of jornadas) {
+    const ultima = jornada.ultimaPosicion;
+    if (ultima === null || ahoraSegundos - ultima >= minutos * 60) continue;
+    const { hora, minuto } = fechaHoraLocal(new Date(ultima * 1000));
+    await db
+      .prepare("UPDATE avisos SET estado = 'resuelto', resuelto_por = 'Sistema', resuelto_en = ?1, resumen = resumen || ?2 WHERE origen LIKE ?3 AND estado = 'abierto'")
+      .bind(ahoraSegundos, ` Volvió la señal a las ${dos(hora)}:${dos(minuto)}.`, `sin-senal:${jornada.id}:%`)
+      .run();
+  }
+}
+
+/**
  * Revisa las dos alertas y guarda las nuevas en el panel. Devuelve cuántos avisos nuevos quedaron. Nunca lanza
  * errores: sin las tablas de seguimiento (antes de la migración 0015) simplemente no avisa.
  */
@@ -184,7 +203,9 @@ export async function vigilarReparto(
   ahoraSegundos: number,
 ): Promise<number> {
   try {
-    const avisos = revisarSinSenal(await jornadasAbiertas(db, local.fecha), umbrales, local, ahoraSegundos);
+    const jornadas = await jornadasAbiertas(db, local.fecha);
+    await cerrarSiVolvio(db, jornadas, umbrales, ahoraSegundos);
+    const avisos = revisarSinSenal(jornadas, umbrales, local, ahoraSegundos);
     if (umbrales.rutaNoIniciada !== null && local.hora * 60 + local.minuto >= umbrales.rutaNoIniciada.hora * 60 + umbrales.rutaNoIniciada.minuto) {
       const aviso = revisarRutaNoIniciada(await estadoDelDia(db, local.fecha, ahoraSegundos), umbrales, local);
       if (aviso) avisos.push(aviso);

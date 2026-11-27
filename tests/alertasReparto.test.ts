@@ -141,6 +141,19 @@ describe('vigilarReparto con la base', () => {
     expect(avisos(db).map((x) => x.origen)).toEqual([expect.stringMatching(/^sin-senal:/), expect.stringMatching(/^sin-senal:/)]);
   });
 
+  it('cuando vuelve la señal, el aviso se cierra solo y dice a qué hora volvió (D105)', async () => {
+    const { db, s } = await base();
+    await s.decidir(7, true, a('08:50'));
+    await s.iniciar(7, HOY, a('09:00'));
+    await s.guardarPosiciones(7, [{ lat: -33.4569, lng: -70.5976, precision: 15, en: a('09:05') }], a('09:05'));
+    await vigilarReparto(db, UMBRALES_POR_DEFECTO, local(9, 30), a('09:30'));
+    await s.guardarPosiciones(7, [{ lat: -33.4569, lng: -70.5976, precision: 15, en: a('09:40') }], a('09:40'));
+    expect(await vigilarReparto(db, UMBRALES_POR_DEFECTO, local(9, 45), a('09:45'))).toBe(0);
+    const [aviso] = db.sql("SELECT estado, resumen FROM avisos WHERE origen LIKE 'sin-senal:%'") as Array<{ estado: string; resumen: string }>;
+    expect(aviso?.estado).toBe('resuelto');
+    expect(aviso?.resumen).toContain('Volvió la señal a las 09:40.');
+  });
+
   it('con la jornada terminada no avisa sin señal ni ruta no iniciada', async () => {
     const { db, s } = await base();
     await s.decidir(7, true, a('08:50'));
