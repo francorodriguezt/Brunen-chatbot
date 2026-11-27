@@ -89,6 +89,14 @@ describe('ruta no iniciada', () => {
   });
 });
 
+describe('ruta no iniciada el sábado (D105)', () => {
+  it('los sábados el reparto termina a las 15:00: después no avisa', () => {
+    const sabado = { fecha: '2026-11-21', entregasPendientes: 2, jornadaIniciada: false, appEnUso: true };
+    expect(revisarRutaNoIniciada(sabado, UMBRALES_POR_DEFECTO, { hora: 14, minuto: 59 })).not.toBeNull();
+    expect(revisarRutaNoIniciada(sabado, UMBRALES_POR_DEFECTO, { hora: 15, minuto: 0 })).toBeNull();
+  });
+});
+
 describe('vigilarReparto con la base', () => {
   function pedido(id: string, telefono: string): PedidoARegistrar {
     return {

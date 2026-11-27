@@ -10,6 +10,7 @@ describe('Avisar al cliente (D99)', () => {
       'Hola Ana, te escribimos de Brunen. Tu pedido de 3 de 20 L para el jueves 19 de noviembre quedó cancelado. Si quieres volver a pedir, escríbenos por aquí.',
     );
     expect(textoDeCancelacion({ nombre: '', ...antes })).toMatch(/^Hola, te escribimos/);
+    expect(textoDeCancelacion({ nombre: 'Ana', bidones: '', fecha: antes.fecha })).toContain('Tu pedido para el jueves 19 de noviembre');
   });
 
   it('el cambio nombra solo lo que el cliente nota', () => {

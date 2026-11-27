@@ -15,7 +15,7 @@ function primerNombre(nombre) {
 
 /** El texto para avisar que se canceló el pedido. No dice el motivo: el motivo es una nota interna. */
 export function textoDeCancelacion({ nombre, bidones, fecha }) {
-  return `Hola${primerNombre(nombre)}, te escribimos de Brunen. Tu pedido de ${bidones} para el ${fecha} quedó cancelado. Si quieres volver a pedir, escríbenos por aquí.`;
+  return `Hola${primerNombre(nombre)}, te escribimos de Brunen. Tu pedido${bidones ? ` de ${bidones}` : ''} para el ${fecha} quedó cancelado. Si quieres volver a pedir, escríbenos por aquí.`;
 }
 
 /**

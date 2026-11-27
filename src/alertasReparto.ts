@@ -14,7 +14,7 @@
 
 import type { Alerta } from './alertas';
 import type { BaseDatos } from './almacen';
-import { fechaHoraLocal } from './despacho';
+import { diaSemana, fechaHoraLocal } from './despacho';
 import { armarReparto } from './reparto';
 import { RepositorioD1 } from './repositorio';
 import { VERSION_DEL_CONSENTIMIENTO } from './seguimiento';
@@ -121,7 +121,8 @@ export function revisarRutaNoIniciada(dia: EstadoDelDia, umbrales: UmbralesRepar
   const desde = umbrales.rutaNoIniciada;
   if (desde === null || !dia.appEnUso || dia.jornadaIniciada || dia.entregasPendientes === 0) return null;
   const minutosAhora = local.hora * 60 + local.minuto;
-  if (minutosAhora < desde.hora * 60 + desde.minuto || local.hora >= RUTA_NO_INICIADA_HASTA) return null;
+  const hasta = diaSemana(dia.fecha) === 6 ? 15 : RUTA_NO_INICIADA_HASTA;
+  if (minutosAhora < desde.hora * 60 + desde.minuto || local.hora >= hasta) return null;
   const entregas = dia.entregasPendientes === 1 ? 'una entrega' : `${dia.entregasPendientes} entregas`;
   return {
     alerta: {
@@ -206,7 +207,7 @@ export async function vigilarReparto(
     const jornadas = await jornadasAbiertas(db, local.fecha);
     await cerrarSiVolvio(db, jornadas, umbrales, ahoraSegundos);
     const avisos = revisarSinSenal(jornadas, umbrales, local, ahoraSegundos);
-    if (umbrales.rutaNoIniciada !== null && local.hora * 60 + local.minuto >= umbrales.rutaNoIniciada.hora * 60 + umbrales.rutaNoIniciada.minuto) {
+    if (umbrales.rutaNoIniciada !== null && local.hora < RUTA_NO_INICIADA_HASTA && local.hora * 60 + local.minuto >= umbrales.rutaNoIniciada.hora * 60 + umbrales.rutaNoIniciada.minuto) {
       const aviso = revisarRutaNoIniciada(await estadoDelDia(db, local.fecha, ahoraSegundos), umbrales, local);
       if (aviso) avisos.push(aviso);
     }

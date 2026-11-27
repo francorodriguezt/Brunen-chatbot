@@ -46,6 +46,8 @@ export function sinPreguntaDeLlegada(texto: string): string {
 }
 
 export function preguntaPorLlegada(texto: string): boolean {
+  // "Sí, ya pasaron, gracias" cuenta que ya le llegó (D105): sin "?" y con "gracias" no es una pregunta.
+  if (!texto.includes('?') && /gracias/i.test(texto) && /ya pas|pasaron ya/.test(preparar(texto))) return false;
   const t = preparar(texto).replace(/[?¿!.,]/g, ' ').replace(/\s+/g, ' ');
   return PREGUNTA_LLEGADA.test(t) && !NO_LLEGO.test(t);
 }

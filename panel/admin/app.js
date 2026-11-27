@@ -604,7 +604,7 @@ const versionDe = (pedido) => (Number.isInteger(pedido.actualizadoEn) ? { actual
 function datosParaAvisar(pedido) {
   return {
     nombre: pedido.nombre,
-    bidones: bidonesEnCorto(pedido),
+    bidones: pedido.lineas?.length ? bidonesEnCorto(pedido) : '',
     fecha: fechaLarga(pedido.fechaConfirmada ?? pedido.fechaEntrega),
     total: pedido.total === null ? '' : pesos.format(pedido.total),
   };

@@ -613,7 +613,7 @@ export class RepositorioD1 {
    */
   async idsSinPagar(telefono: string, ahoraSegundos: number, limite = 5): Promise<string[]> {
     const filas = await this.filas(
-      `SELECT id FROM pedidos WHERE telefono = ?1 AND estado_pago != 'pagado' AND estado != 'Cancelado' AND creado_en >= ?2
+      `SELECT id FROM pedidos WHERE telefono = ?1 AND estado_pago != 'pagado' AND forma_pago != 'efectivo' AND estado != 'Cancelado' AND creado_en >= ?2
        ORDER BY COALESCE(fecha_confirmada, fecha_entrega), creado_en, rowid LIMIT ${Math.min(Math.max(Math.trunc(limite), 1), 20)}`,
       telefono,
       ahoraSegundos - 90 * 86400,
