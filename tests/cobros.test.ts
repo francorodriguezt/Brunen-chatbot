@@ -3,7 +3,9 @@ import { RepositorioCobros, estadoDeCobro, montoValido, saldoDe } from '../src/c
 import { RepositorioEntregas } from '../src/entregas';
 import { RepositorioClientes } from '../src/fichas';
 import type { PedidoARegistrar } from '../src/pedidos';
+import { manejarApi } from '../src/panel/api';
 import { manejarCobros } from '../src/panel/cobros-api';
+import { saldoPorCobrar } from '../src/reparto';
 import { RepositorioD1 } from '../src/repositorio';
 import { crearBaseSqlite } from './ayudas';
 
@@ -245,5 +247,22 @@ describe('la API de cobros', () => {
     const r = await pedirApi(ctx, '/api/cobros/rendicion', { fecha: HOY, bencina: 0, entregado: 9900 });
     expect(r.estado).toBe(200);
     expect(r.datos.rendicion).toMatchObject({ efectivoCobrado: 9900, porVerificar: 0, guardada: { diferencia: 0 } });
+  });
+});
+
+describe('cambiar los bidones de un pedido ya pagado', () => {
+  it('vuelve a faltar la diferencia: no queda como pagado y el repartidor la cobra', async () => {
+    const { repositorio, cobros } = await base(pedido(A));
+    await cobros.registrar(A, { monto: 9900, forma: 'transferencia', verificado: true }, por());
+    const antes = await repositorio.obtenerPedido(A);
+    const url = new URL(`https://panel.example/api/pedidos/${A}/editar`);
+    const cuerpo = { actualizadoEn: antes?.actualizadoEn, lineas: [{ tipo: '20L', cantidad: 4, precioUnitario: 3300 }] };
+    const request = new Request(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-panel': '1' }, body: JSON.stringify(cuerpo) });
+    const respuesta = await manejarApi(request, url, { repositorio, cobros, correo: quien, ahoraSegundos: AHORA });
+    expect(respuesta?.status).toBe(200);
+    expect(((await respuesta?.json()) as { pedido: unknown }).pedido).toMatchObject({ total: 13200, estadoPago: 'abonado' });
+    const despues = await repositorio.obtenerPedido(A);
+    expect(despues).toMatchObject({ total: 13200, estadoPago: 'abonado', montoPagado: 9900 });
+    expect(saldoPorCobrar(despues!)).toBe(3300);
   });
 });

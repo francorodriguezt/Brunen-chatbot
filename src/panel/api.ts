@@ -385,6 +385,17 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
             console.error('No se pudo anotar la dirección en la ficha del cliente:', falla instanceof Error ? falla.message : falla);
           }
         }
+        // Cambió el total: el estado de pago sale otra vez de sus pagos (D107). Sin esto, un pedido pagado al que se le
+        // agrega un bidón seguiría "pagado" y la diferencia no se cobraría.
+        if (editado.ok && ctx.cobros && cambios.lineas !== undefined) {
+          try {
+            await ctx.cobros.recalcular(id);
+            const fresco = await repositorio.obtenerPedido(id);
+            if (fresco) return respuestaDeRepositorio({ ok: true, valor: fresco }, 'pedido');
+          } catch (falla) {
+            console.error('No se pudo recalcular el estado de pago:', falla instanceof Error ? falla.message : falla);
+          }
+        }
         return respuestaDeRepositorio(editado, 'pedido');
       }
     }
