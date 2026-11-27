@@ -120,10 +120,15 @@ export async function buscarCliente(env: EntornoHojas, telefono: string, ahoraSe
 /** El tipo de la ficha (como lo escribe la oficina en el panel) en el tipo con que cotiza el bot. */
 const TIPO_DE_FICHA: Readonly<Record<string, TipoCliente>> = { hogar: 'normal', minimarket: 'mayorista', empresa: 'empresa' };
 
-/** Si la ficha dice algo sobre cómo atender al cliente: un tipo, un precio especial o un bloqueo. */
+/**
+ * Si la ficha dice algo que alguien decidió sobre cómo atender al cliente: minimarket, empresa, un precio especial o un
+ * bloqueo. "hogar" no cuenta: se llena solo desde los pedidos y el historial, y no debe tapar lo de la hoja (D105).
+ */
 function fichaTieneCondiciones(ficha: FichaParaBot): boolean {
-  return ficha.tipoCliente !== '' || ficha.precioEspecial20L !== null || ficha.bloqueado;
+  return ficha.tipoCliente === 'minimarket' || ficha.tipoCliente === 'empresa' || ficha.precioEspecial20L !== null || ficha.bloqueado;
 }
+
+const SIN_HOJA = 'No se pudo leer la hoja CLIENTES: revisar si tiene precio especial, si es mayorista o empresa, o si está bloqueado, antes de confirmar.';
 
 function describir(tipo: TipoCliente, precio: number | null): string {
   if (tipo === 'especial') return precio === null ? '"especial" sin precio' : `precio especial de $${precio.toLocaleString('es-CL')}`;
@@ -133,15 +138,23 @@ function describir(tipo: TipoCliente, precio: number | null): string {
 /**
  * Clientes en un solo lugar (D104): junta lo que dice la ficha de la base con lo que dice la hoja CLIENTES.
  *
- *  - La ficha manda cuando tiene condiciones (un tipo, un precio especial o un bloqueo). Todo minimarket es mayorista y un
- *    precio especial vale aunque sea minimarket (Franco, 2026-11-27): con precio especial, el bot cotiza como "especial".
+ *  - La ficha manda cuando tiene condiciones (minimarket, empresa, un precio especial o un bloqueo). Todo minimarket es
+ *    mayorista y un precio especial vale aunque sea minimarket (Franco, 2026-11-27): con precio especial, "especial".
+ *  - Sin condiciones ("hogar" o vacía), manda la hoja; la ficha solo le suma los vacíos que debe (D105).
+ *  - Con la hoja caída, la ficha sirve para el pedido, pero queda un aviso: no se promete precio (D57, D105).
  *  - Si la hoja dice otra cosa, se usa la ficha y queda un aviso para que una persona revise (y corrija o borre la fila).
  *    Una fila "normal" o con el tipo vacío es lo que vale por defecto: no es un desacuerdo.
  *  - Sin la hoja, o con un teléfono que no está en ella, la ficha basta si tiene dirección: ya no hace falta la fila.
- *  - Una ficha sin condiciones no cambia nada: la hoja sigue siendo el respaldo, como antes.
  */
 export function combinarConFicha(hoja: BusquedaCliente, ficha: FichaParaBot | null): BusquedaCliente {
-  if (!ficha || !fichaTieneCondiciones(ficha)) return hoja;
+  if (!ficha) return hoja;
+  if (!fichaTieneCondiciones(ficha)) {
+    if (hoja.estado === 'encontrado') {
+      return ficha.vaciosPendientes > 0 ? { estado: 'encontrado', cliente: { ...hoja.cliente, envasesPendientes: ficha.vaciosPendientes } } : hoja;
+    }
+    // Sin fila en la hoja, una ficha "hogar" con dirección sigue sirviendo (precio normal); una vacía no dice nada.
+    if (ficha.tipoCliente !== 'hogar') return hoja;
+  }
   const tipoFicha: TipoCliente = ficha.precioEspecial20L !== null ? 'especial' : (TIPO_DE_FICHA[ficha.tipoCliente] ?? 'normal');
 
   if (hoja.estado === 'encontrado') {
@@ -184,7 +197,7 @@ export function combinarConFicha(hoja: BusquedaCliente, ficha: FichaParaBot | nu
       credito: '',
       notas: '',
       estado: ficha.bloqueado ? 'bloqueado' : 'activo',
-      avisos: [],
+      avisos: hoja.estado === 'no_disponible' ? [SIN_HOJA] : [],
     },
   };
 }

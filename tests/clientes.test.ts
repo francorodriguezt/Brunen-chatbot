@@ -196,8 +196,24 @@ describe('clientes en un solo lugar: la ficha y la hoja (D104)', () => {
     expect(combinarConFicha({ estado: 'nuevo' }, ficha({ tipoCliente: 'hogar' }))).toMatchObject({ cliente: { tipo: 'normal' } });
   });
 
-  it('con la hoja caída, la ficha alcanza para cotizar', () => {
-    expect(combinarConFicha({ estado: 'no_disponible' }, ficha({ tipoCliente: 'empresa' }))).toMatchObject({ estado: 'encontrado', cliente: { tipo: 'empresa' } });
+  it('con la hoja caída, la ficha sirve para el pedido, pero el precio queda para revisión (D105)', () => {
+    for (const f of [ficha({ tipoCliente: 'empresa' }), ficha({ tipoCliente: 'hogar' }), ficha({ tipoCliente: 'minimarket' })]) {
+      const r = combinarConFicha({ estado: 'no_disponible' }, f);
+      expect(r).toMatchObject({ estado: 'encontrado' });
+      if (r.estado !== 'encontrado') throw new Error('debía usar la ficha');
+      expect(r.cliente.avisos).toEqual([expect.stringContaining('No se pudo leer la hoja CLIENTES')]);
+    }
+  });
+
+  it('un "hogar" que la ficha trae solo no le gana a la hoja: el precio especial y la empresa de la hoja siguen (D105)', () => {
+    // "hogar" se llena solo desde los pedidos y el historial: no es una condición que alguien haya puesto.
+    const especial = combinarConFicha(deHoja('56933333333'), ficha({ tipoCliente: 'hogar' }));
+    expect(especial).toMatchObject({ cliente: { nombre: 'Casa Especial', tipo: 'especial', precioEspecial20L: 3500, avisos: [] } });
+    const empresa = parsearClientes([ENCABEZADO, ['56977777777', 'Oficina Prueba', 'Calle 7', 'Macul', 'empresa']]).get('56977777777');
+    if (!empresa) throw new Error('debía leerla');
+    expect(combinarConFicha({ estado: 'encontrado', cliente: empresa }, ficha({ tipoCliente: 'hogar' }))).toMatchObject({ cliente: { tipo: 'empresa', avisos: [] } });
+    // Los vacíos que debe según la ficha sí pasan al repartidor.
+    expect(combinarConFicha(deHoja('56911111111'), ficha({ tipoCliente: 'hogar', vaciosPendientes: 5 }))).toMatchObject({ cliente: { envasesPendientes: 5 } });
   });
 
   it('sin dirección en la ficha queda como antes, salvo que esté bloqueado', () => {
