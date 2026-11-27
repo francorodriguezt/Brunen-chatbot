@@ -30,7 +30,7 @@ export interface ContextoClientes {
 
 const MENSAJES = {
   no_existe: [404, 'Ese cliente ya no existe.'],
-  datos_invalidos: [422, 'Revisa el nombre, el tipo de cliente y las notas.'],
+  datos_invalidos: [422, 'Revisa el nombre, el tipo de cliente, las notas, el precio especial ($100 a $20.000) y los vacíos (0 a 500).'],
   telefono_invalido: [422, 'El teléfono no es válido. Escríbelo con el 9 adelante, por ejemplo 9 1234 5678.'],
   telefono_de_otro: [409, 'Ese teléfono ya es de otro cliente. Si son el mismo, usa "Unir con otro cliente".'],
   mismo_cliente: [422, 'Es el mismo cliente.'],
@@ -127,7 +127,18 @@ export async function manejarClientes(request: Request, url: URL, ctx: ContextoC
   }
 
   if (accion[2] === 'editar') {
-    const r = await clientes.editar(id, { nombre: cuerpo.nombre, tipoCliente: cuerpo.tipoCliente, notas: cuerpo.notas }, ahoraSegundos);
+    const r = await clientes.editar(
+      id,
+      {
+        nombre: cuerpo.nombre,
+        tipoCliente: cuerpo.tipoCliente,
+        notas: cuerpo.notas,
+        precioEspecial20L: cuerpo.precioEspecial20L,
+        vaciosPendientes: cuerpo.vaciosPendientes,
+        bloqueado: cuerpo.bloqueado,
+      },
+      ahoraSegundos,
+    );
     return r.ok ? json({ ok: true }) : errorDeCliente(r.error);
   }
   if (accion[2] === 'telefonos') {

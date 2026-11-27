@@ -1,6 +1,6 @@
 # Conocimiento del proyecto — Chatbot Brunen SpA
 Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
-Última actualización: 2026-11-26
+Última actualización: 2026-11-27
 
 > Datos sensibles (cuenta bancaria, teléfono de Constanza, teléfonos de clientes) NO se guardan en este repo:
 > viven en la hoja CONFIGURACION / CLIENTES de la planilla. Aquí solo se indica dónde están.
@@ -45,7 +45,8 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 
 ## 4. Clientes con condiciones especiales
 - Dos clientes con precio especial por bidón de 20 L ($3.500 y $3.000). Teléfonos PENDIENTES (se cargan en CLIENTES, no aquí).
-- Mayoristas (minimarkets): lista PENDIENTE.
+- Mayoristas: todo minimarket paga precio mayorista (Franco, 2026-11-27). Un cliente minimarket tiene un precio propio de $1.311 por bidón (no se sabe por qué); se carga como precio especial en su ficha (D104).
+- Las condiciones de cada cliente (tipo, precio especial, vacíos que debe, bloqueo) se cambian en la ficha del panel; la hoja CLIENTES queda de respaldo (D104).
 - ~20 empresas con plan mensual: condiciones PENDIENTES; el bot registra y escala.
 - Casi todos los clientes piden la misma cantidad; varían los días.
 - Algunos clientes piden aviso de hora aproximada de entrega.
@@ -170,7 +171,7 @@ Confirmado:
 
 Contradicciones y huecos (por resolver antes de construir):
 - Carga inicial de 10 L: el cuestionario dice $4.000; el dueño dijo $4.500 para 12 L y 10 L (2026-10-29), y así está en `src/precios.ts`. No se cambia hasta confirmar.
-- Tipos de cliente: el Excel usa hogar, minimarket y empresa; el sistema usa normal, mayorista, empresa y especial. Hogar sería normal y minimarket sería mayorista (a confirmar). "Especial" es una condición de precio, no un tipo.
+- Tipos de cliente: el Excel usa hogar, minimarket y empresa; el sistema usa normal, mayorista, empresa y especial. Hogar es normal y minimarket es mayorista (confirmado por Franco el 2026-11-27, D104). "Especial" es una condición de precio, no un tipo.
 - La tabla de pedidos no guarda tipo de pago, estado de pago ni si pide factura, que el Excel sí tiene.
 - Dirección de inicio y fin de la ruta: el negocio figura en Pudahuel y el cuestionario habla de otra planta.
 - Rastreo (2026-11-11): el repartidor usa hoy la aplicación de la plataforma de rutas y ahí se le ve en vivo. Franco quiere dejar esa plataforma (D49): el seguimiento propio será "en la medida que se pueda" y la plataforma no se cancela hasta haber probado el reemplazo.

@@ -37,10 +37,32 @@ export interface ResumenDeCliente {
   ultimoPedido: string | null;
 }
 
-export interface FichaDeCliente extends ResumenDeCliente {
+export interface FichaDeCliente extends ResumenDeCliente, CondicionesDeFicha {
   notas: string;
   direcciones: DireccionDeCliente[];
   creadoEn: number;
+}
+
+/**
+ * Lo que decide el precio y la atención del bot (D104): antes vivía solo en la hoja CLIENTES. Antes de la migración 0018
+ * las columnas no existen y todo vale por defecto (sin precio especial, sin vacíos, no bloqueado).
+ */
+export interface CondicionesDeFicha {
+  /** Pesos por bidón de 20 L, o null. Vale para cualquier tipo de cliente (un minimarket con precio propio). */
+  precioEspecial20L: number | null;
+  /** Vacíos que debe de antes (regla 5). */
+  vaciosPendientes: number;
+  /** Lo atiende una persona y el bot no anota sus pedidos (regla 14). */
+  bloqueado: boolean;
+}
+
+/** Lo que el bot lee de la ficha de un teléfono: sus condiciones, su tipo y su dirección vigente. */
+export interface FichaParaBot extends CondicionesDeFicha {
+  id: number;
+  nombre: string;
+  tipoCliente: TipoDeCliente | '';
+  direccion: string;
+  comuna: string;
 }
 
 export type ErrorDeCliente = 'no_existe' | 'datos_invalidos' | 'telefono_invalido' | 'telefono_de_otro' | 'mismo_cliente' | 'pedidos_vivos';
@@ -109,6 +131,23 @@ function mediana(valores: number[]): number {
 
 const texto = (v: unknown): string => (typeof v === 'string' ? v : '');
 const numero = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0) || 0);
+
+/** Las columnas de la migración 0018 en una fila de `clientes` leída con `SELECT *` (sin la migración, no vienen). */
+function aCondiciones(f: Record<string, unknown> | undefined): CondicionesDeFicha {
+  const precio = f?.precio_especial_20l;
+  return {
+    precioEspecial20L: precio === null || precio === undefined || precio === '' ? null : numero(precio) || null,
+    vaciosPendientes: Math.max(0, numero(f?.vacios_pendientes)),
+    bloqueado: numero(f?.bloqueado) === 1,
+  };
+}
+
+/** Un precio por bidón razonable: entero, entre $100 y $20.000. Vacío o null lo quita. */
+function precioValido(v: unknown): number | null | undefined {
+  if (v === null || v === '') return null;
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v.replace(/[$.\s]/g, '')) : NaN;
+  return Number.isInteger(n) && n >= 100 && n <= 20_000 ? n : undefined;
+}
 
 function aDireccion(f: Record<string, unknown>): DireccionDeCliente {
   return {
@@ -311,12 +350,40 @@ export class RepositorioClientes {
   async ficha(id: number): Promise<FichaDeCliente | null> {
     const [fila] = await this.filas(`${SQL_RESUMEN} WHERE c.id = ?1`, id);
     if (!fila) return null;
-    const [extra] = await this.filas('SELECT notas, creado_en FROM clientes WHERE id = ?1', id);
+    // `SELECT *`: así se lee igual antes y después de la migración 0018 (D104).
+    const [extra] = await this.filas('SELECT * FROM clientes WHERE id = ?1', id);
     const direcciones = await this.filas('SELECT * FROM direcciones_cliente WHERE cliente_id = ?1 ORDER BY ultimo_uso DESC, id DESC', id);
-    return { ...aResumen(fila), notas: texto(extra?.notas), creadoEn: numero(extra?.creado_en), direcciones: direcciones.map(aDireccion) };
+    return { ...aResumen(fila), ...aCondiciones(extra), notas: texto(extra?.notas), creadoEn: numero(extra?.creado_en), direcciones: direcciones.map(aDireccion) };
   }
 
-  async editar(id: number, datos: { nombre?: unknown; tipoCliente?: unknown; notas?: unknown }, ahora: number): Promise<ResultadoCliente<true>> {
+  /**
+   * La ficha de un teléfono para el bot (D104), en una sola consulta: su tipo, sus condiciones y su dirección vigente.
+   * null si el teléfono no es de ninguna ficha.
+   */
+  async paraBot(telefono: string): Promise<FichaParaBot | null> {
+    const [f] = await this.filas(
+      `SELECT c.*, d.direccion AS d_direccion, d.comuna AS d_comuna FROM telefonos_cliente t
+       JOIN clientes c ON c.id = t.cliente_id
+       LEFT JOIN direcciones_cliente d ON d.id = (SELECT x.id FROM direcciones_cliente x WHERE x.cliente_id = c.id ORDER BY x.ultimo_uso DESC, x.id DESC LIMIT 1)
+       WHERE t.telefono = ?1`,
+      telefono,
+    );
+    if (!f) return null;
+    return {
+      id: numero(f.id),
+      nombre: texto(f.nombre),
+      tipoCliente: texto(f.tipo_cliente) as TipoDeCliente | '',
+      direccion: texto(f.d_direccion),
+      comuna: texto(f.d_comuna),
+      ...aCondiciones(f),
+    };
+  }
+
+  async editar(
+    id: number,
+    datos: { nombre?: unknown; tipoCliente?: unknown; notas?: unknown; precioEspecial20L?: unknown; vaciosPendientes?: unknown; bloqueado?: unknown },
+    ahora: number,
+  ): Promise<ResultadoCliente<true>> {
     const actual = await this.ficha(id);
     if (!actual) return { ok: false, error: 'no_existe' };
     const nombre = datos.nombre === undefined ? actual.nombre : typeof datos.nombre === 'string' ? datos.nombre.trim().replace(/\s+/g, ' ') : null;
@@ -324,7 +391,17 @@ export class RepositorioClientes {
     const notas = datos.notas === undefined ? actual.notas : typeof datos.notas === 'string' ? datos.notas.trim() : null;
     const tipoOk = tipo === '' || (typeof tipo === 'string' && (OPCIONES_DE_PEDIDO.tipoCliente as readonly string[]).includes(tipo));
     if (nombre === null || nombre.length > 80 || notas === null || notas.length > 500 || !tipoOk) return { ok: false, error: 'datos_invalidos' };
+
+    // Las condiciones (D104) solo se escriben si cambian: así se sigue guardando el nombre en una base sin la migración 0018.
+    const precio = datos.precioEspecial20L === undefined ? actual.precioEspecial20L : precioValido(datos.precioEspecial20L);
+    const vacios = datos.vaciosPendientes === undefined ? actual.vaciosPendientes : datos.vaciosPendientes === '' ? 0 : Number(datos.vaciosPendientes);
+    const bloqueado = datos.bloqueado === undefined ? actual.bloqueado : datos.bloqueado;
+    if (precio === undefined || !Number.isInteger(vacios) || vacios < 0 || vacios > 500 || typeof bloqueado !== 'boolean') return { ok: false, error: 'datos_invalidos' };
+
     await this.cambios('UPDATE clientes SET nombre = ?2, tipo_cliente = ?3, notas = ?4, actualizado_en = ?5 WHERE id = ?1', id, nombre, tipo, notas, ahora);
+    if (precio !== actual.precioEspecial20L || vacios !== actual.vaciosPendientes || bloqueado !== actual.bloqueado) {
+      await this.cambios('UPDATE clientes SET precio_especial_20l = ?2, vacios_pendientes = ?3, bloqueado = ?4 WHERE id = ?1', id, precio, vacios, bloqueado ? 1 : 0);
+    }
     return { ok: true, valor: true };
   }
 
@@ -347,7 +424,8 @@ export class RepositorioClientes {
 
   /**
    * Junta dos fichas que son el mismo cliente: los teléfonos, las direcciones y los pedidos de `origen` pasan a
-   * `destino`, y `origen` se borra. Las direcciones repetidas se suman. El nombre y las notas de `destino` mandan.
+   * `destino`, y `origen` se borra. Las direcciones repetidas se suman. El nombre, las notas y el precio especial de
+   * `destino` mandan; los vacíos pendientes se suman.
    */
   async unir(destino: number, origen: number, ahora: number): Promise<ResultadoCliente<true>> {
     if (destino === origen) return { ok: false, error: 'mismo_cliente' };
@@ -373,6 +451,14 @@ export class RepositorioClientes {
        WHERE id = ?1`,
       destino, b.nombre, b.tipoCliente, b.notas, b.creadoEn, ahora,
     );
+    // Condiciones (D104): el precio especial de `destino` manda (si no tiene, toma el de `origen`), los vacíos se suman y
+    // basta con que una de las dos esté bloqueada. Solo si alguna tiene algo, para no tocar una base sin la migración 0018.
+    if (b.precioEspecial20L !== null || b.vaciosPendientes > 0 || b.bloqueado) {
+      await this.cambios(
+        'UPDATE clientes SET precio_especial_20l = COALESCE(precio_especial_20l, ?2), vacios_pendientes = vacios_pendientes + ?3, bloqueado = MAX(bloqueado, ?4) WHERE id = ?1',
+        destino, b.precioEspecial20L, b.vaciosPendientes, b.bloqueado ? 1 : 0,
+      );
+    }
     await this.cambios('DELETE FROM clientes WHERE id = ?1', origen);
     return { ok: true, valor: true };
   }

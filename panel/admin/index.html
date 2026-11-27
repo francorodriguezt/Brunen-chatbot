@@ -195,6 +195,10 @@
       <div class="campos">
         <label>Nombre <input type="text" name="nombre" maxlength="80" autocomplete="off"></label>
         <label>Tipo de cliente <select name="tipoCliente"></select></label>
+        <label>Precio especial por bidón de 20 L <input type="text" name="precioEspecial20L" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="Sin precio especial"></label>
+        <label>Vacíos que debe <input type="number" name="vaciosPendientes" min="0" max="500" step="1" inputmode="numeric"></label>
+        <label class="ancho casilla"><input type="checkbox" name="bloqueado"> Bloqueado: el bot no anota sus pedidos y lo atiende una persona</label>
+        <p class="ancho pista">El bot usa esta ficha para el precio: minimarket paga mayorista y, si tiene precio especial, ese precio. La hoja CLIENTES queda solo de respaldo.</p>
         <label class="ancho">Notas <textarea name="notas" rows="2" maxlength="500"></textarea></label>
       </div>
       <div id="ficha-cliente"></div>

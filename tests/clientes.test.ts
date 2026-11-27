@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buscarCliente, parsearClientes } from '../src/clientes';
+import { buscarCliente, buscarClienteConFicha, combinarConFicha, parsearClientes, type BusquedaCliente } from '../src/clientes';
+import type { FichaParaBot } from '../src/fichas';
 import { olvidarTokens } from '../src/google';
 import { olvidarHojas } from '../src/hojas';
+import { cotizarPedido } from '../src/precios';
 import { normalizarTelefono } from '../src/whatsapp';
 import { entornoGoogle, lecturasDe, stubGoogle } from './ayudas';
 
@@ -154,5 +156,85 @@ describe('buscarCliente', () => {
   it('un teléfono que no se entiende es nuevo (no rompe)', async () => {
     stubGoogle({ CLIENTES: HOJA });
     expect(await buscarCliente(await entornoGoogle(), 'no-es-telefono', 1000)).toEqual({ estado: 'nuevo' });
+  });
+});
+
+describe('clientes en un solo lugar: la ficha y la hoja (D104)', () => {
+  // Todo ficticio.
+  const ficha = (cambios: Partial<FichaParaBot> = {}): FichaParaBot => ({
+    id: 1,
+    nombre: 'Local Prueba',
+    tipoCliente: '',
+    direccion: 'Calle Uno 1',
+    comuna: 'Ñuñoa',
+    precioEspecial20L: null,
+    vaciosPendientes: 0,
+    bloqueado: false,
+    ...cambios,
+  });
+  const deHoja = (telefono: string): BusquedaCliente => {
+    const cliente = parsearClientes(HOJA).get(telefono);
+    return cliente ? { estado: 'encontrado', cliente } : { estado: 'nuevo' };
+  };
+  const cuatro = [{ tipo: '20L' as const, cantidad: 4 }];
+
+  it('una ficha sin condiciones no cambia lo de la hoja', () => {
+    expect(combinarConFicha(deHoja('56911111111'), ficha())).toEqual(deHoja('56911111111'));
+    expect(combinarConFicha({ estado: 'nuevo' }, ficha())).toEqual({ estado: 'nuevo' });
+    expect(combinarConFicha({ estado: 'no_disponible' }, null)).toEqual({ estado: 'no_disponible' });
+  });
+
+  it('minimarket es mayorista y un precio especial vale aunque sea minimarket', () => {
+    const mayorista = combinarConFicha({ estado: 'nuevo' }, ficha({ tipoCliente: 'minimarket' }));
+    expect(mayorista).toMatchObject({ estado: 'encontrado', cliente: { tipo: 'mayorista', direccion: 'Calle Uno 1', comuna: 'Ñuñoa', avisos: [] } });
+    const especial = combinarConFicha({ estado: 'nuevo' }, ficha({ tipoCliente: 'minimarket', precioEspecial20L: 1311 }));
+    expect(especial).toMatchObject({ estado: 'encontrado', cliente: { tipo: 'especial', precioEspecial20L: 1311 } });
+    if (especial.estado !== 'encontrado') throw new Error('debía encontrarlo');
+    expect(cotizarPedido(cuatro, especial.cliente).lineas[0]?.precioUnitario).toBe(1311);
+    if (mayorista.estado !== 'encontrado') throw new Error('debía encontrarlo');
+    expect(cotizarPedido(cuatro, mayorista.cliente).lineas[0]?.precioUnitario).toBe(1250);
+    expect(combinarConFicha({ estado: 'nuevo' }, ficha({ tipoCliente: 'hogar' }))).toMatchObject({ cliente: { tipo: 'normal' } });
+  });
+
+  it('con la hoja caída, la ficha alcanza para cotizar', () => {
+    expect(combinarConFicha({ estado: 'no_disponible' }, ficha({ tipoCliente: 'empresa' }))).toMatchObject({ estado: 'encontrado', cliente: { tipo: 'empresa' } });
+  });
+
+  it('sin dirección en la ficha queda como antes, salvo que esté bloqueado', () => {
+    expect(combinarConFicha({ estado: 'nuevo' }, ficha({ tipoCliente: 'minimarket', direccion: '' }))).toEqual({ estado: 'nuevo' });
+    expect(combinarConFicha({ estado: 'nuevo' }, ficha({ bloqueado: true, direccion: '' }))).toMatchObject({ estado: 'encontrado', cliente: { estado: 'bloqueado' } });
+  });
+
+  it('si la hoja dice otra cosa, manda la ficha y queda un aviso; una fila normal o sin tipo no es un desacuerdo', () => {
+    // La hoja dice mayorista y la ficha, precio especial.
+    const r = combinarConFicha(deHoja('56922222222'), ficha({ tipoCliente: 'minimarket', precioEspecial20L: 1311 }));
+    expect(r).toMatchObject({ estado: 'encontrado', cliente: { nombre: 'Bodega Demo', tipo: 'especial', precioEspecial20L: 1311 } });
+    if (r.estado !== 'encontrado') throw new Error('debía encontrarlo');
+    expect(r.cliente.avisos).toEqual([expect.stringContaining('se usó la ficha')]);
+    // "normal" es lo que vale por defecto: no es un desacuerdo, y los vacíos de la hoja quedan si la ficha no tiene.
+    const ana = combinarConFicha(deHoja('56911111111'), ficha({ tipoCliente: 'minimarket' }));
+    expect(ana).toMatchObject({ cliente: { tipo: 'mayorista', envasesPendientes: 2, avisos: [] } });
+    // Una fila con el tipo vacío no dice nada.
+    const sinTipo = parsearClientes([ENCABEZADO, ['56966666666', 'Sin Tipo', 'Calle 3', 'Macul']]).get('56966666666');
+    if (!sinTipo) throw new Error('debía leerla');
+    const r2 = combinarConFicha({ estado: 'encontrado', cliente: sinTipo }, ficha({ tipoCliente: 'minimarket', vaciosPendientes: 3 }));
+    expect(r2).toMatchObject({ cliente: { tipo: 'mayorista', envasesPendientes: 3, avisos: [] } });
+  });
+
+  it('el bloqueo de la ficha o de la hoja vale', () => {
+    expect(combinarConFicha(deHoja('56911111111'), ficha({ bloqueado: true }))).toMatchObject({ cliente: { estado: 'bloqueado' } });
+    expect(combinarConFicha(deHoja('56944444444'), ficha({ tipoCliente: 'hogar' }))).toMatchObject({ cliente: { estado: 'bloqueado' } });
+  });
+
+  it('si la ficha no se puede leer, queda lo de la hoja; la ficha armada lleva el teléfono del mensaje', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    stubGoogle({ CLIENTES: HOJA });
+    const env = await entornoGoogle();
+    const caida = async (): Promise<FichaParaBot | null> => {
+      throw new Error('D1 caída');
+    };
+    expect(await buscarClienteConFicha(env, caida, '56911111111')).toMatchObject({ estado: 'encontrado', cliente: { nombre: 'Ana Prueba', tipo: 'normal' } });
+    const r = await buscarClienteConFicha(env, async () => ficha({ tipoCliente: 'minimarket' }), '+56 9 7777 7777');
+    expect(r).toMatchObject({ estado: 'encontrado', cliente: { telefono: '56977777777', tipo: 'mayorista' } });
   });
 });

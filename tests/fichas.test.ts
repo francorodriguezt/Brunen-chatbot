@@ -155,6 +155,67 @@ describe('ficha, edición y teléfonos', () => {
   });
 });
 
+describe('condiciones del cliente en la ficha (D104)', () => {
+  async function conAna() {
+    const b = await base();
+    await b.pedidos.guardarPedido(pedido('P1'), AHORA);
+    await vincularTodo(b.clientes);
+    return { ...b, ana: (await b.clientes.clienteDeTelefono('56911111111')) as number };
+  }
+
+  it('se guardan el precio especial, los vacíos y el bloqueo, y el bot los lee con la dirección vigente', async () => {
+    const { clientes, ana } = await conAna();
+    expect(await clientes.ficha(ana)).toMatchObject({ precioEspecial20L: null, vaciosPendientes: 0, bloqueado: false });
+    expect(await clientes.editar(ana, { tipoCliente: 'minimarket', precioEspecial20L: '$1.311', vaciosPendientes: 2, bloqueado: false }, AHORA)).toEqual({ ok: true, valor: true });
+    expect(await clientes.ficha(ana)).toMatchObject({ tipoCliente: 'minimarket', precioEspecial20L: 1311, vaciosPendientes: 2, bloqueado: false });
+    expect(await clientes.paraBot('56911111111')).toEqual({
+      id: ana,
+      nombre: 'Ana Prueba',
+      tipoCliente: 'minimarket',
+      direccion: 'Calle Falsa 123',
+      comuna: 'Ñuñoa',
+      precioEspecial20L: 1311,
+      vaciosPendientes: 2,
+      bloqueado: false,
+    });
+    expect(await clientes.paraBot('56900000000')).toBeNull();
+    // Vacío quita el precio especial.
+    await clientes.editar(ana, { precioEspecial20L: '', bloqueado: true }, AHORA);
+    expect(await clientes.paraBot('56911111111')).toMatchObject({ precioEspecial20L: null, bloqueado: true });
+  });
+
+  it('un precio o unos vacíos fuera de rango se rechazan', async () => {
+    const { clientes, ana } = await conAna();
+    for (const malo of [{ precioEspecial20L: 50 }, { precioEspecial20L: 'mil' }, { vaciosPendientes: -1 }, { vaciosPendientes: 2.5 }, { bloqueado: 'si' }]) {
+      expect(await clientes.editar(ana, malo, AHORA)).toEqual({ ok: false, error: 'datos_invalidos' });
+    }
+  });
+
+  it('al unir, manda el precio de la ficha que queda (o toma el de la otra), se suman los vacíos y el bloqueo pasa', async () => {
+    const { pedidos, clientes, ana } = await conAna();
+    await pedidos.guardarPedido(pedido('P2', { telefono: '56922222222', nombre: 'Ana Prueba (local)' }), AHORA + DIA);
+    await vincularTodo(clientes);
+    const local = (await clientes.clienteDeTelefono('56922222222')) as number;
+    await clientes.editar(ana, { vaciosPendientes: 1 }, AHORA);
+    await clientes.editar(local, { precioEspecial20L: 1311, vaciosPendientes: 3, bloqueado: true }, AHORA);
+    await clientes.unir(ana, local, AHORA);
+    expect(await clientes.ficha(ana)).toMatchObject({ precioEspecial20L: 1311, vaciosPendientes: 4, bloqueado: true });
+  });
+
+  it('sin la migración 0018 la ficha se lee y se edita igual, con las condiciones por defecto', async () => {
+    const db = crearBaseSqlite('0018');
+    const pedidos = new RepositorioD1(db, () => 1);
+    const clientes = new RepositorioClientes(db);
+    await pedidos.guardarPedido(pedido('P1'), AHORA);
+    await vincularTodo(clientes);
+    const ana = (await clientes.clienteDeTelefono('56911111111')) as number;
+    // El panel manda las condiciones tal como las leyó: no cambian, así que no se escriben.
+    expect(await clientes.editar(ana, { nombre: 'Ana P.', precioEspecial20L: null, vaciosPendientes: 0, bloqueado: false }, AHORA)).toEqual({ ok: true, valor: true });
+    expect(await clientes.ficha(ana)).toMatchObject({ nombre: 'Ana P.', precioEspecial20L: null, vaciosPendientes: 0, bloqueado: false });
+    expect(await clientes.paraBot('56911111111')).toMatchObject({ precioEspecial20L: null, bloqueado: false });
+  });
+});
+
 describe('buscar clientes', () => {
   it('por nombre, por parte del teléfono, por dirección o comuna; con menos de 2 letras lista los recientes', async () => {
     const { pedidos, clientes } = await base();
