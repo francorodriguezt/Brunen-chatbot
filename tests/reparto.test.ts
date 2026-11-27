@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { armarReparto, csvDeReparto, mensajeDeParada, textoDeReparto, tsvDeReparto } from '../src/reparto';
+import { armarReparto, cambiosDesdeLaPublicacion, csvDeReparto, mensajeDeParada, nombrarCambios, textoDeReparto, tsvDeReparto } from '../src/reparto';
 import type { PedidoGuardado } from '../src/repositorio';
 
 const DIA = '2026-11-10'; // martes
@@ -320,5 +320,31 @@ describe('mensajeDeParada: un mensaje por parada, como el que hoy se escribe a m
 
   it('la lista para copiar también marca lo que se cobra en efectivo', () => {
     expect(textoDeReparto(armarReparto([pedido('P261109-AAAAA', { formaPago: 'efectivo' })], DIA))).toContain('*efectivo $6.600*');
+  });
+});
+
+describe('cambios desde la publicación (D102)', () => {
+  const publicados = [pedido('P1', { ordenRuta: 1 }), pedido('P2', { ordenRuta: 2, nombre: 'Luis Prueba', comuna: 'Macul' })];
+  const viajes = new Map([['P1', 1], ['P2', 1], ['P3', 1]]); // P3 estaba al publicar y ya no está (se canceló)
+
+  it('nombra lo que se agregó después de publicar y lo que ya no está', () => {
+    const nuevo = pedido('P9', { nombre: 'Rosa Prueba', comuna: 'Macul' });
+    const cambios = cambiosDesdeLaPublicacion(armarReparto([...publicados, nuevo], DIA, viajes), viajes);
+    expect(cambios).toEqual({ agregadas: [{ idPedido: 'P9', nombre: 'Rosa Prueba', comuna: 'Macul' }], quitadas: ['P3'] });
+  });
+
+  it('sin publicar, o sin los viajes guardados, no hay con qué comparar', () => {
+    expect(cambiosDesdeLaPublicacion(armarReparto([pedido('P1')], DIA), new Map())).toBeNull();
+    expect(cambiosDesdeLaPublicacion(armarReparto(publicados, DIA), new Map())).toBeNull();
+  });
+
+  it('busca el nombre de los quitados; sin cambios devuelve null', async () => {
+    const base = { obtenerPedido: async (id: string) => (id === 'P3' ? { nombre: 'Pedro Prueba', comuna: 'Ñuñoa' } : null) };
+    expect(await nombrarCambios(base, { agregadas: [], quitadas: ['P3', 'P4'] })).toEqual({
+      agregadas: [],
+      quitadas: [{ nombre: 'Pedro Prueba', comuna: 'Ñuñoa' }, { nombre: '', comuna: '' }],
+    });
+    expect(await nombrarCambios(base, { agregadas: [], quitadas: [] })).toBeNull();
+    expect(await nombrarCambios(base, null)).toBeNull();
   });
 });

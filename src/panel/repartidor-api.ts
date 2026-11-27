@@ -21,7 +21,7 @@ import { COORDENADAS_DE_DEPOSITO, depositoQueDesviaMenos, enlacesDeMaps } from '
 import type { TipoBidon } from '../precios';
 import { PRECISION_BUENA_M, RepositorioPuntos, claveDePunto } from '../puntos';
 import { puntoDeParada } from '../ruta';
-import { armarReparto, vaciosEsperados } from '../reparto';
+import { armarReparto, cambiosDesdeLaPublicacion, nombrarCambios, vaciosEsperados } from '../reparto';
 import type { RepositorioD1 } from '../repositorio';
 import { validarPosiciones, type RepositorioSeguimiento } from '../seguimiento';
 import { error, esperadoComoEscritura, json, leerCuerpo } from './api';
@@ -84,7 +84,8 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
   const pedidos = await ctx.repositorio.pedidosDelDia(hoy);
   const porId = new Map(pedidos.map((p) => [p.id, p]));
   const entregas = await ctx.entregas.deDia(hoy);
-  const reparto = armarReparto(pedidos, hoy, await ctx.repositorio.viajesPublicados(hoy));
+  const viajes = await ctx.repositorio.viajesPublicados(hoy);
+  const reparto = armarReparto(pedidos, hoy, viajes);
   const conocidos = await ctx.puntos.deDirecciones(reparto.paradas.map((p) => ({ direccion: p.direccion, comuna: p.comuna })));
   const paradas = reparto.paradas.map((parada) => {
     const pedido = porId.get(parada.idPedido);
@@ -150,6 +151,8 @@ async function rutaDeHoy(ctx: ContextoRepartidor): Promise<Response> {
     totalBidones: reparto.totalBidones,
     motivos: Object.entries(MOTIVOS_NO_ENTREGA).map(([valor, texto]) => ({ valor, texto })),
     ubicacion: await estadoDeUbicacion(ctx, hoy),
+    // D102: lo que cambió desde la publicación sin volver a publicar (un pedido nuevo o uno que ya no va).
+    cambiosSinPublicar: await nombrarCambios(ctx.repositorio, cambiosDesdeLaPublicacion(reparto, viajes)).catch(() => null),
     // D94: la versión publicada y la que confirmó su app; con una nueva sin confirmar, la app avisa del cambio.
     publicacion: await ctx.repositorio.publicacionDe(hoy).then((p) => (p ? { version: p.version, publicadaEn: p.publicadaEn, vista: p.vistaVersion } : null)),
   });

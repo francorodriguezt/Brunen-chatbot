@@ -85,6 +85,7 @@ const ESTATICOS_PUBLICOS: ReadonlySet<string> = new Set([
   '/repartidor/',
   '/repartidor/app.js',
   '/repartidor/cola.js',
+  '/repartidor/cambios.js',
 ]);
 const ES_ICONO = /^\/iconos\/[a-z0-9-]+\.png$/;
 

@@ -19,7 +19,7 @@ const PAGINA_DE_RESPALDO = 300;
 import { MOTIVOS_NO_ENTREGA, type RepositorioEntregas } from '../entregas';
 import { COMUNAS_ATENDIDAS } from '../comunas';
 import { calcularFechaEntrega, fechaHoraLocal } from '../despacho';
-import { armarReparto, csvDeReparto, mensajeDeParada, textoDeReparto, tsvDeReparto } from '../reparto';
+import { armarReparto, cambiosDesdeLaPublicacion, csvDeReparto, mensajeDeParada, nombrarCambios, textoDeReparto, tsvDeReparto } from '../reparto';
 import { ESTADOS_DE_PEDIDO, OPCIONES_DE_PEDIDO, type CambiosDePedido, type DatosDePago, type EstadoDePedido, type ErrorDeRepositorio, type LineaEditable, type PedidoManual, type RepositorioD1 } from '../repositorio';
 import type { RepositorioClientes } from '../fichas';
 import { cargarDiasSinReparto, fechaValida as fechaValidaSinReparto, limpiarMotivo, motivoSinReparto, type RepositorioDiasSinReparto } from '../diasSinReparto';
@@ -249,8 +249,11 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
       const fecha = url.searchParams.get('fecha');
       if (!esFecha(fecha) || Number.isNaN(Date.parse(`${fecha}T00:00:00Z`))) return error(400, 'Fecha no válida.');
       const pedidos = await repositorio.pedidosDelDia(fecha);
-      const reparto = armarReparto(pedidos, fecha, await repositorio.viajesPublicados(fecha));
+      const viajes = await repositorio.viajesPublicados(fecha);
+      const reparto = armarReparto(pedidos, fecha, viajes);
       if (ruta === '/api/reparto') {
+        // D102: lo que cambió desde que se publicó la ruta, para recordar volver a publicarla.
+        const cambiosSinPublicar = await nombrarCambios(repositorio, cambiosDesdeLaPublicacion(reparto, viajes)).catch(() => null);
         const delDia = ctx.entregas ? await ctx.entregas.deDia(fecha) : new Map();
         // El cierre del día (D64): efectivo, vacíos y paradas, con lo que marcó el repartidor.
         const caja = cierreDelDia(reparto, pedidos, delDia);
@@ -259,7 +262,7 @@ export async function manejarApi(request: Request, url: URL, ctx: ContextoApi): 
         // Si ese día se marcó sin reparto (D74), el panel lo dice arriba de la lista: los pedidos que tenga hay que moverlos.
         const sinReparto = await motivoSinReparto(ctx.dias?.db, fecha);
         const seguimiento = await seguimientoDelDia(ctx, fecha);
-        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas: Object.fromEntries(delDia), motivos: MOTIVOS_NO_ENTREGA, caja, mensajes, sinReparto, seguimiento, publicacion: await repositorio.publicacionDe(fecha) });
+        return json({ reparto, texto: textoDeReparto(reparto), tsv: tsvDeReparto(reparto), entregas: Object.fromEntries(delDia), motivos: MOTIVOS_NO_ENTREGA, caja, mensajes, sinReparto, seguimiento, publicacion: await repositorio.publicacionDe(fecha), cambiosSinPublicar });
       }
       return new Response(csvDeReparto(reparto), {
         status: 200,

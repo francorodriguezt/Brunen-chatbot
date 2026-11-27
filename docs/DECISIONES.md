@@ -853,3 +853,11 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - Los feriados no los conoce: viven en la planilla y el panel no la lee. Un feriado importante se puede marcar como día sin reparto (D74).
 - `/api/opciones` trae los días sin reparto próximos; al marcar o quitar uno en Reparto, el aviso se actualiza sin recargar.
 - Código: `panel/admin/aviso-de-fecha.js` (función pura, 3 pruebas). Verificado en el navegador a 375 px: domingo, sábado, fecha pasada y un día marcado sin reparto. **Sin publicar.**
+
+### D102 · 2026-11-27 · La app del repartidor avisa cuando la ruta cambia sin volver a publicarla
+**Lo anotó la revisión de D97 (riesgo A21):** si después de publicar la ruta se confirmaba un pedido nuevo o se cancelaba uno, la lista del repartidor cambiaba sin aviso; D94 solo avisa cuando se vuelve a publicar.
+- El servidor compara la ruta de hoy con los viajes guardados al publicar (D86): qué paradas se agregaron (van al final) y cuáles ya no están (canceladas, movidas a otro día o devueltas a "por confirmar"). Sin migración.
+- **App del repartidor:** "Cambió la ruta. Se agregó Ana (Ñuñoa) al final. Ya no va Pedro (Macul)." con "Entendido". Lo visto se guarda en el teléfono: si después cambia otra cosa, el aviso vuelve. Si la oficina vuelve a publicar, manda el aviso de D94.
+- **Panel (Reparto):** "Desde que publicaste la ruta, se agregó 1 parada y se quitó 1. … Las nuevas van al final: vuelve a publicar para ponerlas en orden."
+- Sin viajes guardados (una ruta publicada antes de D86) no se compara.
+- Nuevo archivo `panel/repartidor/cambios.js` (en la copia sin señal: pasa a `brunen-v4`). Pruebas: 3 en `tests/reparto.test.ts` y 2 en `tests/cambios-ruta.test.mjs`. Verificado de punta a punta en local con datos ficticios: publicar, cancelar una parada, aviso en el panel y en la app, "Entendido" y recargar. **Sin publicar.**

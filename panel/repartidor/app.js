@@ -8,6 +8,7 @@
 
 import { mostrarIngreso, pedir, registrarAplicacion } from '/ingreso.js';
 import { agregar, cuerpoParaEnviar, enviarPendientes, normalizar, nuevaMarca, pendientes, quitar, rechazadas } from './cola.js';
+import { firmaDeCambios, textoDeCambios } from './cambios.js';
 
 const $ = (id) => document.getElementById(id);
 const ZONA = 'America/Santiago';
@@ -17,6 +18,7 @@ const pesos = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP
 const CLAVE_RUTA = 'brunen-ruta';
 const CLAVE_COLA = 'brunen-pendientes';
 const CLAVE_PANTALLA = 'brunen-pantalla-encendida';
+const CLAVE_CAMBIOS_VISTOS = 'brunen-cambios-vistos';
 const REINTENTO_MS = 30_000;
 
 let ruta = null;
@@ -168,12 +170,32 @@ function pintarCambioDeRuta() {
       intentoSilencioso = clave;
       void confirmarVersion(publicacion.version, true);
     }
+    pintarCambiosSinPublicar(caja);
     return;
   }
   caja.replaceChildren(
     h('b', {}, `La oficina cambió la ruta a las ${hora(publicacion.publicadaEn)}.`),
     ' Revisa el orden y la siguiente parada. ',
     boton('Entendido', 'boton boton-chico boton-principal', () => void confirmarVersion(publicacion.version, false)),
+  );
+}
+
+/**
+ * D102: lo que cambió sin volver a publicar (un pedido nuevo va al final, uno cancelado ya no está). Se avisa hasta que
+ * toque "Entendido"; si después cambia otra cosa, sale de nuevo. Se guarda solo en el teléfono.
+ */
+function pintarCambiosSinPublicar(caja) {
+  const firma = firmaDeCambios(ruta?.fecha ?? '', ruta?.cambiosSinPublicar ?? null);
+  if (!firma || leer(CLAVE_CAMBIOS_VISTOS) === firma) return;
+  caja.hidden = false;
+  caja.replaceChildren(
+    h('b', {}, 'Cambió la ruta.'),
+    ` ${textoDeCambios(ruta.cambiosSinPublicar)} `,
+    boton('Entendido', 'boton boton-chico boton-principal', () => {
+      guardar(CLAVE_CAMBIOS_VISTOS, firma);
+      caja.hidden = true;
+      caja.replaceChildren();
+    }),
   );
 }
 

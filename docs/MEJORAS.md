@@ -86,4 +86,4 @@ Meta de largo plazo: asistentes de IA, roles dentro del panel, un panel de anál
 
 ## 8. Experiencias móviles (D89, 2026-11-26)
 La especificación de la app del repartidor y del panel en iPhone, comparada con lo que hay: [EXPERIENCIAS_MOVILES.md](EXPERIENCIAS_MOVILES.md). Hechos (D90): siguiente parada destacada, el avance "1 de 6" y una línea fija de sincronización. También la observación al entregar (D91). Lo que sigue necesita decisiones o es más grande: ver el orden en EXPERIENCIAS_MOVILES.md.
-- [ ] Avisar al repartidor cuando la ruta cambia sin volver a publicarse (un pedido nuevo o cancelado a mitad del día). D94 avisa solo cuando se publica de nuevo. Lo anotó la revisión de código del 2026-11-26 (D97).
+- [x] (D102) Avisar al repartidor cuando la ruta cambia sin volver a publicarse (un pedido nuevo o cancelado a mitad del día). D94 avisa solo cuando se publica de nuevo. Lo anotó la revisión de código del 2026-11-26 (D97).
