@@ -35,3 +35,6 @@ Thumbs.db
 
 # Caché y revisiones del plugin impeccable (locales)
 .impeccable/
+
+# Guía del panel para el dueño: lleva el correo de ingreso del administrador y el repositorio es público
+docs/instructivo/
