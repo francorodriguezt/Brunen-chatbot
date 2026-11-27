@@ -70,8 +70,8 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
 39. **Precios especiales** ($3.500 y $3.000): ¿valen para 12 L y 10 L? (P15).
 40. **Carga inicial mayorista** ($3.250 y $2.000): ¿es por envase? (P16).
 41. **Entrega el mismo día** para pedidos hasta las 9:00: ¿sigue valiendo? El bot la ofrece (P17).
-42. **¿El bot puede dar los datos de transferencia?** (P18).
-43. **¿Hay un mínimo de pedido?** (P19).
+42. **¿El bot puede dar los datos de transferencia?** (P18). ✅ Sí (respuesta 42), construido en D109. **Falta escribir `DATOS_TRANSFERENCIA` en la hoja CONFIGURACION.**
+43. **¿Hay un mínimo de pedido?** (P19). ✅ No hay (respuesta 43); el bot lo dice (D109).
 44. **Hora de llegada al cliente**: ¿le parece bien una ventana de al menos 20 minutos? (P21). ¿Se avisa la hora a todos o solo a los que la piden (columna `Aviso_Hora`)?
 45. **Cobros**: quién verifica los pagos, si el repartidor rinde el efectivo cada día, si hay abonos y si hay clientes a crédito (P22 a P25). Respondida (45) y construida en D107.
 46. **Cliente bloqueado**: ¿se le contesta algo? (P26).

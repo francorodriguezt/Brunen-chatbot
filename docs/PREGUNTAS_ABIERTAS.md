@@ -29,7 +29,7 @@ Las preguntas vienen de [PENDIENTES.md](PENDIENTES.md), [PROPUESTA_SIGUIENTES_PA
 16. **Carga inicial mayorista** ($3.250 en 20 L y $2.000 en 12 L y 10 L): ¿es por envase?
 17. **Entrega el mismo día:** ¿sigue valiendo para los pedidos hechos hasta las 9:00? El bot hoy la ofrece.
 18. **¿El bot puede dar los datos de transferencia** a quien pregunta cómo pagar? Hoy siempre responde una persona.
-19. **¿Hay un mínimo de pedido?** El bot podría responderlo solo.
+19. **¿Hay un mínimo de pedido?** El bot podría responderlo solo. **Respondida: no hay (D109).**
 20. **Aviso de privacidad** ([AVISO_PRIVACIDAD.md](AVISO_PRIVACIDAD.md)): ¿lo aprueba? ¿Cuánto tiempo se guardan los pedidos y las fichas de clientes?
 21. **Hora de llegada al cliente:** hoy se le da una ventana de al menos 20 minutos ("entre las 12:05 y las 12:25"). ¿Le parece bien?
 22. **Cobros: ¿quién verifica los pagos?** ¿Él, la operadora o los dos?

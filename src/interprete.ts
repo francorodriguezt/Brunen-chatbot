@@ -212,7 +212,7 @@ export type Intencion =
   | 'cierre'
   | 'desconocido';
 
-export type TipoPregunta = 'precio' | 'zona' | 'horario' | 'pago';
+export type TipoPregunta = 'precio' | 'zona' | 'horario' | 'pago' | 'minimo';
 
 /** Qué debería hacer el bot después. Las decisiones finales son de las etapas de pedido y alertas. */
 export type AccionSugerida = 'escalar' | 'preguntar_tipo' | 'preguntar_cantidad' | 'preguntar_pedido';
@@ -351,6 +351,14 @@ function formaDePago(t: string): FormaDePagoMencionada | undefined {
   return encontradas.length === 1 ? encontradas[0] : undefined; // con dos no está claro: lo ve una persona
 }
 
+// "¿Hay un mínimo?" (respuesta 43: no hay). Va antes que el precio: "¿cuánto es el mínimo?" también dice "cuánto es".
+const PREGUNTA_MINIMO = palabras(
+  'hay minimo', 'hay un minimo', 'hay algun minimo', 'tienen minimo', 'tienen un minimo', 'cual es el minimo', 'cuanto es el minimo',
+  'minimo de pedido', 'minimo de compra', 'minimo de bidones', 'minimo de recarga', 'minimo para pedir', 'minimo para el despacho',
+  'pedido minimo', 'compra minima', 'cantidad minima', 'minimo de envio', 'minimo de despacho',
+  'puedo pedir solo uno', 'puedo pedir uno solo', 'puedo pedir solo 1', 'puedo pedir un solo bidon', 'se puede pedir solo uno', 'se puede pedir un solo bidon',
+);
+
 const PREGUNTA_PRECIO = palabras(
   'cuanto sale', 'cuanto salen', 'cuanto cuesta', 'cuanto cuestan', 'cuanto vale', 'cuanto valen',
   'cuanto es', 'cuanto seria', 'cuanto me sale', 'cuanto cobran', 'precio', 'precios', 'valor',
@@ -426,6 +434,7 @@ function esSoloCierre(t: string): boolean {
 
 function tipoDePregunta(t: string, hayComuna: boolean): TipoPregunta | undefined {
   if ((hayComuna && VERBO_ZONA.test(t)) || PALABRA_ZONA.test(t)) return 'zona';
+  if (PREGUNTA_MINIMO.test(t)) return 'minimo';
   if (PREGUNTA_PRECIO.test(t)) return 'precio';
   if (PREGUNTA_HORARIO.test(t) || HORARIO_POR_DIA.test(t)) return 'horario';
   if (PREGUNTA_PAGO.test(t)) return 'pago';

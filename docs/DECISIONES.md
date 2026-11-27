@@ -949,3 +949,13 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Antes de publicar:** aplicar la migración `0020_vacios_a_deuda` (una columna). Sin ella, entregar sigue funcionando, pero no se anota la deuda.
 - **No se hizo:** cobrar el vacío que falta (Franco eligió la deuda), ni el libro de envases por formato (punto 99).
 
+### D109 · 2026-11-27 · El bot da los datos de transferencia y dice que no hay mínimo (respuestas 42 y 43)
+**Franco respondió: "sí, el bot puede dar los datos de transferencia" (42) y "no hay mínimo de pedido" (43).**
+- **Datos de transferencia:** los lee de una variable nueva de la hoja CONFIGURACION, `DATOS_TRANSFERENCIA`, y los entrega tal cual (hasta 500 letras, varias líneas). Los datos bancarios **no están en el código ni en el repositorio**: viven en la hoja, como pide CLAUDE.md. La respuesta dice cómo se puede pagar, los datos, y pide el comprobante por el mismo chat (que ya llega al panel y a Telegram, D68).
+- **Sin la variable, nada cambia:** el bot sigue derivando la pregunta a una persona, con un aviso que dice que falta `DATOS_TRANSFERENCIA`. Nunca inventa una cuenta.
+- **Un pedido que además pregunta cómo pagar** recibe los datos en la misma respuesta (un solo mensaje por pedido, D95) y el aviso ya no pide que se los envíen a mano.
+- **"¿Cuánto debo?" no recibe la cuenta:** cae en "pago" para el intérprete, pero el monto lo dice una persona; sigue derivándose.
+- **Mínimo de pedido:** una pregunta nueva (`minimo`) que el intérprete reconoce ("¿hay mínimo?", "¿puedo pedir solo uno?", "¿cuál es el mínimo de bidones?") y el LLM de respaldo también. Responde "No hay mínimo de pedido: puedes pedir desde 1 bidón. El despacho es gratis." (el despacho gratis está en el documento de conocimiento).
+- **Sin migración.** Para publicar solo hace falta agregar la fila en la hoja (ese cambio en la planilla real lo hace una persona, no el código).
+- **Ojo con la ventana de WhatsApp:** responder un mensaje del cliente dentro de las 24 h es un mensaje de servicio (cuenta en los 1.000 gratis); los datos van en la misma respuesta, no en un mensaje aparte.
+

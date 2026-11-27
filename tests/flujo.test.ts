@@ -30,7 +30,7 @@ interface Opciones {
   ahora?: Date;
   precios?: TablaPrecios;
   feriados?: Set<string>;
-  servicio?: { reducido: boolean; mensajeExcepcion: string };
+  servicio?: { reducido: boolean; mensajeExcepcion: string; datosDeTransferencia?: string };
   sinMemoria?: boolean;
   puertos?: Partial<Puertos>;
 }
@@ -521,10 +521,41 @@ describe('preguntas', () => {
     expect((await conversacion().decir('llegan a Vitacura?')).respuesta).toContain('Sí, despachamos a Vitacura.');
   });
 
-  it('cómo pagar: responde una persona (los datos de pago no están en el código)', async () => {
+  it('cómo pagar: sin DATOS_TRANSFERENCIA en la hoja, responde una persona (los datos de pago no están en el código)', async () => {
     const d = await conversacion().decir('como se paga?');
     expect(d.alerta?.tipo).toBe('pago');
     expect(d.respuesta).toBe('Recibimos tu mensaje. Una persona del equipo te responderá en breve.');
+  });
+
+  // Datos ficticios: los reales viven solo en la hoja CONFIGURACION.
+  const DATOS = 'Banco Prueba\nCuenta corriente 000000\nTitular: Brunen de Prueba';
+
+  it('cómo pagar: con DATOS_TRANSFERENCIA en la hoja, el bot los da y no avisa a nadie (respuesta 42)', async () => {
+    const d = await conversacion({ servicio: { reducido: false, mensajeExcepcion: '', datosDeTransferencia: DATOS } }).decir('a que cuenta les transfiero?');
+    expect(d.respuesta).toContain('Datos para transferir:\nBanco Prueba\nCuenta corriente 000000\nTitular: Brunen de Prueba');
+    expect(d.respuesta).toContain('envíanos el comprobante');
+    expect(d.alerta).toBeUndefined();
+  });
+
+  it('"¿cuánto debo?" sigue yendo a una persona aunque haya datos: el monto no es un dato de la cuenta', async () => {
+    const d = await conversacion({ servicio: { reducido: false, mensajeExcepcion: '', datosDeTransferencia: DATOS } }).decir('cuanto debo?');
+    expect(d.alerta?.tipo).toBe('pago');
+    expect(d.respuesta).not.toContain('Banco Prueba');
+  });
+
+  it('un pedido que además pregunta cómo pagar recibe los datos en la misma respuesta, sin aviso extra de pago', async () => {
+    const d = await conversacion({ servicio: { reducido: false, mensajeExcepcion: '', datosDeTransferencia: DATOS } }).decir('quiero 2 de 20, como puedo pagar?');
+    expect(d.pedido?.lineas.map((l) => [l.tipo, l.cantidad])).toEqual([['20L', 2]]);
+    expect(d.respuesta).toContain('Banco Prueba');
+    expect(d.alerta?.motivos.join(' ')).not.toContain('También preguntó cómo pagar');
+  });
+
+  it('mínimo de pedido: no hay (respuesta 43)', async () => {
+    for (const texto of ['hay minimo de pedido?', 'cual es el minimo?', 'puedo pedir solo uno?']) {
+      const d = await conversacion().decir(texto);
+      expect(d.respuesta, texto).toContain('No hay mínimo de pedido');
+      expect(d.alerta, texto).toBeUndefined();
+    }
   });
 });
 

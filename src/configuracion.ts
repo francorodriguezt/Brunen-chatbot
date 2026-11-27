@@ -6,6 +6,8 @@
  *  - ESTADO_SERVICIO: normal o reducido. Con reducido el bot agrega MENSAJE_EXCEPCION a sus respuestas
  *    (regla 11: por ejemplo, cuando hay una falla operativa).
  *  - MENSAJE_EXCEPCION: el texto de ese aviso.
+ *  - DATOS_TRANSFERENCIA: el texto con los datos para transferir (banco, tipo y número de cuenta, titular, RUT, correo).
+ *    El bot lo entrega tal cual cuando el cliente pregunta cómo pagar (D109). Si está vacío, lo atiende una persona.
  *  - ALERTA_SIN_SENAL_MINUTOS y ALERTA_RUTA_NO_INICIADA: cuándo avisa el panel del reparto (D98, `alertasReparto.ts`).
  *    Por defecto 20 minutos y 10:30; con NO se apaga cada una.
  *
@@ -24,7 +26,12 @@ export interface Servicio {
   /** ESTADO_SERVICIO = reducido. */
   reducido: boolean;
   mensajeExcepcion: string;
+  /** DATOS_TRANSFERENCIA, tal cual está en la hoja; ausente si no hay (D109). */
+  datosDeTransferencia?: string;
 }
+
+/** Lo más largo que se acepta de DATOS_TRANSFERENCIA: es un mensaje de WhatsApp, no un documento. */
+const MAXIMO_DATOS_TRANSFERENCIA = 500;
 
 export interface Configuracion {
   /** true = SI, false = NO, null = la hoja no dice nada válido. */
@@ -52,12 +59,19 @@ export function parsearBotActivo(filas: ReadonlyArray<ReadonlyArray<string>>): b
   return null;
 }
 
+/** Los datos de pago que escribió la persona, sin espacios de más y sin pasarse del largo de un mensaje. */
+function datosDeTransferencia(valor: string | undefined): { datosDeTransferencia?: string } {
+  const texto = (valor ?? '').replace(/\r/g, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n').slice(0, MAXIMO_DATOS_TRANSFERENCIA);
+  return texto ? { datosDeTransferencia: texto } : {};
+}
+
 export function parsearConfiguracion(filas: ReadonlyArray<ReadonlyArray<string>>): Configuracion {
   return {
     botActivo: parsearBotActivo(filas),
     servicio: {
       reducido: normalizar(valorDe(filas, 'ESTADO_SERVICIO') ?? '') === 'reducido',
       mensajeExcepcion: (valorDe(filas, 'MENSAJE_EXCEPCION') ?? '').trim(),
+      ...datosDeTransferencia(valorDe(filas, 'DATOS_TRANSFERENCIA')),
     },
     reparto: {
       sinSenalMinutos: parsearSinSenal(valorDe(filas, 'ALERTA_SIN_SENAL_MINUTOS')),

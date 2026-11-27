@@ -99,6 +99,7 @@ Lo que el bot no resuelve solo y deja para una persona: reclamos, facturas, comp
 | Aviso "nadie tocó Iniciar ruta" | Son más de las 10:30, hay entregas para hoy y la ruta no empezó en la app | Pregúntale al repartidor si ya salió. La hora se cambia con `ALERTA_RUTA_NO_INICIADA` (por defecto 10:30; `NO` la apaga) |
 | Aviso "No se pudo leer la planilla" | El bot no ve clientes ni precios y deja todo para una persona | Avisa a Franco y revisa que la planilla siga compartida |
 | El bot responde cosas equivocadas | Hay que detenerlo | En la hoja CONFIGURACION pon `BOT_ACTIVO` en `NO` (tarda un minuto). Para encenderlo, `SI` |
+| El bot no da los datos para transferir (deja un aviso de pago) | Falta la variable `DATOS_TRANSFERENCIA` en CONFIGURACION | Agrega una fila: Variable `DATOS_TRANSFERENCIA`, Valor con el banco, tipo y número de cuenta, titular, RUT y correo (hasta 500 letras; puede llevar varias líneas). En un minuto el bot lo usa |
 | Hay una falla en el reparto | Los clientes tienen que saberlo | En CONFIGURACION pon `ESTADO_SERVICIO` en `reducido` y escribe el aviso en `MENSAJE_EXCEPCION`: el bot lo agrega a sus respuestas |
 
 ## Lo que el panel todavía no hace

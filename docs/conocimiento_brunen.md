@@ -67,6 +67,8 @@ Fuente de verdad del negocio. Se actualiza al cierre de cada sesión.
 ## 7. Pagos
 - Transferencia (datos en hoja CONFIGURACION) o efectivo en la entrega.
 - Puede ser antes o después de la entrega. El bot nunca bloquea un pedido por falta de pago.
+- El bot da los datos de transferencia (Franco, 2026-11-27, respuesta 42): los lee de la variable `DATOS_TRANSFERENCIA` de la hoja CONFIGURACION; si está vacía, lo atiende una persona (D109).
+- No hay mínimo de pedido (Franco, 2026-11-27, respuesta 43): el bot lo dice si le preguntan (D109).
 
 ## 8. Personas
 - Operadora: atención de 8:00 a 21:00 (teléfono en CONFIGURACION). Confirma pedidos y atiende reclamos, facturas y pagos a proveedores.

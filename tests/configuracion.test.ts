@@ -140,6 +140,19 @@ describe('parsearConfiguracion', () => {
   });
 });
 
+describe('DATOS_TRANSFERENCIA (D109)', () => {
+  it('se lee tal cual, ordenando las líneas, y no aparece si la celda está vacía', () => {
+    const r = parsearConfiguracion([['DATOS_TRANSFERENCIA', '  Banco Prueba \r\n\n Cuenta 000000  ']]);
+    expect(r.servicio.datosDeTransferencia).toBe('Banco Prueba\nCuenta 000000');
+    expect(parsearConfiguracion([['DATOS_TRANSFERENCIA', '  ']]).servicio).toEqual({ reducido: false, mensajeExcepcion: '' });
+    expect(parsearConfiguracion([]).servicio).toEqual({ reducido: false, mensajeExcepcion: '' });
+  });
+
+  it('se corta si alguien pega un documento entero', () => {
+    expect(parsearConfiguracion([['DATOS_TRANSFERENCIA', 'x'.repeat(2000)]]).servicio.datosDeTransferencia).toHaveLength(500);
+  });
+});
+
 describe('leerServicio', () => {
   it('lee el servicio de la misma hoja que el interruptor, con una sola lectura', async () => {
     const llamadas = stubGoogle({ CONFIGURACION: [['BOT_ACTIVO', 'SI'], ['ESTADO_SERVICIO', 'reducido'], ['MENSAJE_EXCEPCION', 'Retrasos hoy']] });

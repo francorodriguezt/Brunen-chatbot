@@ -27,6 +27,7 @@ import { accionDePedido, diceCuantos, type AccionSugerida, type Intencion, type 
 import { generarIdPedido, type CompletarPedido, type DatosPrevios, type LineaPedido, type PedidoARegistrar } from './pedidos';
 import { cotizarPedido, ErrorPrecio, type Cotizacion, type TipoBidon } from './precios';
 import type { TablaPrecios } from './preciosHoja';
+import { normalizar } from './texto';
 import * as textos from './textos';
 
 export const POLITICAS = {
@@ -55,7 +56,7 @@ export interface EntradaMotor {
   precios: TablaPrecios;
   /** Entrega propuesta (entrega.ts), calculada para el día que pidió el cliente. */
   entrega: PropuestaEntrega;
-  servicio: { reducido: boolean; mensajeExcepcion: string };
+  servicio: { reducido: boolean; mensajeExcepcion: string; datosDeTransferencia?: string };
   /** El bot le pidió al cliente su nombre y su dirección y espera la respuesta (D37). */
   pendienteDeDatos?: { idPedido: string; intentos: number };
   /** Un cliente sin ficha en CLIENTES que ya pidió por el bot: sus datos salen de ese pedido y no se le vuelven a preguntar (D40). */
@@ -130,6 +131,9 @@ function cotizarPregunta(e: EntradaMotor, items: readonly ItemCompleto[]): Cotiz
   }
 }
 
+/** Preguntas por un monto adeudado, que caen en "pago" pero no se contestan con los datos de la cuenta. */
+const PREGUNTA_POR_SALDO = /\bcuanto (?:me cobraron|les debo|le debo|debo|les pague|pague)\b/;
+
 function responderPregunta(e: EntradaMotor): Decision {
   const { tipo_pregunta: tipo, comuna_mencionada: comuna, fecha_texto: fecha, items } = e.interpretacion;
   const bloqueado = e.cliente.estado === 'encontrado' && e.cliente.cliente.estado === 'bloqueado';
@@ -156,8 +160,16 @@ function responderPregunta(e: EntradaMotor): Decision {
   // A una comuna donde no llegamos no se le ofrece anotar nada.
   if (tipo === 'zona') return comuna && !esComunaAtendida(comuna) ? { intencion: 'pregunta', respuesta: textos.zona(comuna), memoria: MANTENER } : informar(textos.zona(comuna));
   if (tipo === 'horario') return informar(textos.horarios());
-  // Los datos de pago están en la hoja CONFIGURACION y los entrega una persona (PENDIENTE del dueño).
-  if (tipo === 'pago') return escalar(e, 'pago', 'Pregunta cómo pagar o por los datos de transferencia');
+  // Sin mínimo de pedido (respuesta 43).
+  if (tipo === 'minimo') return informar(textos.sinMinimo());
+  // Los datos de transferencia están en la hoja CONFIGURACION (DATOS_TRANSFERENCIA) y el dueño aprobó darlos (respuesta 42).
+  // Mientras la hoja no los tenga, los entrega una persona.
+  if (tipo === 'pago') {
+    const datos = e.servicio.datosDeTransferencia ?? '';
+    // "¿Cuánto debo?" no es "¿cómo pago?": el monto lo dice una persona, no los datos de la cuenta.
+    if (PREGUNTA_POR_SALDO.test(normalizar(e.texto))) return escalar(e, 'pago', 'Pregunta cuánto debe o cuánto le cobraron');
+    return datos ? informar(textos.comoPagar(datos)) : escalar(e, 'pago', 'Pregunta cómo pagar o por los datos de transferencia: la hoja CONFIGURACION no tiene DATOS_TRANSFERENCIA');
+  }
   return escalar(e, 'no_entendido', 'Hizo una pregunta que el bot no supo clasificar');
 }
 
@@ -291,9 +303,11 @@ function decidirPedido(e: EntradaMotor, itemsPedidos: ItemInterpretado[], repite
 
   // Lo que además preguntó (D95): se le contesta en la misma respuesta y queda en el aviso por si hace falta más.
   const pregunta = e.interpretacion.intencion === 'pedido' ? e.interpretacion.tipo_pregunta : undefined;
-  const extra = pregunta === 'horario' ? textos.horarioDelReparto() : pregunta === 'pago' ? textos.comoPagar() : undefined;
+  const datosDePago = e.servicio.datosDeTransferencia ?? '';
+  const extra =
+    pregunta === 'horario' ? textos.horarioDelReparto() : pregunta === 'pago' ? textos.comoPagar(datosDePago) : pregunta === 'minimo' ? textos.sinMinimo() : undefined;
   if (pregunta === 'horario') motivos.push('También preguntó por el horario: respóndele si hace falta.');
-  if (pregunta === 'pago') motivos.push('También preguntó cómo pagar: envíale los datos de transferencia si los pide.');
+  if (pregunta === 'pago' && !datosDePago) motivos.push('También preguntó cómo pagar: envíale los datos de transferencia si los pide.');
 
   if (repite) notas.push('Pidió repetir su último pedido.');
   if (previo) {

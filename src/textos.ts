@@ -139,8 +139,13 @@ export const ofrecerAnotar = (lineas: readonly Pick<LineaTexto, 'tipo' | 'cantid
 export const horarioDelReparto = (): string => 'Repartimos entre las 10:00 y las 18:00 (los sábados hasta las 15:00); no podemos darte una hora exacta.';
 
 /** "¿Cómo pago?" dentro de la respuesta de un pedido (D95). Pagos: conocimiento, sección 7. Los datos los envía una persona. */
-export const comoPagar = (): string =>
-  'Puedes pagar en efectivo al recibir o por transferencia, antes o después de la entrega. Si quieres transferir, te enviamos los datos.';
+export const comoPagar = (datosDeTransferencia = ''): string =>
+  datosDeTransferencia
+    ? `Puedes pagar en efectivo al recibir o por transferencia, antes o después de la entrega.\nDatos para transferir:\n${datosDeTransferencia}\nSi transfieres, envíanos el comprobante por aquí.`
+    : 'Puedes pagar en efectivo al recibir o por transferencia, antes o después de la entrega. Si quieres transferir, te enviamos los datos.';
+
+/** "¿Hay un mínimo de pedido?" (respuesta 43 de Franco, 2026-11-27: no hay). */
+export const sinMinimo = (): string => 'No hay mínimo de pedido: puedes pedir desde 1 bidón. El despacho es gratis.';
 
 /** Los valores de la hoja PRECIOS, por tipo de bidón. */
 export function precios(tabla: readonly TramoPrecio[]): string {
