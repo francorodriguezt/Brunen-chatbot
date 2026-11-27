@@ -6,15 +6,15 @@ Al 2026-11-27. Los números son los de [LO_QUE_FALTA.md](LO_QUE_FALTA.md); las r
 
 ## Ya hecho
 
-- **En el Proyecto (pull request 1, sin unir):** alertas del reparto (D98), avisar al cliente (D99), comprobante al pedido más antiguo (D100), aviso de fecha (D101), cambios de ruta sin publicar (D102), el bot aprende de 6 chats reales (D103), clientes en un solo lugar (D104, migración 0018).
-- **En el computador:** borrados los datos de prueba de la base real (6), secretos juntos en una carpeta (14), comprobaciones de producción (118), respaldos revisados (123), investigación (9, 11, 35, 66, 75, 65, 3), plazos de privacidad recomendados (4).
+- **Revisado, corregido (D105) y unido a `main`:** el pull request 1 del Proyecto, alertas del reparto (D98), avisar al cliente (D99), comprobante al pedido más antiguo (D100), aviso de fecha (D101), cambios de ruta sin publicar (D102), el bot aprende de 6 chats reales (D103), clientes en un solo lugar (D104, migración 0018).
+- **En el computador:** quitado el nombre de la operadora de los archivos; borrados los datos de prueba de la base real (6), secretos juntos en una carpeta (14), comprobaciones de producción (118), respaldos revisados (123), investigación (9, 11, 35, 66, 75, 65, 3), plazos de privacidad recomendados (4).
 
 ## Le toca al computador
 
 | Qué | Punto | Estado |
 |---|---|---|
-| Revisar, unir y publicar el pull request 1, con la migración 0018 | 26–29, 36 | Revisión en curso |
-| Quitar el nombre de la operadora del repositorio y de su historial | 31, 55 | Después de unir |
+| Publicar lo del pull request 1, con la migración 0018 | 26–29, 36 | Espera el visto bueno |
+| Reescribir el historial (nombre y correo en los commits antiguos) | 31 | Espera el visto bueno |
 | Publicar cada entrega del Proyecto y correr `npm run comprobar` | 118 | Cada vez |
 | Cargar el historial del Excel | 21 | Cuando Franco lo pida |
 | Cuentas del panel e instalar la app del repartidor | 15–20 | Franco |
@@ -30,6 +30,8 @@ Al 2026-11-27. Los números son los de [LO_QUE_FALTA.md](LO_QUE_FALTA.md); las r
 | Capacidad del furgón: solo cuentan los de 20 L | 47 |
 | Precio y forma de pago claros en la app del repartidor | 74 |
 | Botón "Escribirle" para clientes atrasados | 49, 76 |
+| Notificaciones del panel instalado en el iPhone para los avisos urgentes | 3 |
+| Preparar Brunen como Tech Provider (pasos, política de privacidad publicada y Embedded Signup) | 35 |
 | Contador de mensajes del bot en el mes, con aviso a los 800 | 9 |
 | Workers AI como respaldo de Groq, comparado con `tests/mensajes.json` | 66 |
 | "Abrir a todos" explícito en `NUMEROS_PERMITIDOS` | 7 |
@@ -38,6 +40,6 @@ Al 2026-11-27. Los números son los de [LO_QUE_FALTA.md](LO_QUE_FALTA.md); las r
 
 ## Mensaje para pegar en el Proyecto
 
-Pégalo **después** de que aquí se una el pull request 1 y se limpie el historial (para que parta de la versión nueva).
+Pégalo **después** de que aquí se reescriba el historial (para que parta de la versión nueva). La rama anterior del Proyecto ya se unió: que cree ramas nuevas.
 
-> Parte desde la última versión de `main`. Lee `docs/RESPUESTAS_2026-11-27.md`, `docs/DIVISION_TRABAJO.md` y `docs/INVESTIGACION_2026-11-27.md`. Construye, en pull requests separados y en este orden: (1) cobros según mi respuesta 45; (2) vacíos que faltan como deuda (53); (3) el bot da los datos de transferencia desde la hoja CONFIGURACION y dice que no hay mínimo (42, 43); (4) preguntas frecuentes y textos a partir de los chats que te di (8, 10, 64); (5) capacidad contando solo los de 20 L (47), precio claro para el repartidor (74) y botón "Escribirle" para atrasados (76); (6) contador de mensajes con aviso a los 800 y Workers AI de respaldo (9, 66). No uses el nombre de la operadora en ningún archivo. No publiques nada: yo publico desde mi computador.
+> Parte desde la última versión de `main` (se reescribió el historial: no uses ramas antiguas). Lee `docs/RESPUESTAS_2026-11-27.md`, `docs/DIVISION_TRABAJO.md` y `docs/INVESTIGACION_2026-11-27.md`. Construye, en pull requests separados y en este orden: (1) cobros según mi respuesta 45; (2) vacíos que faltan como deuda (53); (3) el bot da los datos de transferencia desde la hoja CONFIGURACION y dice que no hay mínimo (42, 43); (4) preguntas frecuentes y textos a partir de los chats que te di (8, 10, 64); (5) capacidad contando solo los de 20 L (47), precio claro para el repartidor (74) y botón "Escribirle" para atrasados (76); (6) contador de mensajes con aviso a los 800 y Workers AI de respaldo (9, 66); (7) notificaciones del panel instalado en el iPhone para los avisos urgentes (3); (8) lo que falte para que Brunen sea su propio Tech Provider, empezando por publicar la política de privacidad (35). No uses el nombre de la operadora en ningún archivo. No publiques nada: yo publico desde mi computador.

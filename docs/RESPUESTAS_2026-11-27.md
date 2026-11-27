@@ -56,3 +56,21 @@ Los números son los de [LO_QUE_FALTA.md](LO_QUE_FALTA.md). Franco aclaró adem�
 | 117 | La planilla que usa el bot es la de desarrollo; al lanzar se pasa a la definitiva | Anotado |
 | 118, 119 | Sí | — |
 | 120, 122, 123, 124 | Que lo haga Claude si puede | Aquí |
+
+## Segunda tanda (2026-11-27)
+
+| Sobre | Respuesta de Franco | Qué se hace |
+|---|---|---|
+| 35 coexistencia | "Entonces haremos eso" | Brunen como su propio Tech Provider |
+| 66 IA | Mantener Groq y sumar la IA de Cloudflare | Construir el respaldo con Workers AI |
+| 3 avisos | Le gusta más la notificación del panel en el iPhone | Sumado a lo que se debe construir |
+| 25 | Dejarlo pendiente | — |
+| 21 historial | Autoriza revisar `datos/` y trabajar con esos datos | La simulación espera el nombre exacto del Excel |
+| 41 entrega el mismo día | Sí, se entrega el mismo día | Sin cambios |
+| 48 salida | Puede variar; designar las 10:00 | Anotado en el conocimiento |
+| Revisión del PR: críticos | Hacer lo recomendado | Hecho (D105) |
+| Revisión: pregunta de pago | Arreglarlo | Hecho (D105) |
+| Revisión: vacíos que tragan quejas | Da igual, los bidones se retiran igual | Solo "nadie vino" es reclamo (D105) |
+| Revisión: alertas con Optiroute | Usan Optiroute hasta el lanzamiento | El aviso se cierra solo (D105) |
+| Revisión: ficha a medias | Hacerlo | Hecho (D105) |
+| Modelo | Seguir con Sonnet | — |
