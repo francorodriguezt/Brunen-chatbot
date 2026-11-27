@@ -64,7 +64,7 @@ describe('un pedido completo de un cliente conocido', () => {
   it('se anota, se cotiza, se propone la entrega y se responde una vez', async () => {
     const d = await conversacion().decir('quiero 2 de 20 para el viernes');
     expect(d.respuesta).toBe(
-      'Anotamos tu pedido:\n- 2 bidones de 20 L: $6.600\nEntrega estimada: viernes 30 de octubre.\nEntrega en: Calle Falsa 123, Ñuñoa. Si cambiaste de dirección, escríbenos la nueva.\nSi algo cambia, te avisamos por aquí.',
+      'Anotamos tu pedido:\n- 2 bidones de 20 L: $6.600\nEntrega estimada: viernes 30 de octubre.\nEntrega en: Calle Falsa 123, Ñuñoa. Si cambiaste de dirección, escríbenos la nueva.\nDeja tus bidones vacíos listos para retirarlos al entregar (en conserjería si no vas a estar).\nSi algo cambia, te avisamos por aquí.',
     );
     expect(d.intencion).toBe('pedido');
     expect(d.pedido).toMatchObject({
@@ -389,7 +389,7 @@ describe('quién escribe y dónde vive', () => {
     it('se anota con los datos del pedido anterior, sin volver a pedirlos y sin prometer el precio', async () => {
       const d = await conPrevio().decir('quiero 2 de 20');
       expect(d.respuesta).toBe(
-        'Anotamos tu pedido:\n- 2 bidones de 20 L\nEl valor te lo confirmamos a la brevedad.\nEntrega estimada: jueves 29 de octubre.\nEntrega en: Av. Irarrázaval 2345 depto 502, Ñuñoa. Si cambiaste de dirección, escríbenos la nueva.\nSi algo cambia, te avisamos por aquí.',
+        'Anotamos tu pedido:\n- 2 bidones de 20 L\nEl valor te lo confirmamos a la brevedad.\nEntrega estimada: jueves 29 de octubre.\nEntrega en: Av. Irarrázaval 2345 depto 502, Ñuñoa. Si cambiaste de dirección, escríbenos la nueva.\nDeja tus bidones vacíos listos para retirarlos al entregar (en conserjería si no vas a estar).\nSi algo cambia, te avisamos por aquí.',
       );
       expect(d.pedido).toMatchObject({
         nombre: 'Ana Torres',
@@ -550,12 +550,36 @@ describe('preguntas', () => {
     expect(d.alerta?.motivos.join(' ')).not.toContain('También preguntó cómo pagar');
   });
 
+  it('envases: explica que son retornables y cómo funciona la carga inicial, sin inventar precios (D110)', async () => {
+    for (const texto of ['son retornables los bidones?', 'tengo que tener bidones?', 'y si no tengo bidones?', 'que es la carga inicial?']) {
+      const d = await conversacion().decir(texto);
+      expect(d.respuesta, texto).toContain('Los bidones son retornables');
+      expect(d.respuesta, texto).not.toMatch(/\$\d/);
+      expect(d.alerta, texto).toBeUndefined();
+    }
+  });
+
   it('mínimo de pedido: no hay (respuesta 43)', async () => {
     for (const texto of ['hay minimo de pedido?', 'cual es el minimo?', 'puedo pedir solo uno?']) {
       const d = await conversacion().decir(texto);
       expect(d.respuesta, texto).toContain('No hay mínimo de pedido');
       expect(d.alerta, texto).toBeUndefined();
     }
+  });
+});
+
+describe('recordatorio de los vacíos en la respuesta del pedido (chats reales, D110)', () => {
+  it('a un cliente conocido se le recuerda dejar los vacíos listos, y si debe algunos, cuántos', async () => {
+    const normal = await conversacion().decir('quiero 2 de 20');
+    expect(normal.respuesta).toContain('Deja tus bidones vacíos listos para retirarlos al entregar (en conserjería si no vas a estar).');
+    const debe = await conversacion({ cliente: conocido({ envasesPendientes: 2 }) }).decir('quiero 2 de 20');
+    expect(debe.respuesta).toContain('Te quedan 2 vacíos por devolver: déjalos listos junto con los del cambio');
+    expect(debe.respuesta?.split('\n').filter((l) => l.includes('vacío')).length).toBe(1);
+  });
+
+  it('no se le recuerda a quien pide envases nuevos (carga inicial) ni sigue siendo un solo mensaje', async () => {
+    const d = await conversacion().decir('quiero 2 de 20 con envase nuevo');
+    expect(d.respuesta).not.toContain('vacíos');
   });
 });
 

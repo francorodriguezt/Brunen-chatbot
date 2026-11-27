@@ -212,7 +212,7 @@ export type Intencion =
   | 'cierre'
   | 'desconocido';
 
-export type TipoPregunta = 'precio' | 'zona' | 'horario' | 'pago' | 'minimo';
+export type TipoPregunta = 'precio' | 'zona' | 'horario' | 'pago' | 'minimo' | 'envases';
 
 /** Qué debería hacer el bot después. Las decisiones finales son de las etapas de pedido y alertas. */
 export type AccionSugerida = 'escalar' | 'preguntar_tipo' | 'preguntar_cantidad' | 'preguntar_pedido';
@@ -359,6 +359,17 @@ const PREGUNTA_MINIMO = palabras(
   'puedo pedir solo uno', 'puedo pedir uno solo', 'puedo pedir solo 1', 'puedo pedir un solo bidon', 'se puede pedir solo uno', 'se puede pedir un solo bidon',
 );
 
+// Cómo funcionan los envases (chats reales: "¿no son desechables?", "me tienes que cobrar los envases"). Solo preguntas:
+// "quiero devolver 3 envases" es otra cosa (intención envases) y "no tengo envases" dentro de un pedido es carga inicial.
+const PREGUNTA_ENVASES = palabras(
+  'son retornables', 'son desechables', 'es retornable', 'es desechable', 'son de ustedes', 'son de brunen', 'bidones retornables',
+  'tengo que devolver', 'hay que devolver', 'debo devolver', 'tengo que tener bidones', 'tengo que tener envases',
+  'tengo que comprar el envase', 'tengo que comprar el bidon', 'tengo que comprar los bidones', 'cobran el envase', 'cobran los envases', 'cobran el bidon',
+  'cuanto cuesta el envase', 'cuanto cuesta el bidon vacio', 'cuanto sale el envase', 'cuanto vale el envase', 'precio del envase', 'precio del bidon vacio',
+  'que es la carga inicial', 'que es carga inicial', 'como funciona la carga inicial', 'como funcionan los envases', 'como funcionan los bidones', 'como funciona la recarga',
+  'si no tengo bidones', 'si no tengo envases', 'y si no tengo bidon', 'y si no tengo envase', 'no tengo bidones que hago', 'no tengo envases que hago',
+);
+
 const PREGUNTA_PRECIO = palabras(
   'cuanto sale', 'cuanto salen', 'cuanto cuesta', 'cuanto cuestan', 'cuanto vale', 'cuanto valen',
   'cuanto es', 'cuanto seria', 'cuanto me sale', 'cuanto cobran', 'precio', 'precios', 'valor',
@@ -435,6 +446,7 @@ function esSoloCierre(t: string): boolean {
 function tipoDePregunta(t: string, hayComuna: boolean): TipoPregunta | undefined {
   if ((hayComuna && VERBO_ZONA.test(t)) || PALABRA_ZONA.test(t)) return 'zona';
   if (PREGUNTA_MINIMO.test(t)) return 'minimo';
+  if (PREGUNTA_ENVASES.test(t)) return 'envases';
   if (PREGUNTA_PRECIO.test(t)) return 'precio';
   if (PREGUNTA_HORARIO.test(t) || HORARIO_POR_DIA.test(t)) return 'horario';
   if (PREGUNTA_PAGO.test(t)) return 'pago';

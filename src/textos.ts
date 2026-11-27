@@ -144,6 +144,13 @@ export const comoPagar = (datosDeTransferencia = ''): string =>
     ? `Puedes pagar en efectivo al recibir o por transferencia, antes o después de la entrega.\nDatos para transferir:\n${datosDeTransferencia}\nSi transfieres, envíanos el comprobante por aquí.`
     : 'Puedes pagar en efectivo al recibir o por transferencia, antes o después de la entrega. Si quieres transferir, te enviamos los datos.';
 
+/**
+ * "¿Son retornables?", "¿tengo que tener bidones?" (chats reales, D110). Sin precios: la carga inicial de varios tamaños y
+ * cantidades todavía no está definida (PENDIENTE en el conocimiento, §2), y una persona confirma el valor.
+ */
+export const comoFuncionanLosEnvases = (): string =>
+  'Los bidones son retornables: al recargar entregas un vacío por cada bidón lleno que recibes, y los que queden pendientes los retiramos en la siguiente entrega. Si aún no tienes bidones, la primera vez se cobra la carga inicial (el envase con su carga) y una persona te confirma el valor.';
+
 /** "¿Hay un mínimo de pedido?" (respuesta 43 de Franco, 2026-11-27: no hay). */
 export const sinMinimo = (): string => 'No hay mínimo de pedido: puedes pedir desde 1 bidón. El despacho es gratis.';
 
@@ -196,6 +203,11 @@ export function pedidoAnotado(datos: {
   comuna?: string;
   /** La respuesta a lo que además preguntó (D95), antes del cierre. */
   extra?: string;
+  /**
+   * Los vacíos que debe de antes (D108), para recordárselos junto al cambio. null = no aplica el recordatorio (cliente sin
+   * envases: carga inicial). Chats reales (D110): varios clientes "no alcanzaron a dejar los vacíos" y la visita se perdió.
+   */
+  vaciosPendientes?: number | null;
 }): string {
   const conPrecio = datos.total !== null;
   const filas = datos.lineas.map((l) => `- ${itemTexto(l)}${conPrecio && l.subtotal !== null ? `: ${formatearCLP(l.subtotal)}` : ''}`);
@@ -225,6 +237,14 @@ export function pedidoAnotado(datos: {
   const lugar = lugarDeEntrega(datos.direccion, datos.comuna);
   if (lugar) partes.push(`Entrega en: ${lugar}. Si cambiaste de dirección, escríbenos la nueva.`);
   if (datos.extra) partes.push(datos.extra);
+  if (datos.vaciosPendientes !== undefined && datos.vaciosPendientes !== null) {
+    const n = datos.vaciosPendientes;
+    partes.push(
+      n > 0
+        ? `Te quedan ${n} ${n === 1 ? 'vacío' : 'vacíos'} por devolver: déjalos listos junto con los del cambio (en conserjería si no vas a estar).`
+        : 'Deja tus bidones vacíos listos para retirarlos al entregar (en conserjería si no vas a estar).',
+    );
+  }
   partes.push('Si algo cambia, te avisamos por aquí.');
   return partes.join('\n');
 }

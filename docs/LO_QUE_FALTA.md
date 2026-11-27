@@ -27,9 +27,9 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
 5. **Monitoreo de `/salud`** con una cuenta gratis de UptimeRobot que avise al correo. — Franco.
 6. **Borrar los pedidos de prueba** de la base real, para que no se mezclen con los de verdad. — Claude con permiso, Aquí.
 7. **Una forma explícita de "abrir a todos"** en `NUMEROS_PERMITIDOS` (hoy la lista vacía significa "a nadie"). — Claude, Proyecto o Aquí; publicarlo, Aquí.
-8. **Aprobar los textos nuevos del bot** (cotización, horario y pago dentro de un pedido, D95). — Felipe (P45).
+8. **Aprobar los textos nuevos del bot** (cotización, horario y pago dentro de un pedido, D95). — Felipe (P45). Franco respondió: guiarse por los chats reales (D110); los textos nuevos están en [CONVERSACIONES.md](CONVERSACIONES.md).
 9. **Confirmar que el costo es aceptable** si un mes se pasan de 1.000 mensajes (peor caso, unos USD 6). — Felipe (P11).
-10. **Contarle a Felipe que cambió el texto aprobado**: la respuesta ahora dice "Entrega en: …" (D55, D57). — Franco.
+10. **Contarle a Felipe que cambió el texto aprobado**: la respuesta ahora dice "Entrega en: …" (D55, D57), y desde D110 recuerda dejar los vacíos listos. — Franco (respuesta: guiarse por los chats).
 11. **Confirmar en la documentación oficial de Meta** los datos que salieron de fuentes secundarias (unos 250 contactos nuevos al día sin verificar la empresa, costos). — Claude, Proyecto.
 12. **Verificación de la empresa en Meta y método de pago registrado** (Meta lo exige aunque no cobre dentro del cupo). — Felipe.
 
@@ -98,7 +98,7 @@ Hoy el bot solo contesta a los números de prueba. Para abrirlo a todos, en este
 61. **Exportar 5 a 10 chats** de clientes desde el teléfono del negocio (Exportar chat → Sin archivos), dejarlos en `datos/chats/` y correr `npm run medir-bot -- "datos/chats"`. Revisar el informe y pasarme los no entendidos. — Franco, Aquí (P41).
 62. **Sumar a `tests/mensajes.json`** cada mensaje real mal entendido, con su corrección. — Claude, Proyecto o Aquí.
 63. **Dar los datos de transferencia** a quien pregunta cómo pagar (mejora C). — Espera a Felipe (P18).
-64. **Más preguntas frecuentes** (envases, carga inicial, mínimo de pedido; mejora E). — Espera a Felipe.
+64. **Más preguntas frecuentes** (envases, carga inicial, mínimo de pedido; mejora E). ✅ Mínimo (D109) y envases/carga inicial (D110).
 65. **IA con contexto** (mejora F): que la IA de respaldo sepa qué preguntó el bot. — Solo si la medición muestra que hace falta.
 66. **Probar otro modelo de IA** (mejora G), solo si sigue siendo gratis. — Solo si la medición lo pide.
 

@@ -98,6 +98,22 @@
       "esperado": { "intencion": "pregunta", "tipo_pregunta": "minimo" }
     },
     {
+      "mensaje": "no son desechables? son retornables?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "envases" }
+    },
+    {
+      "mensaje": "hay que devolver los bidones?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "envases" }
+    },
+    {
+      "mensaje": "que es la carga inicial?",
+      "esperado": { "intencion": "pregunta", "tipo_pregunta": "envases" }
+    },
+    {
+      "mensaje": "quiero comprarlos",
+      "esperado": { "intencion": "desconocido" }
+    },
+    {
       "mensaje": "cómo puedo pagar?",
       "esperado": { "intencion": "pregunta", "tipo_pregunta": "pago" }
     },

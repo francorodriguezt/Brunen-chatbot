@@ -162,6 +162,7 @@ function responderPregunta(e: EntradaMotor): Decision {
   if (tipo === 'horario') return informar(textos.horarios());
   // Sin mínimo de pedido (respuesta 43).
   if (tipo === 'minimo') return informar(textos.sinMinimo());
+  if (tipo === 'envases') return informar(textos.comoFuncionanLosEnvases());
   // Los datos de transferencia están en la hoja CONFIGURACION (DATOS_TRANSFERENCIA) y el dueño aprobó darlos (respuesta 42).
   // Mientras la hoja no los tenga, los entrega una persona.
   if (tipo === 'pago') {
@@ -305,7 +306,15 @@ function decidirPedido(e: EntradaMotor, itemsPedidos: ItemInterpretado[], repite
   const pregunta = e.interpretacion.intencion === 'pedido' ? e.interpretacion.tipo_pregunta : undefined;
   const datosDePago = e.servicio.datosDeTransferencia ?? '';
   const extra =
-    pregunta === 'horario' ? textos.horarioDelReparto() : pregunta === 'pago' ? textos.comoPagar(datosDePago) : pregunta === 'minimo' ? textos.sinMinimo() : undefined;
+    pregunta === 'horario'
+      ? textos.horarioDelReparto()
+      : pregunta === 'pago'
+        ? textos.comoPagar(datosDePago)
+        : pregunta === 'minimo'
+          ? textos.sinMinimo()
+          : pregunta === 'envases'
+            ? textos.comoFuncionanLosEnvases()
+            : undefined;
   if (pregunta === 'horario') motivos.push('También preguntó por el horario: respóndele si hace falta.');
   if (pregunta === 'pago' && !datosDePago) motivos.push('También preguntó cómo pagar: envíale los datos de transferencia si los pide.');
 
@@ -350,7 +359,7 @@ function decidirPedido(e: EntradaMotor, itemsPedidos: ItemInterpretado[], repite
     // El pedido ya queda anotado; lo que conteste el cliente lo completa (D37).
     memoria = { accion: 'guardar', estado: { espera: 'datos', items: [], id_pedido: idPedido, intentos: 0 } };
   } else {
-    respuesta = textos.pedidoAnotado({ lineas, total: precioSeguro && cotizacion ? cotizacion.total : null, entrega: e.entrega, fechaSegura, direccion: pedido.direccion, comuna: pedido.comuna, extra });
+    respuesta = textos.pedidoAnotado({ lineas, total: precioSeguro && cotizacion ? cotizacion.total : null, entrega: e.entrega, fechaSegura, direccion: pedido.direccion, comuna: pedido.comuna, extra, vaciosPendientes: e.interpretacion.pide_envase ? null : pedido.envasesARetirar });
   }
 
   return {

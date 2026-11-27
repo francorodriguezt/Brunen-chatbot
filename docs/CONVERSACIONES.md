@@ -15,6 +15,8 @@ Lo que el bot **nunca** hace: confirmar un pedido (la operadora confirma), prome
 
 ### 1. Un pedido de un cliente conocido
 
+*(D110: desde los chats reales, a un cliente conocido se le recuerda dejar los vacíos listos, y si debe algunos, cuántos; varios clientes no alcanzaban a dejarlos y la visita se perdía. El texto exacto está en `src/textos.ts`, `pedidoAnotado`.)*
+
 Todo en un solo mensaje. El bot calcula el precio y propone la entrega.
 
 **Cliente:** Hola, necesito 2 bidones de 20 para el viernes
@@ -110,6 +112,24 @@ Las responde solo, sin molestar a la operadora.
 
 **Bot:**
 > Por ahora no despachamos a Maipú. Atendemos: Ñuñoa, Macul, San Joaquín, Peñalolén, Santiago Centro, Providencia, Las Condes, Vitacura, Lo Barnechea, Recoleta, Huechuraba, La Reina.
+
+**Cliente:** hay minimo de pedido? *(D109)*
+
+**Bot:**
+> No hay mínimo de pedido: puedes pedir desde 1 bidón. El despacho es gratis.
+
+**Cliente:** son retornables los bidones? *(D110, de los chats reales)*
+
+**Bot:**
+> Los bidones son retornables: al recargar entregas un vacío por cada bidón lleno que recibes, y los que queden pendientes los retiramos en la siguiente entrega. Si aún no tienes bidones, la primera vez se cobra la carga inicial (el envase con su carga) y una persona te confirma el valor.
+
+**Cliente:** como se paga? *(D109; solo si la hoja CONFIGURACION tiene `DATOS_TRANSFERENCIA`; si no, responde una persona)*
+
+**Bot:**
+> Puedes pagar en efectivo al recibir o por transferencia, antes o después de la entrega.
+> Datos para transferir:
+> *(lo que diga la hoja)*
+> Si transfieres, envíanos el comprobante por aquí.
 
 ### 6. Un cliente nuevo
 
