@@ -114,3 +114,30 @@ describe('interpretar: repetir pedido solo con frases específicas', () => {
     },
   );
 });
+
+describe('interpretar: casos de la revisión del PR 1 (D105)', () => {
+  it('"para" seguido de algo que no es un lugar no es un pedido', () => {
+    expect(interpretar('5 para retirar').intencion).toBe('envases');
+    expect(interpretar('2 para devolver').intencion).toBe('envases');
+    for (const texto of ['5 para devolverlos', '2 para el repartidor', '1 para consultar', '5 para cuando?']) {
+      expect(interpretar(texto).intencion, texto).not.toBe('pedido');
+    }
+  });
+
+  it('un lugar o una comuna después de la cantidad sigue siendo un pedido', () => {
+    for (const texto of ['5 para la sucursal', '4 para el local', '5 para Las Condes', 'y 6 vitacura']) {
+      expect(interpretar(texto).intencion, texto).toBe('pedido');
+    }
+  });
+
+  it('preguntar cómo o a dónde transferir no es avisar que pagó', () => {
+    for (const texto of ['A qué cuenta le transfiero?', 'Cómo les transfiero?', 'Le transfiero o pago en efectivo?', 'a donde transfiero']) {
+      expect(interpretar(texto), texto).toMatchObject({ intencion: 'pregunta', tipo_pregunta: 'pago' });
+    }
+    expect(interpretar('Ya le transfiero').intencion).toBe('pago');
+  });
+
+  it('"nadie vino" es un reclamo, aunque hable de los bidones', () => {
+    expect(interpretar('los bidones quedaron afuera todo el dia y nadie vino').intencion).toBe('reclamo');
+  });
+});
