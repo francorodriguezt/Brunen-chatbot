@@ -386,6 +386,10 @@ const VERBO_ZONA = new RegExp(
 const PALABRA_ZONA = palabras('cobertura', 'zona', 'zonas', 'comunas', 'sector', 'sectores');
 const MENCION_PAGO = palabras(
   'transferi', 'transferimos', 'transferido', 'pague', 'pagamos', 'pagado', 'deposite', 'abone',
+  // Chats reales (D103): "acabo de transferir las 2 recargas", "ya le transfiero", "aquí le dejo pago de las dos recargas".
+  'acabo de transferir', 'acabamos de transferir', 'ya le transfiero', 'ya les transfiero', 'ya te transfiero',
+  'le transfiero', 'les transfiero', 'le dejo pago', 'le dejo el pago', 'les dejo el pago', 'te dejo el pago', 'dejo el pago',
+  'aqui esta el pago', 'ahi va el pago', 'envio el pago',
   'comprobante', 'voucher', 'cancele', 'ya cancele', 'esta cancelado', 'ya esta cancelado',
 );
 
@@ -394,11 +398,15 @@ const SALUDOS = new RegExp(
   String.raw`\b(?:hola+|holi+|buenas tardes|buenas noches|buenos dias|buen dia|buenas|que tal|hey|saludos|estimad[oa]s?|como estan|como esta|como andan|todo bien)\b`,
   'g',
 );
-const RELLENO = new RegExp(String.raw`\b(?:por favor|porfa|porfis|amigos?|amigas?|equipo|brunen|a todos|todos)\b`, 'g');
+// "Hola buenas, disculpen la demora" (chats reales, D103) sigue siendo solo un saludo.
+const RELLENO = new RegExp(
+  String.raw`\b(?:por favor|porfa|porfis|amigos?|amigas?|equipo|brunen|a todos|todos|(?:disculpen?|disculpa|perdon|perdona|perdonen) (?:la|por la) demora)\b`,
+  'g',
+);
 
 // Mensajes que solo cierran la conversación: no se responden (cada respuesta gasta el cupo gratis).
 const PALABRAS_CIERRE = new RegExp(
-  String.raw`\b(?:muchas|mil|gracias|ok+|okey|oka|listo|dale|perfecto|vale|genial|excelente|bacan|buenisimo|super|ya|de acuerdo|entendido|recibido|nada mas|eso es todo|eso seria todo|eso nomas|por todo|saludos)\b`,
+  String.raw`\b(?:muchas|mil|gracias|ok+|okey|oka|listo|dale|perfecto|vale|genial|excelente|bacan|buenisimo|super|ya|de acuerdo|entendido|recibido|recibidas?|recibidos|nada mas|eso es todo|eso seria todo|eso nomas|por todo|saludos|si|no hay problema|sin problema|recargas recibidas)\b`,
   'g',
 );
 
@@ -407,8 +415,10 @@ function esSoloSaludo(t: string): boolean {
   return sinSaludo !== t && sinSaludo.replace(RELLENO, ' ').replace(/[\s?/]+/g, '') === '';
 }
 
+/** "Ok, gracias", y también con saludo delante: "Hola, buenos días! Ok, gracias" (chats reales, D103). */
 function esSoloCierre(t: string): boolean {
-  return /[a-z0-9]/.test(t) && t.replace(PALABRAS_CIERRE, ' ').replace(/[\s?/]+/g, '') === '';
+  const sinSaludo = t.replace(SALUDOS, ' ').replace(RELLENO, ' ');
+  return /[a-z0-9]/.test(sinSaludo) && sinSaludo.replace(PALABRAS_CIERRE, ' ').replace(/[\s?/!.,]+/g, '') === '';
 }
 
 function tipoDePregunta(t: string, hayComuna: boolean): TipoPregunta | undefined {
@@ -424,6 +434,30 @@ export function accionDePedido(items: readonly ItemInterpretado[]): AccionSugeri
   if (items.some((item) => item.tipo === 'no_especificado')) return 'preguntar_tipo';
   if (items.some((item) => item.cantidad === null)) return 'preguntar_cantidad';
   return undefined;
+}
+
+/**
+ * Avisa que dejó los vacíos listos para retirar (D103, chats reales): "Bidones quedaron en conserjería", "ya están en
+ * conserjería". No es un pedido: el repartidor los retira (regla 5). Sin cantidad ni tamaño, para no confundirlo con
+ * "déjeme 2 de 20 en conserjería".
+ */
+const VACIOS_LISTOS = new RegExp(
+  String.raw`\b(?:(?:los )?(?:bidones|envases|vacios) (?:quedaron|estan|los deje|deje|dejamos)|(?:ya )?(?:quedaron|estan|los deje|los dejamos)) (?:en (?:la )?(?:conserjeria|porteria|recepcion)|afuera)\b`,
+);
+
+/**
+ * "5 para Las Condes", "4 Ñuñoa", "y 6 vitacura" (chats reales, D103): clientes con varios locales que piden solo la
+ * cantidad y para dónde. Es un pedido sin tamaño. Exige "para" o una comuna, para no confundir "5 minutos" o "3 cuadras".
+ */
+const CANTIDAD_PARA_LUGAR = /^(?:y )?(\d{1,2}) (?:para (?:el |la |los )?)?([a-z][a-z ]{2,30})$/;
+
+function cantidadParaLugar(t: string, hayComuna: boolean): number | null {
+  const limpio = t.replace(SALUDOS, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const m = CANTIDAD_PARA_LUGAR.exec(limpio);
+  if (!m) return null;
+  const cantidad = Number(m[1]);
+  const conPara = /^(?:y )?\d{1,2} para /.test(limpio);
+  return cantidad >= 1 && (conPara || hayComuna) ? cantidad : null;
 }
 
 /**
@@ -466,6 +500,15 @@ export function interpretar(texto: string): Interpretacion {
   if (!tipoPregunta && comuna !== null && t.includes('?') && items.length === 0 && !verbo) tipoPregunta = 'zona';
   if (tipoPregunta && !(verbo && items.some((item) => item.cantidad !== null))) {
     return resultado('pregunta', { tipo_pregunta: tipoPregunta });
+  }
+
+  // Vacíos listos en conserjería: se anotan para el repartidor (D103).
+  if (items.length === 0 && !verbo && VACIOS_LISTOS.test(t)) return { ...resultado('envases'), items: [] };
+
+  // "5 para Las Condes": un pedido sin tamaño (D103).
+  const suelta = items.length === 0 && !verbo ? cantidadParaLugar(t, comuna !== null) : null;
+  if (suelta !== null) {
+    return { ...resultado('pedido', { accion: 'preguntar_tipo' }), items: [{ tipo: 'no_especificado', cantidad: suelta }] };
   }
 
   const pideEnvases = SIN_ENVASE.test(t);

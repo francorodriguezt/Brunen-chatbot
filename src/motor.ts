@@ -187,8 +187,9 @@ function motivoDeAjuste(entrega: PropuestaEntrega): string {
   return 'no se entendió';
 }
 
-function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boolean): Decision {
-  const falta = accionDePedido(items);
+function decidirPedido(e: EntradaMotor, itemsPedidos: ItemInterpretado[], repite: boolean): Decision {
+  let items = itemsPedidos;
+  let falta = accionDePedido(items);
   // "Hola, quiero pedir" sin detalle de un cliente que ya pidió (D69): se le ofrece lo de siempre; un "sí" lo anota.
   const usual = (e.ultimoPedido ?? []).flatMap((i) => (i.tipo !== 'no_especificado' && i.cantidad !== null ? [{ tipo: i.tipo, cantidad: i.cantidad }] : []));
   if (falta === 'preguntar_pedido' && !repite && usual.length > 0) {
@@ -198,6 +199,15 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
       respuesta: textos.ofrecerLoDeSiempre(usual),
       memoria: { accion: 'guardar', estado: { espera: 'lo_de_siempre', items: usual, ...(fecha && { fecha_texto: fecha }), ...(comuna && { comuna_mencionada: comuna }) } },
     };
+  }
+  // "5 para Las Condes" sin tamaño (D103): si siempre pide del mismo tamaño, se anota de ese en vez de gastar un mensaje
+  // preguntando. Lo revisa una persona y al cliente no se le promete el precio: ve el tamaño en la respuesta y puede corregirlo.
+  let tamanoSupuesto: TipoBidon | null = null;
+  const tamanosUsuales = new Set(usual.map((i) => i.tipo));
+  if (falta === 'preguntar_tipo' && !repite && tamanosUsuales.size === 1 && items.every((i) => i.cantidad !== null)) {
+    tamanoSupuesto = [...tamanosUsuales][0] as TipoBidon;
+    items = items.map((i) => (i.tipo === 'no_especificado' ? { ...i, tipo: tamanoSupuesto as TipoBidon } : i));
+    falta = accionDePedido(items);
   }
   if (falta) return preguntar(e, items, falta);
   const completos = items as ItemCompleto[];
@@ -242,6 +252,10 @@ function decidirPedido(e: EntradaMotor, items: ItemInterpretado[], repite: boole
   if (cliente && cliente.avisos.length > 0) {
     precioSeguro = false;
     motivos.push(...cliente.avisos.map((aviso) => `Ficha del cliente: ${aviso}`));
+  }
+  if (tamanoSupuesto) {
+    precioSeguro = false;
+    motivos.push(`No dijo el tamaño: se anotó de ${tamanoSupuesto.replace('L', ' L')}, como sus pedidos anteriores. Confírmalo.`);
   }
   if (sinHoja) motivos.push('No se pudo leer la hoja CLIENTES: revisar si tiene precio especial, si es mayorista o empresa, o si está bloqueado, antes de confirmar.');
   if (previo) motivos.push(`Sin ficha en CLIENTES (se conoce por su pedido ${previo.idPedido}): confirmar el precio y el tipo de cliente.`);

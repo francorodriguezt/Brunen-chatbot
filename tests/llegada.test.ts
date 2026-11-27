@@ -30,7 +30,7 @@ function pedido(id: string, telefono: string, cambios: Partial<PedidoARegistrar>
 
 describe('qué cuenta como "¿cuándo llega?" (D78)', () => {
   it('reconoce las formas de preguntar', () => {
-    for (const texto of ['¿Cuándo llega mi pedido?', 'a que hora llegan?', 'hola, ya viene?', '¿falta mucho?', 'por donde va el repartidor', 'mi pedido viene hoy?', 'ya va en camino?']) {
+    for (const texto of ['¿Cuándo llega mi pedido?', 'a que hora llegan?', 'hola, ya viene?', '¿falta mucho?', 'por donde va el repartidor', 'mi pedido viene hoy?', 'ya va en camino?', 'Hola, ya pasaron?', 'hola, habrán pasado ya ?', '¿pasarían durante la mañana?']) {
       expect(preguntaPorLlegada(texto), texto).toBe(true);
     }
   });

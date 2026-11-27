@@ -34,6 +34,25 @@ describe('leer un chat exportado de WhatsApp (D96)', () => {
   });
 });
 
+describe('iPhone en español, con guiones y "a. m." (D103)', () => {
+  // Así exporta el iPhone de Brunen: fecha con guiones, segundos y "a. m."/"p. m." con espacios finos.
+  const IOS_ES = '\u200e[28-10-26, 11:29:42\u202fa.\u00a0m.] Cata Ficticia: Hola\n[28-10-26, 1:05:10\u202fp.\u00a0m.] Brunen Spa: Hola, ¿cuántos necesitas?';
+  it('lee el autor, el texto y la hora de la tarde', () => {
+    const mensajes = leerChat(IOS_ES);
+    expect(mensajes.map((m) => [m.autor, m.texto])).toEqual([['Cata Ficticia', 'Hola'], ['Brunen Spa', 'Hola, ¿cuántos necesitas?']]);
+    expect(mensajes[1].minuto).toBe(Date.UTC(2026, 9, 28, 13, 5) / 60000);
+  });
+
+  it('salta el aviso de cifrado y "Esperando el mensaje", y quita la marca de un archivo al final del texto', () => {
+    const chat = [
+      '[28-10-26, 11:29:40] Cata Ficticia: Los mensajes y las llamadas están cifrados de extremo a extremo. Solo las personas en este chat pueden leerlos.',
+      '[28-10-26, 11:29:41] Cata Ficticia: Esperando el mensaje. Esto puede tomar tiempo.',
+      '[28-10-26, 11:29:42] Cata Ficticia: Aquí le dejo el pago imagen omitida',
+    ].join('\n');
+    expect(leerChat(chat).map((m) => m.texto)).toEqual(['Aquí le dejo el pago']);
+  });
+});
+
 describe('quién es el negocio y qué escribió el cliente (D96)', () => {
   it('lo que responde a una pregunta por sus datos se marca: no se mide ni se muestra (D97)', () => {
     const chat = leerChat(`26/11/26, 09:00 - Ana Prueba: quiero 2 de 20

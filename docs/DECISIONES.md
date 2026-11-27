@@ -861,3 +861,17 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - **Panel (Reparto):** "Desde que publicaste la ruta, se agregó 1 parada y se quitó 1. … Las nuevas van al final: vuelve a publicar para ponerlas en orden."
 - Sin viajes guardados (una ruta publicada antes de D86) no se compara.
 - Nuevo archivo `panel/repartidor/cambios.js` (en la copia sin señal: pasa a `brunen-v4`). Pruebas: 3 en `tests/reparto.test.ts` y 2 en `tests/cambios-ruta.test.mjs`. Verificado de punta a punta en local con datos ficticios: publicar, cancelar una parada, aviso en el panel y en la app, "Entendido" y recargar. **Sin publicar.**
+
+### D103 · 2026-11-27 · El bot aprende de los primeros chats reales
+**Franco mandó 6 chats reales exportados desde el iPhone del negocio.** Se midieron en un computador aparte con `npm run medir-bot`, que oculta los datos personales; los chats no entran al repositorio. Los ejemplos nuevos de `tests/mensajes.json` están reescritos con datos ficticios.
+- **El medidor no leía los chats del iPhone en español:** la fecha va con guiones ("[28-10-26, 11:29:42 a. m.]") y con espacios finos. Leía 0 mensajes. Ahora acepta guiones, puntos y barras. Además salta el aviso de cifrado y "Esperando el mensaje" (el iPhone los pone como si los escribiera el cliente) y quita "imagen omitida" del final de un texto.
+- **Resultado:** de 66 mensajes del cliente, las reglas entendían 29 (44 %). Con los cambios entienden 49 de 64 (77 %); los que quedan pasan por la IA de respaldo y, si no, a una persona, como antes.
+- **Lo que se agregó al intérprete:**
+  - **pedidos de clientes con varios locales:** "5 para Las Condes", "y 6 vitacura", "5 para la sucursal" son pedidos de esa cantidad, sin tamaño. Se exige "para" o una comuna, para no confundirlo con "5 minutos";
+  - **pedido sin tamaño de un cliente que siempre pide el mismo:** se anota de ese tamaño en vez de gastar un mensaje preguntando, sin prometer precio y para revisión ("No dijo el tamaño: se anotó de 20 L, como sus pedidos anteriores. Confírmalo."). El cliente ve el tamaño en la respuesta. Si pide tamaños distintos o es nuevo, se pregunta como antes;
+  - **avisos de pago:** "acabo de transferir las 2 recargas", "ya le transfiero", "aquí le dejo pago de las dos recargas";
+  - **vacíos listos:** "Bidones quedaron en conserjería", "ya están en conserjería" se anotan para el repartidor (sin cantidad ni tamaño, para no confundir "déjeme 2 de 20 en conserjería");
+  - **"¿cuándo llega?"** también con "¿ya pasaron?", "¿habrán pasado ya?", "¿pasarían durante la mañana?" (solo con un pedido vivo, D78);
+  - **saludos y cierres:** "disculpen la demora", "Sí, gracias", "No hay problema", "Recargas recibidas", y un cierre con saludo delante ("Hola, buenos días! Ok, gracias"). No se responden (cupo de mensajes).
+- **Lo que sigue sin entenderse, a propósito:** respuestas sueltas a una pregunta que hizo una persona ("Sí / 4", "6 / por ahora"), "El total de hoy y lo anterior" (cuánto debe: lo ve una persona), "en efectivo le entrego" y frases sin contexto. Para medir más, hacen falta más chats (D96).
+- Verificado: 1.651 pruebas (14 casos nuevos en `tests/mensajes.json`, 2 en el flujo, 2 en el medidor, 3 en "¿cuándo llega?"). **Sin publicar.**
