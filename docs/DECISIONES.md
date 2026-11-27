@@ -845,3 +845,11 @@ Franco activó Zero Trust y autorizó hacer el resto en Cloudflare.
 - Sin pedidos por pagar, el aviso queda suelto, como antes. Si la consulta falla, el aviso se guarda igual, sin pedido.
 - Solo para comprobantes (imagen o PDF). "Ya te transferí" por texto sigue como aviso de pago sin asociar: no siempre es de un pedido (puede ser una deuda o un abono). Cuando se construyan los cobros (propuesta 2), esto pasa a ser "informado".
 - Sin migración (la columna `id_pedido` de los avisos ya existía). Verificado: 2 pruebas nuevas en `tests/atencion.test.ts`. **Sin publicar.**
+
+### D101 · 2026-11-27 · Aviso al elegir un domingo o un día sin reparto en el panel
+**Mejora encontrada al probar D99:** al cambiar un pedido en el panel se podía pasar la entrega a un domingo sin que nada lo dijera (el servidor lo aceptaba). El bot nunca ofrece esos días, pero a mano sí se podía.
+- Bajo la fecha de entrega, al anotar o cambiar un pedido, el panel avisa: "Es domingo: no hay reparto.", "Ese día está marcado sin reparto (motivo).", "Esa fecha ya pasó." o "Es sábado: el reparto es hasta las 15:00."
+- **No bloquea:** puede haber una excepción a sabiendas (una empresa que recibe el domingo). Solo lo dice.
+- Los feriados no los conoce: viven en la planilla y el panel no la lee. Un feriado importante se puede marcar como día sin reparto (D74).
+- `/api/opciones` trae los días sin reparto próximos; al marcar o quitar uno en Reparto, el aviso se actualiza sin recargar.
+- Código: `panel/admin/aviso-de-fecha.js` (función pura, 3 pruebas). Verificado en el navegador a 375 px: domingo, sábado, fecha pasada y un día marcado sin reparto. **Sin publicar.**
