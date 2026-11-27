@@ -172,12 +172,14 @@ async function atender(entrada: EntradaFlujo, p: Puertos): Promise<ResultadoFluj
   // 2. Reunir solo lo que esta intención necesita (cada lectura de hoja gasta tiempo y cupo de Google).
   // "Lo de siempre" (repetir) o un "quiero pedir" sin detalle: en los dos sirve el último pedido (para ofrecérselo, D69).
   const repite = (intencion === 'repetir_pedido' || (intencion === 'pedido' && interpretacion.items.length === 0)) && !cancelo;
+  // Un pedido sin tamaño ("5 para Las Condes", D103): su último pedido dice de qué tamaño suele pedir.
+  const sinTamano = intencion === 'pedido' && interpretacion.items.some((item) => item.tipo === 'no_especificado') && !cancelo;
   const [cliente, servicio, precios, entrega, ultimoPedido] = await Promise.all([
     intencion === 'cierre' ? ({ estado: 'nuevo' } as BusquedaCliente) : p.buscarCliente(entrada.telefono),
     intencion === 'cierre' ? { reducido: false, mensajeExcepcion: '' } : p.servicio(),
     INTENCIONES_CON_PRECIOS.has(intencion) ? p.cargarPrecios() : SIN_PRECIOS,
     INTENCIONES_CON_ENTREGA.has(intencion) ? p.proponerEntrega(interpretacion.fecha_texto) : undefined,
-    repite ? ultimoParaRepetir(p, entrada.telefono) : null,
+    repite || sinTamano ? ultimoParaRepetir(p, entrada.telefono) : null,
   ]);
 
   // Un cliente sin ficha (o con la hoja CLIENTES caída, D57) que ya pidió no vuelve a recibir la pregunta de datos (D40): se busca solo cuando va a anotar un pedido.

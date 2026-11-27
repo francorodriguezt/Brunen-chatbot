@@ -22,7 +22,7 @@ Las preguntas vienen de [PENDIENTES.md](PENDIENTES.md), [PROPUESTA_SIGUIENTES_PA
 
 10. **Número de WhatsApp:** ¿proveedor autorizado de Meta (y cuánto se puede pagar al mes) o Brunen como su propio Tech Provider (gratis, pero más trámites)? Es el bloqueo más grande para abrir el bot a todos.
 11. **Costo:** si un mes se pasan de 1.000 mensajes, el peor caso es de unos USD 6 al mes. ¿Está bien?
-12. **¿Todo minimarket paga precio mayorista?** ¿Y "hogar" es el precio normal?
+12. ~~**¿Todo minimarket paga precio mayorista?**~~ Sí (Franco, 2026-11-27): todo minimarket paga mayorista, salvo un cliente con un precio propio de $1.311 por bidón, que irá como precio especial en su ficha. ¿Y "hogar" es el precio normal?
 13. **Carga inicial de 10 L:** ¿$4.000 o $4.500? El bot hoy tiene $4.500.
 14. **Carga inicial de 12 L y 10 L desde 3 envases:** ¿cuánto cuesta cada uno?
 15. **Precios especiales** ($3.500 y $3.000 por el de 20 L): ¿valen también para 12 L y 10 L? ¿A qué precio?
@@ -61,7 +61,7 @@ Las preguntas vienen de [PENDIENTES.md](PENDIENTES.md), [PROPUESTA_SIGUIENTES_PA
 38. **Bot de Telegram:** sigue sin crearse; revisé que no está cargado `TELEGRAM_BOT_TOKEN`. Pasos en [PASOS_FRANCO.md](PASOS_FRANCO.md), punto 2.
 39. **Secreto del panel:** pasar el archivo con el secreto que quedó en tu computador a tu gestor de claves y borrarlo.
 40. **Clave JSON de Google** que quedó en tu computador: guardarla en un lugar seguro o borrarla. Ya está en Cloudflare.
-41. **Mensajes reales de clientes:** en el teléfono del negocio, abre un chat → Más → **Exportar chat → Sin archivos**. Junta 5 a 10 en `datos/chats/` y corre `npm run medir-bot -- "datos/chats"`. Revisa `datos-anonimos/medicion-bot/informe.md` y pégame los no entendidos (D96). Es lo que más mejora al bot.
+41. **Mensajes reales de clientes:** (2026-11-27: llegaron 6 chats; con ellos el bot pasó de 44 % a 77 % de mensajes entendidos, D103. Más chats siguen sirviendo.) en el teléfono del negocio, abre un chat → Más → **Exportar chat → Sin archivos**. Junta 5 a 10 en `datos/chats/` y corre `npm run medir-bot -- "datos/chats"`. Revisa `datos-anonimos/medicion-bot/informe.md` y pégame los no entendidos (D96). Es lo que más mejora al bot.
 42. **Cuentas y prueba real:** la cuenta de Coni, la del repartidor, instalar la app en su teléfono, probar la ubicación y hacer un día de prueba ([PASOS_FRANCO.md](PASOS_FRANCO.md), puntos 3 a 9).
 43. **Historial del Excel:** correr la simulación y mandarme los totales (punto 6).
 44. **Monitoreo:** una cuenta gratis de UptimeRobot que revise `/salud` y te avise al correo.

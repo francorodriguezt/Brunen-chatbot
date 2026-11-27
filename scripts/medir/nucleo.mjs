@@ -9,8 +9,8 @@
 
 const INVISIBLES = /[‎‏‪-‮﻿]/g;
 const ESPACIOS_RAROS = /[  ]/g;
-const FECHA = String.raw`(\d{1,2})\/(\d{1,2})\/(\d{2,4}),? (\d{1,2}):(\d{2})(?::\d{2})?(?:\s*([ap])\.?\s*m\.?)?`;
-// Android: "26/11/26, 14:05 - Ana: hola". iPhone: "[26/11/26, 14:05:33] Ana: hola".
+const FECHA = String.raw`(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4}),? (\d{1,2}):(\d{2})(?::\d{2})?(?:\s*([ap])\.?\s*m\.?)?`;
+// Android: "26/11/26, 14:05 - Ana: hola". iPhone: "[26/11/26, 14:05:33] Ana: hola" o, en español, "[26-11-26, 2:05:33 p. m.] Ana: hola".
 const LINEA_ANDROID = new RegExp(String.raw`^${FECHA} - ([^:\n]{1,60}?): (.*)$`, 'i');
 const LINEA_IPHONE = new RegExp(String.raw`^\[${FECHA}\] ([^:\n]{1,60}?): (.*)$`, 'i');
 // Una línea con fecha pero sin autor es del sistema ("Los mensajes están cifrados..."): no es de nadie.
@@ -18,6 +18,10 @@ const LINEA_SISTEMA = new RegExp(String.raw`^\[?${FECHA}\]?(?: -)? `, 'i');
 const OMITIDO =
   /^(?:<?(?:multimedia|media) omit(?:ido|ted)>?|(?:imagen|audio|video|sticker|gif|documento|archivo|ubicaci[oó]n) omitid[oa]|se elimin[oó] este mensaje\.?|este mensaje fue eliminado\.?|eliminaste este mensaje\.?|this message was deleted\.?|.*\(archivo adjunto\))$/i;
 const EDITADO = /\s*<se edit[oó] este mensaje\.?>\s*$/i;
+// El iPhone pone el aviso de cifrado como un mensaje del contacto, y "Esperando el mensaje" cuando no se descargó (D103).
+const AVISO_DE_WHATSAPP = /^(?:los mensajes y las llamadas est[aá]n cifrados|messages and calls are end-to-end encrypted|esperando el mensaje|waiting for this message)/i;
+// "Hola, aquí va el pago imagen omitida": el texto que acompaña un archivo sí cuenta, sin la marca del archivo.
+const ARCHIVO_AL_FINAL = /\s*(?:imagen|audio|video|sticker|gif|documento|archivo) omitid[oa]$/i;
 
 function limpiar(linea) {
   return linea.replace(INVISIBLES, '').replace(ESPACIOS_RAROS, ' ');
@@ -48,7 +52,9 @@ export function leerChat(texto) {
   }
   return mensajes
     .map((m) => ({ ...m, texto: m.texto.replace(EDITADO, '').trim() }))
-    .filter((m) => m.texto && !OMITIDO.test(m.texto));
+    .filter((m) => m.texto && !OMITIDO.test(m.texto) && !AVISO_DE_WHATSAPP.test(m.texto))
+    .map((m) => ({ ...m, texto: m.texto.replace(ARCHIVO_AL_FINAL, '').trim() }))
+    .filter((m) => m.texto);
 }
 
 /** Con dos o más chats, el negocio es quien escribe en todos (quien exportó los chats). Con uno solo no se sabe. */

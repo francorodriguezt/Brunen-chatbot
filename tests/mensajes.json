@@ -344,6 +344,62 @@
     {
       "mensaje": "el agua tiene un olor raro",
       "esperado": { "intencion": "reclamo", "accion": "escalar" }
+    },
+    {
+      "mensaje": "Hola, 5 para Las Condes",
+      "esperado": {"intencion": "pedido", "items": [{"tipo": "no_especificado", "cantidad": 5}], "comuna_mencionada": "Las Condes", "accion": "preguntar_tipo"}
+    },
+    {
+      "mensaje": "y 6 vitacura",
+      "esperado": {"intencion": "pedido", "items": [{"tipo": "no_especificado", "cantidad": 6}], "comuna_mencionada": "Vitacura", "accion": "preguntar_tipo"}
+    },
+    {
+      "mensaje": "Hola\n5 para la sucursal",
+      "esperado": {"intencion": "pedido", "items": [{"tipo": "no_especificado", "cantidad": 5}], "accion": "preguntar_tipo"}
+    },
+    {
+      "mensaje": "Acabo de transferir las 2 recargas de mi casa. Muchas gracias",
+      "esperado": {"intencion": "pago", "items": []}
+    },
+    {
+      "mensaje": "Hola buenos días, aquí le dejo pago de las dos recargas del martes, perdón la demora",
+      "esperado": {"intencion": "pago", "items": []}
+    },
+    {
+      "mensaje": "Ya le transfiero",
+      "esperado": {"intencion": "pago", "items": []}
+    },
+    {
+      "mensaje": "Hola, buenos días! Bidones quedaron en conserjería",
+      "esperado": {"intencion": "envases", "items": []}
+    },
+    {
+      "mensaje": "Buenos días, ya están en conserjería, gracias",
+      "esperado": {"intencion": "envases", "items": []}
+    },
+    {
+      "mensaje": "Hola buenas, disculpen la demora",
+      "esperado": {"intencion": "saludo", "items": []}
+    },
+    {
+      "mensaje": "Si gracias",
+      "esperado": {"intencion": "cierre", "items": []}
+    },
+    {
+      "mensaje": "No hay problema",
+      "esperado": {"intencion": "cierre", "items": []}
+    },
+    {
+      "mensaje": "Recargas recibidas, muchas gracias!",
+      "esperado": {"intencion": "cierre", "items": []}
+    },
+    {
+      "mensaje": "Hola, buenos días! Ok, gracias",
+      "esperado": {"intencion": "cierre", "items": []}
+    },
+    {
+      "mensaje": "Hola si",
+      "esperado": {"intencion": "cierre", "items": []}
     }
   ]
 }

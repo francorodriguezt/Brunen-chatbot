@@ -288,6 +288,27 @@ describe('un pedido que se completa en varios mensajes', () => {
   });
 });
 
+describe('"5 para Las Condes": cantidad sin tamaño (D103)', () => {
+  it('si siempre pide del mismo tamaño, se anota de ese, sin precio prometido y para revisar', async () => {
+    const c = await conversacion();
+    await c.decir('quiero 4 de 20');
+    const d = await c.decir('Hola, 5 para Las Condes');
+    expect(d.pedido?.lineas).toMatchObject([{ tipo: '20L', cantidad: 5 }]);
+    expect(d.respuesta).toContain('- 5 bidones de 20 L');
+    expect(d.respuesta).toContain('El valor te lo confirmamos a la brevedad.');
+    expect(d.alerta?.tipo).toBe('pedido_revision');
+    expect(d.alerta?.motivos.join(' ')).toContain('No dijo el tamaño: se anotó de 20 L');
+    expect(d.alerta?.motivos.join(' ')).toContain('Pidió entrega en Las Condes'); // su ficha es de Ñuñoa
+  });
+
+  it('si pide tamaños distintos, o es la primera vez, pregunta el tamaño', async () => {
+    const c = await conversacion();
+    await c.decir('quiero 3 de 20 y 1 de 12');
+    expect((await c.decir('5 para Las Condes')).respuesta).toBe(textos.preguntarTipo());
+    expect((await conversacion().decir('5 para Las Condes')).respuesta).toBe(textos.preguntarTipo());
+  });
+});
+
 describe('"lo de siempre"', () => {
   it('repite el último pedido', async () => {
     const c = await conversacion();

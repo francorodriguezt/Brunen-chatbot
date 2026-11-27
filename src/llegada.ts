@@ -33,6 +33,8 @@ const PREGUNTA_LLEGADA = new RegExp(
     String.raw`\b(?:donde|por donde) (?:viene|va|anda|esta) (?:el |mi )?(?:repartidor|pedido|camion|camioneta|furgon)\b`,
     String.raw`\b(?:mi )?pedido (?:llega|viene)\b`,
     String.raw`\ben camino\b`,
+    // Chats reales (D103): "¿ya pasaron?", "¿habrán pasado ya?", "¿pasarían durante la mañana?".
+    String.raw`\b(?:ya pasaron|ya paso|pasaron ya|habran pasado|habra pasado|pasarian|pasaran|van a pasar|vienen hoy|viene hoy)\b`,
   ].join('|'),
 );
 
