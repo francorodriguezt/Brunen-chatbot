@@ -1,6 +1,6 @@
 # Aviso de privacidad — BORRADOR
 
-> **Borrador para revisión (2026-11-25, D85).** Lo redactó el equipo de desarrollo con lo que el sistema hace hoy. **No es asesoría legal**: lo aprueba el dueño y conviene que lo revise un abogado antes de publicarlo. Lo marcado **[PENDIENTE]** lo decide el dueño.
+> **Borrador para revisión (2026-11-25, D85).** Lo redactó el equipo de desarrollo con lo que el sistema hace hoy. **No es asesoría legal**: lo aprueba el dueño y conviene que lo revise un abogado antes de publicarlo. Lo marcado **[PENDIENTE]** lo decide el dueño. Lo marcado **(recomendado)** lo propuso el desarrollo el 2026-11-27 y falta que el dueño lo apruebe.
 >
 > Contexto legal (verificar antes de publicar): hoy rige la Ley 19.628 sobre protección de la vida privada; la Ley 21.719, que la reemplaza en gran parte, rige desde el **15 de octubre de 2027** (Ley 21.855, D82). Este texto apunta a cumplir la nueva desde ya.
 
@@ -43,11 +43,12 @@ Estos servicios pueden guardar los datos fuera de Chile.
 - Lo que escribiste en un aviso o reclamo: 90 días.
 - La conversación en curso con el sistema: 12 horas.
 - Tu último pedido, para ofrecerte "lo de siempre": 6 meses desde ese pedido.
-- Tus pedidos y tu ficha de cliente (nombre, teléfonos, direcciones): [PENDIENTE: plazo; considerar lo que exige la ley tributaria para boletas y facturas].
-- Los comprobantes de pago: [PENDIENTE: plazo en Telegram].
-- Las copias de seguridad: 7 días en la base de datos y [PENDIENTE] en la planilla de respaldo.
+- Tus pedidos: 6 años, porque respaldan boletas y facturas **(recomendado)**.
+- Tu ficha de cliente (nombre, teléfonos, direcciones): mientras pidas, y se borra si pasas 2 años sin pedir **(recomendado)**.
+- Los comprobantes de pago: 1 año **(recomendado)**.
+- Las copias de seguridad: 7 días en la base de datos; en la planilla de respaldo, lo mismo que tus pedidos **(recomendado)**.
 
-**Tus derechos.** Puedes pedirnos ver qué datos tuyos tenemos, corregirlos, que los borremos, que dejemos de usarlos o que te los entreguemos para llevarlos a otro lado. Escríbenos por WhatsApp o al correo de arriba. Te responderemos en un plazo de [PENDIENTE: plazo legal, confirmar]. Si borras tus datos, no podremos recordar tu dirección ni tus pedidos anteriores. Las boletas y facturas emitidas se guardan el tiempo que exige la ley.
+**Tus derechos.** Puedes pedirnos ver qué datos tuyos tenemos, corregirlos, que los borremos, que dejemos de usarlos o que te los entreguemos para llevarlos a otro lado. Escríbenos por WhatsApp o al correo de arriba. Acusaremos recibo y te responderemos dentro de 30 días corridos; si el caso lo exige, podemos extender el plazo una vez por otros 30 (Ley 21.719, artículo 11). Si borras tus datos, no podremos recordar tu dirección ni tus pedidos anteriores. Las boletas y facturas emitidas se guardan el tiempo que exige la ley.
 
 **Cómo los protegemos.** Solo las personas de Brunen que atienden pedidos pueden ver tus datos, con su usuario y clave. Los registros técnicos no guardan tu nombre ni tu dirección, y tu teléfono aparece tapado.
 
@@ -71,17 +72,17 @@ Lo que pide la Ley 21.719 como "registro": qué datos, para qué, dónde y por c
 
 | Datos | Para qué | Dónde | Quién los ve | Plazo |
 |---|---|---|---|---|
-| Ficha del cliente: nombre, teléfonos, direcciones, tipo | Atender y entregar pedidos | D1 (`clientes`, `telefonos_cliente`, `direcciones_cliente`); copia nocturna en Google Sheets | Dueño, la operadora (panel); repartidor solo los de su ruta | [PENDIENTE] |
-| Pedidos e historial de cambios | Entregar, cobrar, boleta o factura | D1 (`pedidos`, `historial_pedidos`); copia cada 30 min en Google Sheets | Dueño, la operadora; repartidor solo los de hoy | [PENDIENTE] |
-| Texto de avisos y reclamos | Que una persona atienda | D1 (`avisos`) | Dueño, la operadora | 90 días (el aviso queda, sin el texto) |
+| Ficha del cliente: nombre, teléfonos, direcciones, tipo | Atender y entregar pedidos | D1 (`clientes`, `telefonos_cliente`, `direcciones_cliente`); copia nocturna en Google Sheets | Dueño, operadora (panel); repartidor solo los de su ruta | 2 años sin pedir **(recomendado)** |
+| Pedidos e historial de cambios | Entregar, cobrar, boleta o factura | D1 (`pedidos`, `historial_pedidos`); copia cada 30 min en Google Sheets | Dueño, operadora; repartidor solo los de hoy | 6 años **(recomendado)** |
+| Texto de avisos y reclamos | Que una persona atienda | D1 (`avisos`) | Dueño, operadora | 90 días (el aviso queda, sin el texto) |
 | Conversación en curso y mensajes por agrupar | Entender mensajes seguidos | D1 (`conversaciones`, `mensajes_pendientes`) | Nadie: los usa el sistema | 12 horas y 1 hora |
 | Último pedido por teléfono | Ofrecer "lo de siempre" | D1 (`ultimos_pedidos`) | Nadie: los usa el sistema | 6 meses desde ese pedido |
 | Mensajes ya procesados (identificador y teléfono) | No responder dos veces | D1 (`mensajes_procesados`) | Nadie | 7 días |
-| Comprobantes de pago (foto o PDF) | Verificar pagos | Telegram (grupo privado) | Integrantes del grupo | [PENDIENTE] |
-| Audios | Que la operadora sepa de qué se trata | Se transcriben en Cloudflare; no se guardan | Dueño, la operadora (el texto) | Como los avisos |
-| Ubicación que comparte el cliente | Punto de la dirección en el mapa | D1 (`puntos`) | Dueño, la operadora, repartidor | Mientras exista la dirección |
+| Comprobantes de pago (foto o PDF) | Verificar pagos | Telegram (grupo privado) | Integrantes del grupo | 1 año **(recomendado)** |
+| Audios | Que la operadora sepa de qué se trata | Se transcriben en Cloudflare; no se guardan | Dueño, operadora (el texto) | Como los avisos |
+| Ubicación que comparte el cliente | Punto de la dirección en el mapa | D1 (`puntos`) | Dueño, operadora, repartidor | Mientras exista la dirección |
 | Cuentas del panel (RUT, nombre, huella de la clave) | Entrar al panel | D1 (`usuarios`, `sesiones`) | Administradores | Mientras la cuenta exista |
-| Ubicación del repartidor (con su consentimiento) | Mapa del reparto y hora de llegada | D1 (`posiciones`, `jornadas`) | Dueño, la operadora | 3 días; se borra al retirar el consentimiento o desactivar la cuenta (D84) |
+| Ubicación del repartidor (con su consentimiento) | Mapa del reparto y hora de llegada | D1 (`posiciones`, `jornadas`) | Dueño, operadora | 3 días; se borra al retirar el consentimiento o desactivar la cuenta (D84) |
 | Registros técnicos | Encontrar fallas | Cloudflare (Workers Logs) | Quien administra Cloudflare | 3 días; teléfono tapado, sin nombre ni dirección |
 | Copia de la base | Recuperarse de un error | Cloudflare D1 (Time Travel) | Quien administra Cloudflare | 7 días |
 
@@ -98,8 +99,8 @@ Antes de publicar el aviso hay que construir o decidir:
 ## 5. Para el dueño: decisiones
 
 - [ ] RUT y correo de contacto que van en el aviso.
-- [ ] Cuánto tiempo se guardan los pedidos y las fichas (y la copia en la planilla).
-- [ ] Cuánto tiempo quedan los comprobantes en Telegram, y quiénes están en ese grupo.
+- [ ] Aprobar los plazos recomendados: pedidos 6 años (el SII pide guardar 6 años la documentación tributaria, [preguntas frecuentes del SII](https://www.sii.cl/preguntas_frecuentes/declaracion_renta/001_140_4628.htm)), fichas 2 años sin pedir, comprobantes 1 año.
+- [ ] Quiénes están en el grupo de Telegram.
 - [ ] Si habrá promociones (el aviso tendría que decir que se pide permiso antes).
 - [ ] Quién responde las solicitudes de los clientes.
 - [ ] Revisión por un abogado antes de publicarlo.
